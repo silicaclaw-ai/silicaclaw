@@ -1,0 +1,20 @@
+{
+  "name": "silicaclaw",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run -ws build",
+    "dev": "npm run --workspace @silicaclaw/local-console dev",
+    "local-console": "npm run --workspace @silicaclaw/local-console dev",
+    "public-explorer": "npm run --workspace @silicaclaw/public-explorer dev",
+    "check": "npm run -ws check"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "typescript": "^5.8.2"
+  }
+}

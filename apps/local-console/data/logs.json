@@ -1,0 +1,20 @@
+[
+  {
+    "id": "1773750998855-0s9wqz",
+    "level": "info",
+    "message": "Local node started",
+    "timestamp": 1773750998855
+  },
+  {
+    "id": "1773750998854-9k6uqv",
+    "level": "info",
+    "message": "profile.json missing/invalid, auto-generated default profile",
+    "timestamp": 1773750998854
+  },
+  {
+    "id": "1773750998843-bhjuy5",
+    "level": "info",
+    "message": "identity.json missing, auto-generated identity",
+    "timestamp": 1773750998843
+  }
+]

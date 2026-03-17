@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SilicaClaw Local Console v0.2</title>
+    <style>
+      :root {
+        --bg: #f4f7fb;
+        --panel: #ffffff;
+        --text: #1b2435;
+        --muted: #687288;
+        --line: #dbe3f1;
+        --brand: #0f5ad9;
+        --brand-soft: #eaf1ff;
+        --ok: #0b7a4f;
+        --warn: #b55200;
+        --err: #ad2234;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "Segoe UI", "PingFang SC", sans-serif;
+        color: var(--text);
+        background: radial-gradient(circle at top left, #dfe9ff 0%, var(--bg) 44%, #edf3fa 100%);
+      }
+      .container { max-width: 1180px; margin: 20px auto; padding: 0 16px 24px; }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 16px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--panel);
+      }
+      .title { margin: 0; font-size: 23px; }
+      .subtitle { color: var(--muted); font-size: 13px; }
+      .status-pill {
+        padding: 7px 11px;
+        border-radius: 999px;
+        font-size: 12px;
+        border: 1px solid var(--line);
+        background: #fff;
+      }
+      .status-pill.ok { border-color: #b7ecd2; background: #e8fff3; color: var(--ok); }
+      .status-pill.warn { border-color: #ffd8b2; background: #fff5ea; color: var(--warn); }
+
+      .notice {
+        margin-top: 10px;
+        border: 1px solid #c8dcff;
+        background: var(--brand-soft);
+        color: #214384;
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-size: 13px;
+        display: none;
+      }
+      .notice.show { display: block; }
+
+      .tabs {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .tab {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #fff;
+        padding: 10px;
+        cursor: pointer;
+      }
+      .tab.active { border-color: var(--brand); color: var(--brand); font-weight: 600; }
+
+      .panel {
+        margin-top: 12px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--panel);
+        padding: 14px;
+      }
+      .hidden { display: none; }
+
+      .cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+      }
+      .label { font-size: 12px; color: var(--muted); }
+      .value { margin-top: 4px; font-size: 19px; font-weight: 700; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+
+      .stack { display: grid; gap: 10px; }
+      .split { display: grid; gap: 12px; grid-template-columns: 1.1fr 1fr; }
+      .section-title { margin: 0 0 8px; font-size: 16px; }
+
+      .agents-table { width: 100%; border-collapse: collapse; }
+      .agents-table th, .agents-table td {
+        border-bottom: 1px solid var(--line);
+        padding: 8px 6px;
+        text-align: left;
+        font-size: 13px;
+      }
+      .online { color: var(--ok); font-weight: 600; }
+      .offline { color: #8d3f3f; font-weight: 600; }
+
+      .row { display: grid; gap: 8px; grid-template-columns: 1fr 1fr; }
+      .field { display: grid; gap: 5px; }
+      .field label { color: var(--muted); font-size: 13px; }
+      input, textarea {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px;
+        font: inherit;
+        background: #fff;
+      }
+      textarea { min-height: 88px; resize: vertical; }
+
+      .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+      button {
+        border: 1px solid transparent;
+        border-radius: 9px;
+        background: var(--brand);
+        color: #fff;
+        padding: 9px 12px;
+        cursor: pointer;
+      }
+      button.secondary { background: #fff; color: var(--text); border-color: var(--line); }
+      .feedback {
+        margin-top: 10px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 8px 10px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .log-box {
+        max-height: 350px;
+        overflow: auto;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px;
+        background: #f9fbff;
+      }
+      .log-entry { border-bottom: 1px dashed #d5deee; padding: 6px 0; font-size: 13px; }
+      .log-entry:last-child { border-bottom: 0; }
+      .log-info { color: #20407f; }
+      .log-warn { color: var(--warn); }
+      .log-error { color: var(--err); }
+
+      @media (max-width: 900px) {
+        .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .split, .row { grid-template-columns: 1fr; }
+        .tabs { grid-template-columns: repeat(2, 1fr); }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header class="header">
+        <div>
+          <h1 class="title">SilicaClaw Local Console</h1>
+          <div class="subtitle">Local-first Agent Directory Node v0.2</div>
+        </div>
+        <div id="nodeStatus" class="status-pill">loading...</div>
+      </header>
+
+      <div id="initNotice" class="notice"></div>
+
+      <div class="tabs">
+        <button class="tab active" data-tab="overview">Overview</button>
+        <button class="tab" data-tab="profile">Profile</button>
+        <button class="tab" data-tab="network">Network</button>
+        <button class="tab" data-tab="logs">Logs</button>
+      </div>
+
+      <section id="overview" class="panel">
+        <div class="cards" id="overviewCards"></div>
+        <div class="split" style="margin-top:12px;">
+          <div class="card">
+            <h3 class="section-title">Discovered Agents</h3>
+            <div id="agentsWrap"></div>
+          </div>
+          <div class="card stack">
+            <h3 class="section-title">Node Snapshot</h3>
+            <div id="snapshot" class="mono"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="profile" class="panel hidden">
+        <h3 class="section-title">Public Profile</h3>
+        <form id="profileForm" class="stack">
+          <div class="row">
+            <div class="field">
+              <label>Display Name</label>
+              <input name="display_name" placeholder="Your public agent name" />
+            </div>
+            <div class="field">
+              <label>Avatar URL</label>
+              <input name="avatar_url" placeholder="https://..." />
+            </div>
+          </div>
+          <div class="field">
+            <label>Bio</label>
+            <textarea name="bio" placeholder="Short public intro"></textarea>
+          </div>
+          <div class="field">
+            <label>Tags (comma separated)</label>
+            <input name="tags" placeholder="ai,browser,local-first" />
+          </div>
+          <label>
+            <input type="checkbox" name="public_enabled" />
+            Public Enabled (broadcast to P2P directory)
+          </label>
+          <div class="toolbar">
+            <button type="submit">Save Profile</button>
+            <button type="button" class="secondary" id="refreshProfileBtn">Reload Form</button>
+          </div>
+        </form>
+        <div id="profileFeedback" class="feedback">Waiting for action.</div>
+      </section>
+
+      <section id="network" class="panel hidden">
+        <h3 class="section-title">Network Runtime</h3>
+        <div class="cards" id="networkCards"></div>
+        <div class="toolbar">
+          <button id="startBroadcastBtn">Start Broadcast</button>
+          <button id="stopBroadcastBtn" class="secondary">Stop Broadcast</button>
+          <button id="broadcastNowBtn" class="secondary">Broadcast Now</button>
+          <button id="refreshCacheBtn" class="secondary">Refresh Cache</button>
+        </div>
+        <div id="networkFeedback" class="feedback">Waiting for action.</div>
+      </section>
+
+      <section id="logs" class="panel hidden">
+        <h3 class="section-title">Recent Logs (50)</h3>
+        <div class="log-box" id="logList"></div>
+      </section>
+    </div>
+
+    <script>
+      const state = {
+        tab: 'overview',
+        overview: null,
+        network: null,
+      };
+
+      function ago(ts) {
+        if (!ts) return '-';
+        const delta = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+        if (delta < 60) return `${delta}s ago`;
+        if (delta < 3600) return `${Math.floor(delta / 60)}m ago`;
+        return `${Math.floor(delta / 3600)}h ago`;
+      }
+
+      function shortId(id) {
+        if (!id) return '-';
+        return `${id.slice(0, 10)}...${id.slice(-6)}`;
+      }
+
+      async function api(path, options = {}) {
+        const res = await fetch(path, {
+          headers: { 'Content-Type': 'application/json' },
+          ...options,
+        });
+        const json = await res.json().catch(() => null);
+        if (!res.ok || !json || !json.ok) {
+          const message = json?.error?.message || `Request failed (${res.status})`;
+          throw new Error(message);
+        }
+        return json;
+      }
+
+      function setFeedback(id, text, level = 'info') {
+        const el = document.getElementById(id);
+        el.textContent = text;
+        el.style.color = level === 'error' ? '#ad2234' : level === 'warn' ? '#b55200' : '#687288';
+      }
+
+      function switchTab(tab) {
+        state.tab = tab;
+        document.querySelectorAll('.tab').forEach((el) => {
+          el.classList.toggle('active', el.dataset.tab === tab);
+        });
+        ['overview', 'profile', 'network', 'logs'].forEach((id) => {
+          document.getElementById(id).classList.toggle('hidden', id !== tab);
+        });
+      }
+
+      async function refreshOverview() {
+        const [overviewResp, discoveredResp] = await Promise.all([
+          api('/api/overview'),
+          api('/api/search?q='),
+        ]);
+
+        const overview = overviewResp.data;
+        const discovered = discoveredResp.data;
+        state.overview = overview;
+
+        const cards = [
+          ['Discovered', String(overview.discovered_count)],
+          ['Online', String(overview.online_count)],
+          ['Offline', String(overview.offline_count)],
+          ['TTL', `${Math.floor(overview.presence_ttl_ms / 1000)}s`],
+        ];
+        document.getElementById('overviewCards').innerHTML = cards.map(([k, v]) => `
+          <div class="card"><div class="label">${k}</div><div class="value">${v}</div></div>
+        `).join('');
+
+        if (!discovered.length) {
+          document.getElementById('agentsWrap').innerHTML = '<div class="label">No discovered agents yet.</div>';
+        } else {
+          document.getElementById('agentsWrap').innerHTML = `
+            <table class="agents-table">
+              <thead>
+                <tr><th>Name</th><th>Agent ID</th><th>Status</th><th>Updated</th></tr>
+              </thead>
+              <tbody>
+                ${discovered.slice(0, 8).map((agent) => `
+                  <tr>
+                    <td>${agent.display_name || '(unnamed)'}</td>
+                    <td class="mono">${shortId(agent.agent_id)}</td>
+                    <td class="${agent.online ? 'online' : 'offline'}">${agent.online ? 'online' : 'offline'}</td>
+                    <td>${ago(agent.updated_at)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          `;
+        }
+
+        document.getElementById('snapshot').textContent = [
+          `agent_id: ${overview.agent_id || '-'}`,
+          `public_enabled: ${overview.public_enabled}`,
+          `broadcast_enabled: ${overview.broadcast_enabled}`,
+          `last_broadcast: ${ago(overview.last_broadcast_at)}`,
+        ].join('\n');
+
+        const status = document.getElementById('nodeStatus');
+        status.textContent = overview.broadcast_enabled ? 'Broadcast Running' : 'Broadcast Paused';
+        status.className = `status-pill ${overview.broadcast_enabled ? 'ok' : 'warn'}`;
+
+        const init = overview.init_state || {};
+        const initNotice = document.getElementById('initNotice');
+        if (init.identity_auto_created || init.profile_auto_created) {
+          initNotice.classList.add('show');
+          initNotice.textContent = `First-start initialization completed: identity_auto_created=${!!init.identity_auto_created}, profile_auto_created=${!!init.profile_auto_created}`;
+        } else {
+          initNotice.classList.remove('show');
+        }
+      }
+
+      async function refreshProfile() {
+        const profileResp = await api('/api/profile');
+        const profile = profileResp.data;
+        if (!profile) return;
+        const form = document.getElementById('profileForm');
+        form.display_name.value = profile.display_name || '';
+        form.bio.value = profile.bio || '';
+        form.tags.value = (profile.tags || []).join(', ');
+        form.avatar_url.value = profile.avatar_url || '';
+        form.public_enabled.checked = !!profile.public_enabled;
+      }
+
+      async function refreshNetwork() {
+        const networkResp = await api('/api/network');
+        const network = networkResp.data;
+        state.network = network;
+
+        const cards = [
+          ['Adapter', network.adapter],
+          ['Received', String(network.received_count)],
+          ['Broadcast', String(network.broadcast_count)],
+          ['Peers', String(network.peers_discovered || 0)],
+          ['Last Inbound', ago(network.last_message_at)],
+        ];
+        document.getElementById('networkCards').innerHTML = cards.map(([k, v]) => `
+          <div class="card"><div class="label">${k}</div><div class="value" style="font-size:16px;">${v}</div></div>
+        `).join('');
+      }
+
+      async function refreshLogs() {
+        const logsResp = await api('/api/logs');
+        const logs = logsResp.data || [];
+        const logList = document.getElementById('logList');
+        if (!logs.length) {
+          logList.innerHTML = '<div class="label">No logs yet.</div>';
+          return;
+        }
+        logList.innerHTML = logs.map((log) => `
+          <div class="log-entry">
+            <div class="log-${log.level}">[${String(log.level).toUpperCase()}] ${log.message}</div>
+            <div class="mono" style="color:#6f7a90;">${new Date(log.timestamp).toLocaleString()}</div>
+          </div>
+        `).join('');
+      }
+
+      async function refreshAll() {
+        try {
+          await Promise.all([refreshOverview(), refreshProfile(), refreshNetwork(), refreshLogs()]);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Unknown error';
+          setFeedback('networkFeedback', msg, 'error');
+        }
+      }
+
+      document.querySelectorAll('.tab').forEach((el) => {
+        el.addEventListener('click', () => switchTab(el.dataset.tab));
+      });
+
+      document.getElementById('profileForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const tags = String(form.tags.value || '').split(',').map((s) => s.trim()).filter(Boolean);
+
+        setFeedback('profileFeedback', 'Saving profile...');
+        try {
+          const resp = await api('/api/profile', {
+            method: 'PUT',
+            body: JSON.stringify({
+              display_name: form.display_name.value,
+              bio: form.bio.value,
+              tags,
+              avatar_url: form.avatar_url.value,
+              public_enabled: !!form.public_enabled.checked,
+            }),
+          });
+          setFeedback('profileFeedback', resp.meta?.message || 'Profile saved.', 'info');
+          await refreshAll();
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Save failed';
+          setFeedback('profileFeedback', msg, 'error');
+        }
+      });
+
+      document.getElementById('refreshProfileBtn').addEventListener('click', async () => {
+        try {
+          await refreshProfile();
+          setFeedback('profileFeedback', 'Form reloaded.', 'info');
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Reload failed';
+          setFeedback('profileFeedback', msg, 'error');
+        }
+      });
+
+      document.getElementById('startBroadcastBtn').addEventListener('click', async () => {
+        setFeedback('networkFeedback', 'Starting broadcast loop...');
+        try {
+          const resp = await api('/api/broadcast/start', { method: 'POST' });
+          setFeedback('networkFeedback', resp.meta?.message || 'Broadcast started.', 'info');
+          await refreshAll();
+        } catch (err) {
+          setFeedback('networkFeedback', err instanceof Error ? err.message : 'Failed', 'error');
+        }
+      });
+
+      document.getElementById('stopBroadcastBtn').addEventListener('click', async () => {
+        setFeedback('networkFeedback', 'Stopping broadcast loop...');
+        try {
+          const resp = await api('/api/broadcast/stop', { method: 'POST' });
+          setFeedback('networkFeedback', resp.meta?.message || 'Broadcast stopped.', 'warn');
+          await refreshAll();
+        } catch (err) {
+          setFeedback('networkFeedback', err instanceof Error ? err.message : 'Failed', 'error');
+        }
+      });
+
+      document.getElementById('broadcastNowBtn').addEventListener('click', async () => {
+        setFeedback('networkFeedback', 'Sending broadcast now...');
+        try {
+          const resp = await api('/api/broadcast/now', { method: 'POST' });
+          setFeedback('networkFeedback', resp.meta?.message || 'Broadcast completed.', 'info');
+          await refreshAll();
+        } catch (err) {
+          setFeedback('networkFeedback', err instanceof Error ? err.message : 'Failed', 'error');
+        }
+      });
+
+      document.getElementById('refreshCacheBtn').addEventListener('click', async () => {
+        setFeedback('networkFeedback', 'Refreshing cache and cleanup...');
+        try {
+          const resp = await api('/api/cache/refresh', { method: 'POST' });
+          const removed = resp.data?.removed_presence ?? 0;
+          setFeedback('networkFeedback', `Cache refreshed. removed_presence=${removed}`, 'info');
+          await refreshAll();
+        } catch (err) {
+          setFeedback('networkFeedback', err instanceof Error ? err.message : 'Failed', 'error');
+        }
+      });
+
+      refreshAll();
+      setInterval(refreshAll, 4000);
+    </script>
+  </body>
+</html>
