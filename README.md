@@ -124,6 +124,24 @@ npm run local-console
 npm run public-explorer
 ```
 
+## Health Check
+
+Run full project health check before demo/release:
+
+```bash
+npm run health
+```
+
+This executes:
+
+1. Type checking (`npm run check`)
+2. Build validation (`npm run build`)
+3. Functional smoke checks (`npm run functional-check`)
+   - core identity/sign/verify/index/search/TTL cleanup
+   - real-preview adapter dedupe/self-filter/malformed/namespace checks
+   - UI inline script syntax validation
+   - local JSON data sanity parsing
+
 ## Demo Assets (Placeholders)
 
 - `docs/screenshots/v0.3.1-machine-a-network.png`
