@@ -270,6 +270,16 @@
         font: inherit;
         padding: 10px;
       }
+      select {
+        margin-top: 5px;
+        width: 100%;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: var(--bg-elevated);
+        color: var(--text);
+        font: inherit;
+        padding: 10px;
+      }
       textarea { min-height: 90px; resize: vertical; }
 
       .actions {
@@ -379,6 +389,26 @@
       .log-info { color: #8dc6ff; }
       .log-warn { color: var(--warn); }
       .log-error { color: var(--err); }
+      .toolbar {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: end;
+        margin-bottom: 10px;
+      }
+      .toolbar .field {
+        min-width: 180px;
+      }
+      .mono-block {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--bg-elevated) 85%, transparent);
+        padding: 10px;
+        max-height: 240px;
+        overflow: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
 
       .toast {
         position: fixed;
@@ -427,6 +457,8 @@
           <button class="tab" data-tab="profile">Profile</button>
           <button class="tab" data-tab="network">Network</button>
           <button class="tab" data-tab="peers">Peers</button>
+          <button class="tab" data-tab="discovery">Discovery Events</button>
+          <button class="tab" data-tab="social">Social Config</button>
           <button class="tab" data-tab="logs">Logs</button>
         </nav>
 
@@ -538,6 +570,16 @@
               <div id="networkFeedback" class="feedback" style="margin-top:10px;">Ready.</div>
             </div>
           </div>
+          <div class="split">
+            <div class="card" style="margin-top:10px;">
+              <h3 class="title-sm">Config Snapshot</h3>
+              <div class="mono mono-block" id="networkConfigSnapshot">-</div>
+            </div>
+            <div class="card" style="margin-top:10px;">
+              <h3 class="title-sm">Stats Snapshot</h3>
+              <div class="mono mono-block" id="networkStatsSnapshot">-</div>
+            </div>
+          </div>
         </section>
 
         <section id="view-peers" class="view">
@@ -546,11 +588,80 @@
             <h3 class="title-sm">Peer Inventory</h3>
             <div id="peerTableWrap"></div>
           </div>
+          <div class="card" style="margin-top:10px;">
+            <h3 class="title-sm">Peer Discovery Stats</h3>
+            <div class="mono mono-block" id="peerStatsWrap">-</div>
+          </div>
+        </section>
+
+        <section id="view-discovery" class="view">
+          <div class="grid" id="discoveryCards"></div>
+          <div class="split">
+            <div class="card" style="margin-top:10px;">
+              <h3 class="title-sm">Recent Discovery Events</h3>
+              <div class="logs" id="discoveryEventList"></div>
+            </div>
+            <div class="card" style="margin-top:10px;">
+              <h3 class="title-sm">Discovery Snapshot</h3>
+              <div class="mono mono-block" id="discoverySnapshot">-</div>
+            </div>
+          </div>
+        </section>
+
+        <section id="view-social" class="view">
+          <div class="card">
+            <h3 class="title-sm">Integration Status</h3>
+            <div class="feedback" id="socialStatusLine">Checking integration status...</div>
+            <div class="field-hint" id="socialStatusSubline">-</div>
+          </div>
+          <div class="grid" id="socialIntegrationCards" style="margin-top:10px;"></div>
+          <div class="grid" id="socialCards"></div>
+          <div class="split">
+            <div class="card" style="margin-top:10px;">
+              <h3 class="title-sm">Source & Parsed Frontmatter</h3>
+              <div class="mono mono-block" id="socialSourceWrap">-</div>
+              <div style="height:10px;"></div>
+              <div class="mono mono-block" id="socialRawWrap">-</div>
+            </div>
+            <div class="card" style="margin-top:10px;">
+              <h3 class="title-sm">Runtime Summary</h3>
+              <div class="mono mono-block" id="socialRuntimeWrap">-</div>
+            </div>
+          </div>
+          <div class="card" style="margin-top:10px;">
+            <h3 class="title-sm">Export Template Preview</h3>
+            <div class="mono mono-block" id="socialTemplateWrap">-</div>
+          </div>
+          <div class="card" style="margin-top:10px;">
+            <h3 class="title-sm">Actions</h3>
+            <div class="actions">
+              <button id="socialReloadBtn">Reload Config</button>
+              <button class="secondary" id="socialGenerateBtn">Generate Default social.md</button>
+              <button class="secondary" id="socialExportBtn">Export social.md template</button>
+              <button class="secondary" id="socialCopyBtn">Copy Template</button>
+              <button class="secondary" id="socialDownloadBtn">Download Template</button>
+            </div>
+            <div id="socialFeedback" class="feedback" style="margin-top:10px;">Ready.</div>
+          </div>
         </section>
 
         <section id="view-logs" class="view">
           <div class="card">
             <h3 class="title-sm">Recent Logs</h3>
+            <div class="toolbar">
+              <div class="field">
+                <label for="logLevelFilter">Category</label>
+                <select id="logLevelFilter">
+                  <option value="all">all</option>
+                  <option value="info">info</option>
+                  <option value="warn">warn</option>
+                  <option value="error">error</option>
+                </select>
+              </div>
+              <div>
+                <button type="button" class="secondary" id="refreshLogsBtn">Refresh Logs</button>
+              </div>
+            </div>
             <div class="logs" id="logList"></div>
           </div>
         </section>
@@ -564,6 +675,9 @@
       let profileBaseline = '';
       let profileDirty = false;
       let profileSaving = false;
+      let logsCache = [];
+      let logLevelFilter = 'all';
+      let socialTemplate = '';
 
       function ago(ts) {
         if (!ts) return '-';
@@ -575,6 +689,13 @@
       function shortId(id) {
         if (!id) return '-';
         return `${id.slice(0, 10)}...${id.slice(-6)}`;
+      }
+      function toPrettyJson(obj) {
+        try {
+          return JSON.stringify(obj, null, 2);
+        } catch {
+          return String(obj);
+        }
       }
       function toast(msg) {
         const t = document.getElementById('toast');
@@ -724,7 +845,7 @@
         }
         activeTab = tab;
         document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
-        ['overview', 'profile', 'network', 'peers', 'logs'].forEach((k) => {
+        ['overview', 'profile', 'network', 'peers', 'discovery', 'social', 'logs'].forEach((k) => {
           document.getElementById(`view-${k}`).classList.toggle('active', k === tab);
         });
         if (tab === 'profile' && !profileDirty && !profileSaving) {
@@ -806,6 +927,10 @@
         const msg = s.message_counters || {};
         const p = s.peer_counters || {};
         const a = s.adapter_stats || {};
+        const t = s.adapter_transport_stats || {};
+        const d = s.adapter_discovery_stats || {};
+        const dx = s.adapter_diagnostics_summary || {};
+        const ac = s.adapter_config || c.adapter_config || {};
 
         document.getElementById('pillAdapter').textContent = `adapter: ${c.adapter}`;
         document.getElementById('sideMeta').innerHTML = `adapter: ${c.adapter}<br/>namespace: ${c.namespace || '-'}<br/>port: ${c.port ?? '-'}`;
@@ -814,11 +939,22 @@
           ['Adapter', c.adapter],
           ['Namespace', c.namespace || '-'],
           ['Port', c.port ?? '-'],
+          ['Started', ac.started === true ? 'yes' : ac.started === false ? 'no' : '-'],
+          ['Transport State', ac.transport?.state || '-'],
+          ['Signaling URL', dx.signaling_url || '-'],
+          ['Signaling Endpoints', (dx.signaling_endpoints || []).length || 0],
+          ['WebRTC Room', dx.room || '-'],
+          ['Bootstrap Sources', (dx.bootstrap_sources || []).length || 0],
+          ['Seed Peers', dx.seed_peers_count ?? 0],
+          ['Discovery Events', dx.discovery_events_total ?? 0],
           ['Recv', msg.received_total ?? 0],
           ['Sent', msg.broadcast_total ?? 0],
           ['Peers', p.total ?? 0],
           ['Online Peers', p.online ?? 0],
+          ['Active WebRTC Peers', dx.active_webrtc_peers ?? '-'],
+          ['Reconnect Attempts', dx.reconnect_attempts_total ?? '-'],
           ['Last Inbound', ago(msg.last_message_at)],
+          ['Last Outbound', ago(msg.last_broadcast_at)],
         ].map(([k,v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join('');
 
         const comp = c.components || {};
@@ -832,53 +968,204 @@
           `max_message_bytes: ${lim.max_message_bytes ?? '-'}`,
           `dedupe_window_ms: ${lim.dedupe_window_ms ?? '-'}`,
           `dedupe_max_entries: ${lim.dedupe_max_entries ?? '-'}`,
+          `max_future_drift_ms: ${lim.max_future_drift_ms ?? '-'}`,
+          `max_past_drift_ms: ${lim.max_past_drift_ms ?? '-'}`,
           `dropped_duplicate: ${a.dropped_duplicate ?? '-'}`,
           `dropped_self: ${a.dropped_self ?? '-'}`,
           `dropped_malformed: ${a.dropped_malformed ?? '-'}`,
+          `dropped_decode_failed: ${a.dropped_decode_failed ?? '-'}`,
+          `dropped_timestamp_future_drift: ${a.dropped_timestamp_future_drift ?? '-'}`,
+          `dropped_timestamp_past_drift: ${a.dropped_timestamp_past_drift ?? '-'}`,
           `dropped_namespace_mismatch: ${a.dropped_namespace_mismatch ?? '-'}`,
+          `received_validated: ${a.received_validated ?? '-'}`,
+          `send_errors: ${a.send_errors ?? '-'}`,
+          `transport_send_errors: ${t.send_errors ?? '-'}`,
+          `discovery_heartbeat_send_errors: ${d.heartbeat_send_errors ?? '-'}`,
+          `signaling_messages_sent_total: ${dx.signaling_messages_sent_total ?? '-'}`,
+          `signaling_messages_received_total: ${dx.signaling_messages_received_total ?? '-'}`,
+          `signaling_endpoints: ${Array.isArray(dx.signaling_endpoints) ? dx.signaling_endpoints.join(', ') : '-'}`,
+          `bootstrap_sources: ${Array.isArray(dx.bootstrap_sources) ? dx.bootstrap_sources.join(', ') : '-'}`,
+          `seed_peers_count: ${dx.seed_peers_count ?? '-'}`,
+          `discovery_events_total: ${dx.discovery_events_total ?? '-'}`,
+          `last_discovery_event_at: ${dx.last_discovery_event_at ? new Date(dx.last_discovery_event_at).toISOString() : '-'}`,
         ].join('\n');
+
+        document.getElementById('networkConfigSnapshot').textContent = toPrettyJson({
+          config: c,
+          adapter_config: ac,
+        });
+        document.getElementById('networkStatsSnapshot').textContent = toPrettyJson({
+          stats: s,
+        });
       }
 
       async function refreshPeers() {
-        const peers = (await api('/api/peers')).data;
+        const [peerRes, statsRes] = await Promise.all([api('/api/peers'), api('/api/network/stats')]);
+        const peers = peerRes.data || {};
+        const ds = statsRes.data?.adapter_discovery_stats || {};
+        const summary = peers.diagnostics_summary || {};
+
         document.getElementById('peerCards').innerHTML = [
           ['Total', peers.total || 0],
           ['Online', peers.online || 0],
           ['Stale', peers.stale || 0],
           ['Namespace', peers.namespace || '-'],
+          ['Signaling URL', summary.signaling_url || '-'],
+          ['Signaling Endpoints', (summary.signaling_endpoints || []).length || 0],
+          ['Room', summary.room || '-'],
+          ['Bootstrap Sources', (summary.bootstrap_sources || []).length || 0],
+          ['Seed Peers', summary.seed_peers_count ?? 0],
+          ['Discovery Events', summary.discovery_events_total ?? 0],
+          ['Active WebRTC Peers', summary.active_webrtc_peers ?? '-'],
+          ['Observe Calls', ds.observe_calls || 0],
+          ['Heartbeats', ds.heartbeat_sent || 0],
+          ['Peers Added', ds.peers_added || 0],
+          ['Peers Removed', ds.peers_removed || 0],
         ].map(([k,v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join('');
 
         if (!peers.items || !peers.items.length) {
           document.getElementById('peerTableWrap').innerHTML = '<div class="label">No peers discovered yet.</div>';
+          document.getElementById('peerStatsWrap').textContent = toPrettyJson({
+            discovery_stats: ds,
+            diagnostics_summary: summary,
+          });
           return;
         }
 
         document.getElementById('peerTableWrap').innerHTML = `
           <table class="table">
-            <thead><tr><th>Peer</th><th>Status</th><th>Last Seen</th><th>Messages</th><th>First Seen</th></tr></thead>
+            <thead><tr><th>Peer</th><th>Status</th><th>Last Seen</th><th>Stale Since</th><th>Messages</th><th>First Seen</th><th>Meta</th></tr></thead>
             <tbody>
               ${peers.items.map((peer) => `
                 <tr>
                   <td class="mono">${shortId(peer.peer_id)}</td>
                   <td class="${peer.status === 'online' ? 'online' : 'stale'}">${peer.status}</td>
                   <td>${ago(peer.last_seen_at)}</td>
+                  <td>${peer.stale_since_at ? ago(peer.stale_since_at) : '-'}</td>
                   <td>${peer.messages_seen || 0}</td>
                   <td>${new Date(peer.first_seen_at).toLocaleTimeString()}</td>
+                  <td class="mono">${peer.meta ? JSON.stringify(peer.meta) : '-'}</td>
                 </tr>
               `).join('')}
             </tbody>
           </table>
         `;
+        document.getElementById('peerStatsWrap').textContent = toPrettyJson({
+          discovery_stats: ds,
+          diagnostics_summary: summary,
+          adapter_stats: statsRes.data?.adapter_stats || {},
+        });
       }
 
-      async function refreshLogs() {
-        const logs = (await api('/api/logs')).data || [];
+      async function refreshDiscovery() {
+        const eventsRes = await api('/api/discovery/events');
+        const payload = eventsRes.data || {};
+        const items = Array.isArray(payload.items) ? payload.items : [];
+
+        document.getElementById('discoveryCards').innerHTML = [
+          ['Adapter', payload.adapter || '-'],
+          ['Namespace', payload.namespace || '-'],
+          ['Events Total', payload.total ?? 0],
+          ['Last Event', ago(payload.last_event_at)],
+          ['Signaling Endpoints', (payload.signaling_endpoints || []).length || 0],
+          ['Seed Peers', payload.seed_peers_count ?? 0],
+        ].map(([k,v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join('');
+
+        if (!items.length) {
+          document.getElementById('discoveryEventList').innerHTML = '<div class="label">No discovery events yet.</div>';
+        } else {
+          document.getElementById('discoveryEventList').innerHTML = items
+            .slice()
+            .reverse()
+            .map((event) => `
+              <div class="log-item">
+                <div class="mono" style="color:#c5d8ff;">[${event.type}] ${event.peer_id || '-'} ${event.endpoint || ''}</div>
+                <div class="label">${event.detail || '-'}</div>
+                <div class="mono" style="color:#90a2c3;">${new Date(event.at).toLocaleString()}</div>
+              </div>
+            `)
+            .join('');
+        }
+
+        document.getElementById('discoverySnapshot').textContent = toPrettyJson(payload);
+      }
+
+      async function refreshSocial() {
+        const [socialRes, summaryRes] = await Promise.all([
+          api('/api/social/config'),
+          api('/api/social/integration-summary'),
+        ]);
+        const social = socialRes.data || {};
+        const summary = summaryRes.data || {};
+        const runtime = social.runtime || {};
+        const config = social.social_config || {};
+
+        const connectedText = summary.connected ? 'Connected to SilicaClaw' : 'Not connected to SilicaClaw';
+        const broadcastingText = summary.current_broadcast_status === 'running'
+          ? 'Public directory broadcasting enabled'
+          : 'Public directory broadcasting paused';
+        const namespaceText = `Running in namespace ${summary.current_namespace || '-'}`;
+        document.getElementById('socialStatusLine').textContent = `${connectedText} · ${broadcastingText}`;
+        document.getElementById('socialStatusSubline').textContent = namespaceText;
+
+        document.getElementById('socialIntegrationCards').innerHTML = [
+          ['social.md found', summary.social_md_found ? 'yes' : 'no'],
+          ['social.md source', summary.social_md_source_path || '-'],
+          ['runtime generated', summary.runtime_generated ? 'yes' : 'no'],
+          ['reuse OpenClaw identity', summary.reused_openclaw_identity ? 'yes' : 'no'],
+          ['public_enabled', summary.current_public_enabled ? 'true' : 'false'],
+          ['adapter', summary.current_adapter || '-'],
+          ['namespace', summary.current_namespace || '-'],
+          ['broadcast status', summary.current_broadcast_status || '-'],
+        ].map(([k,v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join('');
+
+        document.getElementById('socialCards').innerHTML = [
+          ['social.md found', social.found ? 'yes' : 'no'],
+          ['enabled', config.enabled === true ? 'true' : 'false'],
+          ['public_enabled', config.public_enabled === true ? 'true' : 'false'],
+          ['network adapter', config.network?.adapter || '-'],
+          ['namespace', config.network?.namespace || '-'],
+          ['port', config.network?.port ?? '-'],
+          ['room', config.network?.room || '-'],
+          ['signaling urls', (config.network?.signaling_urls || []).length || 0],
+          ['seed peers', (config.network?.seed_peers || []).length || 0],
+          ['bootstrap hints', (config.network?.bootstrap_hints || []).length || 0],
+          ['source path', social.source_path || '-'],
+          ['restart required', social.network_requires_restart ? 'yes' : 'no'],
+        ].map(([k,v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join('');
+
+        document.getElementById('socialSourceWrap').textContent = toPrettyJson({
+          found: social.found,
+          source_path: social.source_path,
+          parse_error: social.parse_error,
+        });
+        document.getElementById('socialRawWrap').textContent = toPrettyJson({
+          raw_frontmatter: social.raw_frontmatter || null,
+        });
+        document.getElementById('socialRuntimeWrap').textContent = toPrettyJson(runtime);
+      }
+
+      async function exportSocialTemplate() {
+        const payload = (await api('/api/social/export-template')).data || {};
+        socialTemplate = String(payload.content || '');
+        document.getElementById('socialTemplateWrap').textContent = socialTemplate || '-';
+        return payload;
+      }
+
+      function renderLogs() {
         const el = document.getElementById('logList');
-        if (!logs.length) {
+        if (!logsCache.length) {
           el.innerHTML = '<div class="label">No logs yet.</div>';
           return;
         }
-        el.innerHTML = logs.map((l) => `
+        const filtered = logLevelFilter === 'all'
+          ? logsCache
+          : logsCache.filter((l) => String(l.level || '').toLowerCase() === logLevelFilter);
+        if (!filtered.length) {
+          el.innerHTML = `<div class="label">No ${logLevelFilter} logs.</div>`;
+          return;
+        }
+        el.innerHTML = filtered.map((l) => `
           <div class="log-item">
             <div class="log-${l.level}">[${String(l.level).toUpperCase()}] ${l.message}</div>
             <div class="mono" style="color:#90a2c3;">${new Date(l.timestamp).toLocaleString()}</div>
@@ -886,9 +1173,14 @@
         `).join('');
       }
 
+      async function refreshLogs() {
+        logsCache = (await api('/api/logs')).data || [];
+        renderLogs();
+      }
+
       async function refreshAll() {
         try {
-          const tasks = [refreshOverview(), refreshNetwork(), refreshPeers(), refreshLogs()];
+          const tasks = [refreshOverview(), refreshNetwork(), refreshPeers(), refreshDiscovery(), refreshSocial(), refreshLogs()];
           const shouldRefreshProfile = !(activeTab === 'profile' && profileDirty);
           if (shouldRefreshProfile) {
             tasks.push(refreshProfile());
@@ -984,6 +1276,79 @@
       document.getElementById('stopBroadcastBtn').addEventListener('click', () => runAction('/api/broadcast/stop', 'Stopping...', 'warn'));
       document.getElementById('broadcastNowBtn').addEventListener('click', () => runAction('/api/broadcast/now', 'Broadcasting now...'));
       document.getElementById('refreshCacheBtn').addEventListener('click', () => runAction('/api/cache/refresh', 'Refreshing cache...'));
+      document.getElementById('refreshLogsBtn').addEventListener('click', async () => {
+        await refreshLogs();
+        toast('Logs refreshed');
+      });
+      document.getElementById('socialReloadBtn').addEventListener('click', async () => {
+        setFeedback('socialFeedback', 'Reloading social config...');
+        try {
+          const res = await api('/api/social/reload', { method: 'POST' });
+          setFeedback('socialFeedback', res.meta?.message || 'Reloaded');
+          toast('Social config reloaded');
+          await refreshAll();
+        } catch (e) {
+          setFeedback('socialFeedback', e instanceof Error ? e.message : 'Reload failed', 'error');
+        }
+      });
+      document.getElementById('socialGenerateBtn').addEventListener('click', async () => {
+        setFeedback('socialFeedback', 'Generating default social.md...');
+        try {
+          const res = await api('/api/social/generate-default', { method: 'POST' });
+          setFeedback('socialFeedback', res.meta?.message || 'Done');
+          toast(res.meta?.message || 'Default social.md ready');
+          await refreshAll();
+        } catch (e) {
+          setFeedback('socialFeedback', e instanceof Error ? e.message : 'Generate failed', 'error');
+        }
+      });
+      document.getElementById('socialExportBtn').addEventListener('click', async () => {
+        setFeedback('socialFeedback', 'Exporting template...');
+        try {
+          await exportSocialTemplate();
+          setFeedback('socialFeedback', 'Template exported from current runtime.');
+          toast('Template exported');
+        } catch (e) {
+          setFeedback('socialFeedback', e instanceof Error ? e.message : 'Export failed', 'error');
+        }
+      });
+      document.getElementById('socialCopyBtn').addEventListener('click', async () => {
+        setFeedback('socialFeedback', 'Copying template...');
+        try {
+          if (!socialTemplate) {
+            await exportSocialTemplate();
+          }
+          await navigator.clipboard.writeText(socialTemplate);
+          setFeedback('socialFeedback', 'Template copied to clipboard.');
+          toast('Copied');
+        } catch (e) {
+          setFeedback('socialFeedback', e instanceof Error ? e.message : 'Copy failed', 'error');
+        }
+      });
+      document.getElementById('socialDownloadBtn').addEventListener('click', async () => {
+        setFeedback('socialFeedback', 'Preparing download...');
+        try {
+          const payload = await exportSocialTemplate();
+          const filename = String(payload.filename || 'social.md');
+          const blob = new Blob([socialTemplate], { type: 'text/markdown;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const anchor = document.createElement('a');
+          anchor.href = url;
+          anchor.download = filename;
+          document.body.appendChild(anchor);
+          anchor.click();
+          anchor.remove();
+          URL.revokeObjectURL(url);
+          setFeedback('socialFeedback', `Downloaded ${filename}.`);
+          toast('Downloaded');
+        } catch (e) {
+          setFeedback('socialFeedback', e instanceof Error ? e.message : 'Download failed', 'error');
+        }
+      });
+      document.getElementById('logLevelFilter').addEventListener('change', (event) => {
+        logLevelFilter = String(event.target?.value || 'all');
+        renderLogs();
+      });
 
       (() => {
         const logo = document.getElementById('brandLogo');
@@ -1001,6 +1366,7 @@
 
       applyTheme(localStorage.getItem('silicaclaw_theme_mode') || 'dark');
       refreshAll();
+      exportSocialTemplate().catch(() => {});
       setInterval(refreshAll, 4000);
     </script>
   </body>

@@ -1,0 +1,58 @@
+---
+enabled: true
+public_enabled: true
+
+identity:
+  display_name: "My OpenClaw"
+  bio: "Local OpenClaw agent connected to SilicaClaw"
+  avatar_url: ""
+  tags:
+    - openclaw
+    - browser
+    - computer
+    - research
+
+network:
+  namespace: "silicaclaw.main"
+  adapter: "webrtc-preview"
+  port: 44123
+  signaling_url: "http://localhost:4510"
+  signaling_urls:
+    - "http://localhost:4510"
+    - "http://192.168.1.20:4510"
+  room: "silicaclaw-main"
+  seed_peers:
+    - "agent-alpha"
+    - "agent-beta"
+  bootstrap_hints:
+    - "lan:fallback-real-preview"
+    - "webrtc:preview"
+
+discovery:
+  discoverable: true
+  allow_profile_broadcast: true
+  allow_presence_broadcast: true
+
+visibility:
+  show_display_name: true
+  show_bio: true
+  show_tags: true
+  show_agent_id: true
+  show_last_seen: true
+
+openclaw:
+  bind_existing_identity: true
+  use_openclaw_profile_if_available: true
+---
+
+# Social
+
+This file connects an existing OpenClaw instance to SilicaClaw.
+
+- `enabled`: whether SilicaClaw integration is active
+- `public_enabled`: whether this agent appears in public directory
+- `identity`: public profile fields
+- `network`: SilicaClaw network settings
+- `discovery`: broadcast/discovery settings
+- `visibility`: controls public field visibility
+- `openclaw`: reuse OpenClaw identity/profile when available

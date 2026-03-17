@@ -1,6 +1,10 @@
 import { randomUUID } from "crypto";
 import { NetworkAdapter } from "./types";
-import { MessageEnvelopeCodec, NetworkMessageEnvelope } from "./abstractions/messageEnvelope";
+import {
+  MessageEnvelopeCodec,
+  NetworkMessageEnvelope,
+  validateNetworkMessageEnvelope,
+} from "./abstractions/messageEnvelope";
 import { TopicCodec } from "./abstractions/topicCodec";
 import { NetworkTransport } from "./abstractions/transport";
 import { PeerDiscovery, PeerSnapshot } from "./abstractions/peerDiscovery";
@@ -19,6 +23,8 @@ type RealNetworkAdapterPreviewOptions = {
   maxMessageBytes?: number;
   dedupeWindowMs?: number;
   dedupeMaxEntries?: number;
+  maxFutureDriftMs?: number;
+  maxPastDriftMs?: number;
 };
 
 type NetworkDiagnostics = {
@@ -35,6 +41,14 @@ type NetworkDiagnostics = {
     max_message_bytes: number;
     dedupe_window_ms: number;
     dedupe_max_entries: number;
+    max_future_drift_ms: number;
+    max_past_drift_ms: number;
+  };
+  config: {
+    started: boolean;
+    topic_handler_count: number;
+    transport: ReturnType<NonNullable<NetworkTransport["getConfig"]>> | null;
+    discovery: ReturnType<NonNullable<PeerDiscovery["getConfig"]>> | null;
   };
   peers: {
     total: number;
@@ -52,10 +66,19 @@ type NetworkDiagnostics = {
     dropped_malformed: number;
     dropped_oversized: number;
     dropped_namespace_mismatch: number;
+    dropped_timestamp_future_drift: number;
+    dropped_timestamp_past_drift: number;
+    dropped_decode_failed: number;
+    dropped_topic_decode_error: number;
+    dropped_handler_error: number;
     send_errors: number;
+    discovery_errors: number;
     start_errors: number;
     stop_errors: number;
+    received_validated: number;
   };
+  transport_stats: ReturnType<NonNullable<NetworkTransport["getStats"]>> | null;
+  discovery_stats: ReturnType<NonNullable<PeerDiscovery["getStats"]>> | null;
 };
 
 export class RealNetworkAdapterPreview implements NetworkAdapter {
@@ -70,6 +93,8 @@ export class RealNetworkAdapterPreview implements NetworkAdapter {
   private maxMessageBytes: number;
   private dedupeWindowMs: number;
   private dedupeMaxEntries: number;
+  private maxFutureDriftMs: number;
+  private maxPastDriftMs: number;
   private seenMessageIds = new Map<string, number>();
 
   private offTransportMessage: (() => void) | null = null;
@@ -85,9 +110,16 @@ export class RealNetworkAdapterPreview implements NetworkAdapter {
     dropped_malformed: 0,
     dropped_oversized: 0,
     dropped_namespace_mismatch: 0,
+    dropped_timestamp_future_drift: 0,
+    dropped_timestamp_past_drift: 0,
+    dropped_decode_failed: 0,
+    dropped_topic_decode_error: 0,
+    dropped_handler_error: 0,
     send_errors: 0,
+    discovery_errors: 0,
     start_errors: 0,
     stop_errors: 0,
+    received_validated: 0,
   };
 
   constructor(options: RealNetworkAdapterPreviewOptions = {}) {
@@ -101,6 +133,8 @@ export class RealNetworkAdapterPreview implements NetworkAdapter {
     this.maxMessageBytes = options.maxMessageBytes ?? 64 * 1024;
     this.dedupeWindowMs = options.dedupeWindowMs ?? 90_000;
     this.dedupeMaxEntries = options.dedupeMaxEntries ?? 10_000;
+    this.maxFutureDriftMs = options.maxFutureDriftMs ?? 30_000;
+    this.maxPastDriftMs = options.maxPastDriftMs ?? 120_000;
   }
 
   async start(): Promise<void> {
@@ -151,6 +185,7 @@ export class RealNetworkAdapterPreview implements NetworkAdapter {
     try {
       await this.peerDiscovery.stop();
     } catch {
+      this.stats.discovery_errors += 1;
       this.stats.stop_errors += 1;
     }
 
@@ -238,6 +273,14 @@ export class RealNetworkAdapterPreview implements NetworkAdapter {
         max_message_bytes: this.maxMessageBytes,
         dedupe_window_ms: this.dedupeWindowMs,
         dedupe_max_entries: this.dedupeMaxEntries,
+        max_future_drift_ms: this.maxFutureDriftMs,
+        max_past_drift_ms: this.maxPastDriftMs,
+      },
+      config: {
+        started: this.started,
+        topic_handler_count: this.handlers.size,
+        transport: this.transport.getConfig?.() ?? null,
+        discovery: this.peerDiscovery.getConfig?.() ?? null,
       },
       peers: {
         total: peers.length,
@@ -246,6 +289,8 @@ export class RealNetworkAdapterPreview implements NetworkAdapter {
         items: peers,
       },
       stats: { ...this.stats },
+      transport_stats: this.transport.getStats?.() ?? null,
+      discovery_stats: this.peerDiscovery.getStats?.() ?? null,
     };
   }
 
@@ -258,12 +303,29 @@ export class RealNetworkAdapterPreview implements NetworkAdapter {
     }
 
     const decoded = this.envelopeCodec.decode(raw);
-    if (!decoded || !this.isValidEnvelope(decoded.envelope)) {
+    if (!decoded) {
+      this.stats.dropped_decode_failed += 1;
       this.stats.dropped_malformed += 1;
       return;
     }
 
-    const { envelope } = decoded;
+    const validated = validateNetworkMessageEnvelope(decoded.envelope, {
+      max_future_drift_ms: this.maxFutureDriftMs,
+      max_past_drift_ms: this.maxPastDriftMs,
+    });
+    if (!validated.ok || !validated.envelope) {
+      if (validated.reason === "timestamp_future_drift") {
+        this.stats.dropped_timestamp_future_drift += 1;
+      } else if (validated.reason === "timestamp_past_drift") {
+        this.stats.dropped_timestamp_past_drift += 1;
+      } else {
+        this.stats.dropped_malformed += 1;
+      }
+      return;
+    }
+    this.stats.received_validated += 1;
+
+    const envelope = validated.envelope;
 
     if (!envelope.topic.startsWith(`${this.namespace}:`)) {
       this.stats.dropped_namespace_mismatch += 1;
@@ -275,7 +337,11 @@ export class RealNetworkAdapterPreview implements NetworkAdapter {
       return;
     }
 
-    this.peerDiscovery.observeEnvelope(envelope);
+    try {
+      this.peerDiscovery.observeEnvelope(envelope);
+    } catch {
+      this.stats.discovery_errors += 1;
+    }
 
     if (envelope.source_peer_id === this.peerId) {
       this.stats.dropped_self += 1;
@@ -300,11 +366,11 @@ export class RealNetworkAdapterPreview implements NetworkAdapter {
           handler(payload);
           this.stats.delivered_total += 1;
         } catch {
-          this.stats.dropped_malformed += 1;
+          this.stats.dropped_handler_error += 1;
         }
       }
     } catch {
-      this.stats.dropped_malformed += 1;
+      this.stats.dropped_topic_decode_error += 1;
     }
   }
 
@@ -346,19 +412,6 @@ export class RealNetworkAdapterPreview implements NetworkAdapter {
         this.seenMessageIds.delete(id);
       }
     }
-  }
-
-  private isValidEnvelope(envelope: NetworkMessageEnvelope): boolean {
-    return (
-      envelope.version === 1 &&
-      typeof envelope.message_id === "string" &&
-      envelope.message_id.length > 0 &&
-      typeof envelope.topic === "string" &&
-      envelope.topic.length > 0 &&
-      typeof envelope.source_peer_id === "string" &&
-      envelope.source_peer_id.length > 0 &&
-      typeof envelope.timestamp === "number"
-    );
   }
 
   private isValidTopic(topic: string): boolean {

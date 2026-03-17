@@ -7,18 +7,12 @@ export class JsonMessageEnvelopeCodec implements MessageEnvelopeCodec {
 
   decode(raw: Buffer): DecodedNetworkMessage | null {
     try {
-      const parsed = JSON.parse(raw.toString("utf8")) as NetworkMessageEnvelope;
-      if (
-        parsed?.version !== 1 ||
-        typeof parsed?.message_id !== "string" ||
-        typeof parsed?.topic !== "string" ||
-        typeof parsed?.source_peer_id !== "string" ||
-        typeof parsed?.timestamp !== "number"
-      ) {
+      const parsed = JSON.parse(raw.toString("utf8")) as unknown;
+      if (typeof parsed !== "object" || parsed === null) {
         return null;
       }
       return {
-        envelope: parsed,
+        envelope: parsed as NetworkMessageEnvelope,
         raw,
       };
     } catch {

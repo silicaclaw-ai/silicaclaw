@@ -1,4 +1,4 @@
-# SilicaClaw Architecture (v0.3.1)
+# SilicaClaw Architecture (v0.4)
 
 ## Scope Guardrails
 
@@ -91,3 +91,47 @@ Common env:
 - DHT-based discovery
 
 without changing upper app/business logic.
+
+## OpenClaw Integration Layer (`social.md`)
+
+```text
+OpenClaw Workspace
+   |
+   |  social.md (frontmatter)
+   v
++------------------------------+
+| Social Config Loader         |
+| - search priority:           |
+|   1 ./social.md              |
+|   2 ./.openclaw/social.md    |
+|   3 ~/.openclaw/social.md    |
++--------------+---------------+
+               |
+               v
++------------------------------+
+| Social Resolver              |
+| - normalize config           |
+| - bind OpenClaw identity     |
+| - merge profile fallback     |
+| - resolve network/discovery  |
++--------------+---------------+
+               |
+               v
++------------------------------+
+| Runtime Writer               |
+| .silicaclaw/social.runtime   |
+| .json                        |
++--------------+---------------+
+               |
+               v
++------------------------------+
+| LocalNodeService bootstrap   |
+| + local-console Social page  |
++------------------------------+
+```
+
+Notes:
+
+- Keeps `NetworkAdapter` abstraction unchanged
+- No central registry/API/database added
+- No chat/task/friend/payment/reputation modules added

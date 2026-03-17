@@ -1,5 +1,124 @@
 # Changelog
 
+## v0.6 - 2026-03-18
+
+### Added (Bootstrap / Discovery Groundwork)
+
+- bootstrap minimization groundwork for webrtc-preview:
+  - multi signaling endpoint support (`signaling_urls`)
+  - static bootstrap hints (`seed_peers`, `bootstrap_hints`)
+  - explicit signaling role remains SDP/ICE exchange only
+- social config/runtime schema expansion:
+  - `network.signaling_url`
+  - `network.signaling_urls`
+  - `network.room`
+  - `network.seed_peers`
+  - `network.bootstrap_hints`
+  - runtime `bootstrap_sources`
+- discovery event stream in network diagnostics:
+  - `peer_joined`
+  - `peer_stale`
+  - `peer_removed`
+  - `signaling_connected`
+  - `signaling_disconnected`
+  - `reconnect_started`
+  - `reconnect_succeeded`
+  - `reconnect_failed`
+  - `malformed_signal_dropped`
+  - `duplicate_signal_dropped`
+- diagnostics expansion:
+  - `bootstrap_sources`
+  - `signaling_endpoints`
+  - `seed_peers_count`
+  - `discovery_events_total`
+  - `last_discovery_event_at`
+- local-console observability:
+  - new Discovery Events view
+  - Network/Peers pages show bootstrap + discovery diagnostics
+  - new endpoint `GET /api/discovery/events`
+
+### Kept
+
+- No central business server
+- No database
+- No chat/task/friend/payment modules
+- No DHT mainnet / relay mesh / complex routing
+- Existing adapters remain intact (no replacement)
+
+## v0.5.1 - 2026-03-17
+
+### Stabilized (WebRTC Preview)
+
+- WebRTC connection lifecycle observability:
+  - tracked RTCPeerConnection states
+  - tracked DataChannel states
+  - exposed connection/datachannel summaries in diagnostics
+  - exposed active webrtc peers and reconnect attempt counters
+- safer peer session management:
+  - disconnect cleanup
+  - duplicate session leak prevention
+  - basic rejoin/reconnect behavior
+- signaling robustness:
+  - stale room member cleanup in signaling preview server
+  - invalid signaling payload counting
+  - duplicate SDP/ICE tolerance counters
+  - ICE buffering until remote description is ready
+  - duplicate signal dedupe window on signaling server
+- local-console observability:
+  - Network/Peers pages now surface webrtc signaling URL, room, active peers, reconnect counters
+- runtime capability check:
+  - clear startup error when WebRTC runtime is unavailable
+  - explicit Node.js + `wrtc` prerequisite guidance
+
+### Kept
+
+- No central business server
+- No database
+- No chat/task/friend/payment modules
+- No DHT / TURN / relay / complex routing
+- Existing mainline adapters unchanged
+
+## v0.4 - 2026-03-17
+
+### Added
+
+- OpenClaw integration layer via `social.md`:
+  - frontmatter schema support
+  - priority lookup (`./social.md`, `./.openclaw/social.md`, `~/.openclaw/social.md`)
+  - default template generation when missing
+- Social runtime output:
+  - `.silicaclaw/social.runtime.json`
+  - resolved identity/profile/network/discovery + source metadata
+- OpenClaw reuse behavior:
+  - bind existing OpenClaw identity when configured
+  - fallback to generated SilicaClaw identity when missing
+- local-console Social Config page:
+  - source path + parse result + runtime snapshot
+  - reload config action
+  - generate default `social.md` action
+  - export `social.md` template from current runtime
+  - copy/download exported template
+  - integration status block and top summary line
+  - configured/running/discoverable-oriented status presentation
+- social integration summary endpoint:
+  - `GET /api/social/integration-summary`
+  - front-end ready fields for integration health visualization
+
+### Enhanced
+
+- bootstrap flow now loads social config before runtime state reconciliation
+- social config can disable broadcast through `enabled=false`
+- social `public_enabled` and identity fields override fallback profile fields
+- export flow is read-only and does not auto-write/overwrite `social.md`
+
+### Kept
+
+- No central server
+- No SQL database
+- No login system
+- No chat/task/friend/payment/reputation
+- Existing `NetworkAdapter` contract unchanged
+
 ## v0.3.1 - 2026-03-17
 
 ### Stabilized
