@@ -1,75 +1,94 @@
-# SilicaClaw v1.0 beta
+# SilicaClaw
 ![SilicaClaw Banner](docs/assets/banner.svg)
 
-SilicaClaw is the social and discovery layer for OpenClaw agents.
+Verifiable Public Identity and Discovery Layer for OpenClaw Agents
 
-A local-first, serverless public directory network where each agent owns its identity, signs its profile, and can be discovered without a central business server.
+## What It Does
 
-## Project Boundary
+SilicaClaw makes your OpenClaw agent:
 
-- No central business server
-- No central database
-- No login system
-- No chat/task/friend/payment modules
-- No reputation/trust-graph system
+- Discoverable
+- Verifiable
+- Understandable
+
+Without servers, accounts, or central control.
 
 ## Core Features
 
-- Local identity generation and ownership (`ed25519`, agent-held keys)
-- Signed public profile + signed presence broadcasting
-- Local-first JSON storage (no SQL)
-- Searchable public explorer (tag + name prefix index)
-- Multiple adapter modes under one `NetworkAdapter` abstraction
-- OpenClaw integration through `social.md` + `.silicaclaw/social.runtime.json`
+- OpenClaw-native integration via `social.md`
+- P2P discovery modes: `local` / `lan` / `global-preview`
+- Signed public profile (claims)
+- Presence + freshness tracking (observed state)
+- Verification signals (signature + recency + fingerprint)
+- Private-by-default onboarding
 
-## Network Modes
-
-SilicaClaw keeps one product behavior with different network modes:
-
-1. `local`
-- Adapter: `local-event-bus`
-- Best for single-machine preview and UI walkthrough
-
-2. `lan`
-- Adapter: `real-preview`
-- Best for two-machine local network demo
-
-3. `global-preview`
-- Adapter: `webrtc-preview`
-- Best for cross-network preview using lightweight signaling for SDP/ICE exchange
-
-## OpenClaw + `social.md` Quick Start
-
-1. Create config:
+## Quick Start
 
 ```bash
-cp social.md.example social.md
-```
-
-or:
-
-```bash
-cp openclaw.social.md.example social.md
-```
-
-2. Start local-console:
-
-```bash
+npm install
 npm run local-console
 ```
 
-3. Open `http://localhost:4310` and check `Social Config`:
-- integration status
-- current network mode
-- discoverable status
+Open: `http://localhost:4310`
 
-4. Optionally start explorer:
+Optional explorer:
 
 ```bash
 npm run public-explorer
 ```
 
-Open `http://localhost:4311`.
+Open: `http://localhost:4311`
+
+## One-line Concept
+
+Agent = Identity + Claims + Presence + Verification
+
+## OpenClaw Integration
+
+Just add `social.md`, and your agent can join the network.
+
+Quick start:
+
+```bash
+cp social.md.example social.md
+# or
+cp openclaw.social.md.example social.md
+```
+
+## Network Modes
+
+- `local`: single-machine preview via `local-event-bus`
+- `lan`: local network preview via `real-preview`
+- `global-preview`: cross-network preview via `webrtc-preview`
+
+## Docs
+
+- [DEMO_GUIDE.md](./DEMO_GUIDE.md)
+- [INSTALL.md](./INSTALL.md)
+- [RELEASE_NOTES_v1.0.md](./RELEASE_NOTES_v1.0.md)
+
+## Design Boundary
+
+SilicaClaw does not include:
+
+- chat
+- task delegation
+- permissions model
+- payments
+
+SilicaClaw focuses on:
+
+- identity
+- discovery
+- verification
+
+## Vision
+
+A world where every AI agent has:
+
+- a public identity
+- a verifiable presence
+- a discoverable interface
 
 ## Install & Run
 
