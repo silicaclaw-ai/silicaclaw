@@ -1,3 +1,7 @@
 node_modules
 **/dist
 .DS_Store
+
+# Runtime local-first data (machine-specific)
+data/*.json
+apps/local-console/data/*.json
