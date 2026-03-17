@@ -3,41 +3,94 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SilicaClaw Public Explorer v0.2</title>
+    <title>SilicaClaw Public Explorer</title>
     <style>
       :root {
-        --bg: #eff5f2;
+        --bg: #0e1015;
+        --panel: #161920;
+        --line: #1e2028;
+        --line-strong: #2e3040;
+        --text: #d4d4d8;
+        --text-strong: #f4f4f5;
+        --muted: #636370;
+        --brand: #ff5c5c;
+        --brand-hover: #ff7070;
+        --ok: #22c55e;
+        --warn: #f59e0b;
+      }
+      :root[data-theme-mode="light"] {
+        --bg: #f8f9fa;
         --panel: #ffffff;
-        --text: #1a2227;
-        --muted: #5d6f77;
-        --line: #d5e2de;
-        --brand: #0e7c63;
-        --brand-soft: #e4f5f0;
-        --warn: #9a3f39;
+        --line: #e5e5ea;
+        --line-strong: #d1d1d6;
+        --text: #3c3c43;
+        --text-strong: #1a1a1e;
+        --muted: #8e8e93;
+        --brand: #dc2626;
+        --brand-hover: #ef4444;
+        --ok: #16a34a;
+        --warn: #d97706;
       }
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        font-family: "Avenir Next", "PingFang SC", sans-serif;
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif;
         color: var(--text);
-        background: linear-gradient(160deg, #d9eee7 0%, #eef5f3 48%, #e7eef8 100%);
+        background:
+          radial-gradient(900px 420px at 8% -12%, rgba(255, 92, 92, 0.18), transparent 60%),
+          linear-gradient(180deg, #0e1015 0%, #0e1015 62%, #0f1219 100%);
+        transition: background .2s ease, color .2s ease;
       }
-      .container { max-width: 1040px; margin: 20px auto; padding: 0 14px 20px; }
+      :root[data-theme-mode="light"] body {
+        background:
+          radial-gradient(900px 420px at 8% -12%, rgba(220, 38, 38, 0.1), transparent 60%),
+          linear-gradient(180deg, #f8f9fa 0%, #f8f9fa 62%, #eef1f6 100%);
+      }
+      .container { max-width: 1100px; margin: 24px auto; padding: 0 14px 20px; }
       .header {
         border: 1px solid var(--line);
         border-radius: 14px;
         background: var(--panel);
         padding: 14px;
       }
-      .title { margin: 0; font-size: 24px; }
-      .subtitle { margin-top: 4px; color: var(--muted); font-size: 13px; }
-      .searchbar { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 12px; }
+      h1 { margin: 0; }
+      .header-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+      .muted { color: var(--muted); }
+      .theme-switch {
+        display: inline-flex;
+        gap: 4px;
+        padding: 3px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: color-mix(in srgb, var(--panel) 80%, transparent);
+      }
+      .theme-switch button {
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--muted);
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .theme-switch button.active {
+        color: var(--text-strong);
+        background: color-mix(in srgb, var(--brand) 16%, transparent);
+        border-color: color-mix(in srgb, var(--brand) 22%, transparent);
+      }
+      .search {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        margin-top: 10px;
+      }
       input {
-        width: 100%;
         border: 1px solid var(--line);
         border-radius: 10px;
-        padding: 10px;
+        background: #0f131b;
+        color: var(--text);
         font: inherit;
+        padding: 10px;
       }
       button {
         border: 0;
@@ -45,29 +98,18 @@
         background: var(--brand);
         color: #fff;
         padding: 10px 14px;
+        font-weight: 700;
         cursor: pointer;
       }
-
-      .hint {
+      .state {
         margin-top: 10px;
-        border: 1px solid #cae7de;
-        border-radius: 10px;
-        background: var(--brand-soft);
-        color: #2f5a50;
-        padding: 8px 10px;
-        font-size: 13px;
-      }
-
-      .state-box {
-        margin-top: 12px;
         border: 1px dashed var(--line);
         border-radius: 12px;
-        background: #fbfdfc;
-        color: var(--muted);
         text-align: center;
+        color: var(--muted);
         padding: 20px;
+        background: #11151d;
       }
-
       .cards {
         margin-top: 12px;
         display: grid;
@@ -76,35 +118,30 @@
       }
       .card {
         border: 1px solid var(--line);
-        border-radius: 12px;
+        border-radius: 14px;
         background: var(--panel);
         padding: 12px;
         cursor: pointer;
-        transition: transform .12s ease;
       }
-      .card:hover { transform: translateY(-1px); }
-      .muted { color: var(--muted); }
+      .card:hover { border-color: var(--line-strong); }
       .chips { margin-top: 8px; }
       .chip {
         display: inline-block;
-        border: 1px solid var(--line);
+        border: 1px solid var(--line-strong);
+        background: #1f2330;
         border-radius: 999px;
         padding: 3px 8px;
         font-size: 12px;
         margin-right: 6px;
-        margin-top: 6px;
       }
       .meta {
-        margin-top: 9px;
+        margin-top: 10px;
         display: flex;
         justify-content: space-between;
-        align-items: center;
-        gap: 8px;
       }
-      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
-      .online { color: #0a8854; font-weight: 700; }
-      .offline { color: var(--warn); font-weight: 700; }
-
+      .online { color: var(--ok); font-weight: 700; }
+      .offline { color: #ef4444; font-weight: 700; }
+      .mono { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
       .detail {
         margin-top: 12px;
         border: 1px solid var(--line);
@@ -113,173 +150,128 @@
         padding: 14px;
       }
       .hidden { display: none; }
-      .hero {
-        border: 1px solid var(--line);
-        border-radius: 12px;
-        padding: 12px;
-        background: #fafdfb;
-      }
-      .row { margin-top: 8px; }
-      .row b { display: inline-block; width: 124px; color: var(--muted); font-weight: 600; }
-
-      @media (max-width: 860px) {
-        .cards { grid-template-columns: 1fr; }
-      }
+      @media (max-width: 900px) { .cards { grid-template-columns: 1fr; } }
     </style>
   </head>
   <body>
     <div class="container">
       <header class="header">
-        <h1 class="title">SilicaClaw Public Explorer</h1>
-        <div class="subtitle">Public view for P2P agent profiles (no central database)</div>
-        <div class="searchbar">
-          <input id="searchInput" placeholder="Search by tag or name prefix, e.g. ai / son" />
+        <div class="header-top">
+          <h1>SilicaClaw Public Explorer</h1>
+          <div class="theme-switch">
+            <button id="themeDarkBtn" type="button">Dark</button>
+            <button id="themeLightBtn" type="button">Light</button>
+          </div>
+        </div>
+        <div class="muted">OpenClaw-inspired P2P directory browsing UI</div>
+        <div class="search">
+          <input id="q" placeholder="Search tag or name prefix" />
           <button id="searchBtn">Search</button>
         </div>
       </header>
 
-      <div class="hint">Tip: empty search shows all known profiles, ranked by online and latest updates.</div>
-
-      <div id="searchState"></div>
-      <div id="searchCards" class="cards"></div>
-
-      <section id="detailView" class="detail hidden"></section>
+      <div id="state"></div>
+      <div id="cards" class="cards"></div>
+      <section id="detail" class="detail hidden"></section>
     </div>
 
     <script>
       const API_BASE = localStorage.getItem('silicaclaw_api_base') || 'http://localhost:4310';
+      const state = document.getElementById('state');
+      const cards = document.getElementById('cards');
+      const detail = document.getElementById('detail');
 
-      function shortId(id) {
-        if (!id) return '-';
-        return `${id.slice(0, 9)}...${id.slice(-6)}`;
+      function shortId(id) { return id ? `${id.slice(0, 10)}...${id.slice(-6)}` : '-'; }
+      function applyTheme(mode) {
+        const next = mode === 'light' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme-mode', next);
+        localStorage.setItem('silicaclaw_theme_mode', next);
+        document.getElementById('themeDarkBtn').classList.toggle('active', next === 'dark');
+        document.getElementById('themeLightBtn').classList.toggle('active', next === 'light');
       }
 
       async function api(path) {
         const res = await fetch(`${API_BASE}${path}`);
         const json = await res.json().catch(() => null);
-        if (!res.ok || !json || !json.ok) {
-          throw new Error(json?.error?.message || `Request failed (${res.status})`);
-        }
+        if (!res.ok || !json || !json.ok) throw new Error(json?.error?.message || `Request failed (${res.status})`);
         return json;
       }
 
-      function renderState(message) {
-        document.getElementById('searchState').innerHTML = `<div class="state-box">${message}</div>`;
-      }
-
-      function clearState() {
-        document.getElementById('searchState').innerHTML = '';
-      }
+      function renderState(text) { state.innerHTML = `<div class="state">${text}</div>`; }
+      function clearState() { state.innerHTML = ''; }
 
       async function search() {
-        const q = document.getElementById('searchInput').value.trim();
-        const cards = document.getElementById('searchCards');
-
         try {
           renderState('Searching directory...');
-          const resp = await api(`/api/search?q=${encodeURIComponent(q)}`);
-          const profiles = resp.data || [];
-
+          const q = document.getElementById('q').value.trim();
+          const profiles = (await api(`/api/search?q=${encodeURIComponent(q)}`)).data || [];
           if (!profiles.length) {
             cards.innerHTML = '';
-            renderState(q ? `No result for "${q}".` : 'No public agents discovered yet.');
+            renderState(q ? `No result for "${q}".` : 'No discovered public agent yet.');
             return;
           }
-
           clearState();
-          cards.innerHTML = profiles.map((profile) => `
-            <article class="card" data-agent-id="${profile.agent_id}">
-              <h3 style="margin:0;">${profile.display_name || '(unnamed agent)'}</h3>
-              <div class="muted" style="margin-top:6px;">${profile.bio || 'No bio yet.'}</div>
-              <div class="chips">${(profile.tags || []).map((tag) => `<span class="chip">${tag}</span>`).join('') || '<span class="muted">No tags</span>'}</div>
-              <div class="meta">
-                <span class="mono">${shortId(profile.agent_id)}</span>
-                <span class="${profile.online ? 'online' : 'offline'}">${profile.online ? 'online' : 'offline'}</span>
-              </div>
+          cards.innerHTML = profiles.map((p) => `
+            <article class="card" data-id="${p.agent_id}">
+              <h3 style="margin:0;">${p.display_name || '(unnamed agent)'}</h3>
+              <div class="muted" style="margin-top:6px;">${p.bio || 'No bio yet.'}</div>
+              <div class="chips">${(p.tags || []).map((t) => `<span class="chip">${t}</span>`).join('') || '<span class="muted">No tags</span>'}</div>
+              <div class="meta"><span class="mono">${shortId(p.agent_id)}</span><span class="${p.online ? 'online' : 'offline'}">${p.online ? 'online' : 'offline'}</span></div>
             </article>
           `).join('');
-
-          cards.querySelectorAll('.card').forEach((el) => {
-            el.addEventListener('click', () => {
-              const id = el.getAttribute('data-agent-id');
-              location.hash = `#agent/${id}`;
-            });
-          });
-        } catch (err) {
+          cards.querySelectorAll('.card').forEach((el) => el.addEventListener('click', () => {
+            location.hash = `#agent/${el.dataset.id}`;
+          }));
+        } catch (e) {
           cards.innerHTML = '';
-          renderState(`Search failed: ${err instanceof Error ? err.message : 'unknown error'}`);
+          renderState(`Search failed: ${e instanceof Error ? e.message : 'unknown error'}`);
         }
       }
 
       async function showDetail(agentId) {
-        const detail = document.getElementById('detailView');
+        cards.classList.add('hidden');
+        state.classList.add('hidden');
+        detail.classList.remove('hidden');
         try {
-          const resp = await api(`/api/agents/${agentId}`);
-          const d = resp.data;
+          const d = (await api(`/api/agents/${agentId}`)).data;
           const p = d.profile;
-
           detail.innerHTML = `
-            <button id="backBtn">Back to Search</button>
-            <div class="hero" style="margin-top:10px;">
-              <h2 style="margin:0;">${p.display_name || '(unnamed agent)'}</h2>
-              <div class="muted" style="margin-top:6px;">${p.bio || 'No bio provided.'}</div>
-              <div class="chips">${(p.tags || []).map((tag) => `<span class="chip">${tag}</span>`).join('') || '<span class="muted">No tags</span>'}</div>
-            </div>
-            <div class="row"><b>Status</b> <span class="${d.online ? 'online' : 'offline'}">${d.online ? 'online' : 'offline'}</span></div>
-            <div class="row"><b>Last Seen</b> ${d.last_seen_at ? new Date(d.last_seen_at).toLocaleString() : '-'}</div>
-            <div class="row"><b>Updated At</b> ${new Date(p.updated_at).toLocaleString()}</div>
-            <div class="row"><b>Public Enabled</b> ${String(p.public_enabled)}</div>
-            <div class="row"><b>Agent ID</b> <span class="mono">${p.agent_id}</span> <button id="copyIdBtn" style="margin-left:6px;">Copy</button></div>
+            <button id="backBtn">Back</button>
+            <h2>${p.display_name || '(unnamed agent)'}</h2>
+            <div class="muted">${p.bio || 'No bio provided.'}</div>
+            <p>${(p.tags || []).map((t) => `<span class="chip">${t}</span>`).join('') || '<span class="muted">No tags</span>'}</p>
+            <p><b>Status:</b> <span class="${d.online ? 'online' : 'offline'}">${d.online ? 'online' : 'offline'}</span></p>
+            <p><b>Last Seen:</b> ${d.last_seen_at ? new Date(d.last_seen_at).toLocaleString() : '-'}</p>
+            <p><b>Updated:</b> ${new Date(p.updated_at).toLocaleString()}</p>
+            <p><b>Agent ID:</b> <span class="mono">${p.agent_id}</span> <button id="copyBtn">Copy</button></p>
           `;
-
-          detail.classList.remove('hidden');
-          document.getElementById('searchCards').classList.add('hidden');
-          document.getElementById('searchState').classList.add('hidden');
-
-          document.getElementById('backBtn').addEventListener('click', () => {
-            location.hash = '';
-          });
-          document.getElementById('copyIdBtn').addEventListener('click', async () => {
-            await navigator.clipboard.writeText(p.agent_id);
-          });
-        } catch (err) {
-          detail.innerHTML = `<div class="state-box">Failed to load agent: ${err instanceof Error ? err.message : 'unknown error'}</div>`;
-          detail.classList.remove('hidden');
-          document.getElementById('searchCards').classList.add('hidden');
-          document.getElementById('searchState').classList.add('hidden');
+          document.getElementById('backBtn').addEventListener('click', () => { location.hash = ''; });
+          document.getElementById('copyBtn').addEventListener('click', async () => navigator.clipboard.writeText(p.agent_id));
+        } catch (e) {
+          detail.innerHTML = `<div class="state">Load failed: ${e instanceof Error ? e.message : 'unknown error'}</div>`;
         }
-      }
-
-      function showSearchMode() {
-        document.getElementById('detailView').classList.add('hidden');
-        document.getElementById('searchCards').classList.remove('hidden');
-        document.getElementById('searchState').classList.remove('hidden');
-        search();
       }
 
       function route() {
         if (location.hash.startsWith('#agent/')) {
-          const agentId = location.hash.replace('#agent/', '');
-          showDetail(agentId);
-          return;
+          showDetail(location.hash.slice(7));
+        } else {
+          detail.classList.add('hidden');
+          cards.classList.remove('hidden');
+          state.classList.remove('hidden');
+          search();
         }
-        showSearchMode();
       }
 
       document.getElementById('searchBtn').addEventListener('click', search);
-      document.getElementById('searchInput').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          search();
-        }
-      });
+      document.getElementById('q').addEventListener('keydown', (e) => { if (e.key === 'Enter') search(); });
+      document.getElementById('themeDarkBtn').addEventListener('click', () => applyTheme('dark'));
+      document.getElementById('themeLightBtn').addEventListener('click', () => applyTheme('light'));
       window.addEventListener('hashchange', route);
 
+      applyTheme(localStorage.getItem('silicaclaw_theme_mode') || 'dark');
       route();
-      setInterval(() => {
-        if (!location.hash) {
-          search();
-        }
-      }, 5000);
+      setInterval(() => { if (!location.hash) search(); }, 5000);
     </script>
   </body>
 </html>

@@ -3,276 +3,484 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SilicaClaw Local Console v0.3.1</title>
+    <title>SilicaClaw Control UI</title>
     <style>
       :root {
-        --bg: #f4f7fb;
-        --panel: #ffffff;
-        --text: #1b2435;
-        --muted: #687288;
-        --line: #dbe3f1;
-        --brand: #0f5ad9;
-        --brand-soft: #eaf1ff;
-        --ok: #0b7a4f;
-        --warn: #b55200;
-        --err: #ad2234;
+        --bg: #0e1015;
+        --bg-elevated: #191c24;
+        --bg-hover: #1f2330;
+        --panel: #0e1015;
+        --card: #161920;
+        --line: #1e2028;
+        --line-strong: #2e3040;
+        --text: #d4d4d8;
+        --text-strong: #f4f4f5;
+        --muted: #636370;
+        --brand: #ff5c5c;
+        --brand-hover: #ff7070;
+        --brand-soft: rgba(255, 92, 92, 0.1);
+        --ok: #22c55e;
+        --warn: #f59e0b;
+        --err: #ef4444;
+        --chip: #1f2330;
+      }
+      :root[data-theme-mode="light"] {
+        --bg: #f8f9fa;
+        --bg-elevated: #f1f3f5;
+        --bg-hover: #eceef0;
+        --panel: #f8f9fa;
+        --card: #ffffff;
+        --line: #e5e5ea;
+        --line-strong: #d1d1d6;
+        --text: #3c3c43;
+        --text-strong: #1a1a1e;
+        --muted: #8e8e93;
+        --brand: #dc2626;
+        --brand-hover: #ef4444;
+        --brand-soft: rgba(220, 38, 38, 0.08);
+        --ok: #16a34a;
+        --warn: #d97706;
+        --err: #dc2626;
+        --chip: #f1f3f5;
       }
       * { box-sizing: border-box; }
+      html, body { margin: 0; min-height: 100%; }
       body {
-        margin: 0;
-        font-family: "Segoe UI", "PingFang SC", sans-serif;
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif;
         color: var(--text);
-        background: radial-gradient(circle at top left, #dfe9ff 0%, var(--bg) 44%, #edf3fa 100%);
+        background:
+          radial-gradient(900px 420px at 8% -12%, rgba(255, 92, 92, 0.18), transparent 60%),
+          linear-gradient(180deg, #0e1015 0%, #0e1015 62%, #0f1219 100%);
+        transition: background .2s ease, color .2s ease;
       }
-      .container { max-width: 1200px; margin: 20px auto; padding: 0 16px 24px; }
-      .header {
+      :root[data-theme-mode="light"] body {
+        background:
+          radial-gradient(900px 420px at 8% -12%, rgba(220, 38, 38, 0.1), transparent 60%),
+          linear-gradient(180deg, #f8f9fa 0%, #f8f9fa 62%, #eef1f6 100%);
+      }
+
+      .app {
+        display: grid;
+        grid-template-columns: 240px 1fr;
+        min-height: 100vh;
+      }
+
+      .sidebar {
+        border-right: 1px solid color-mix(in srgb, var(--line) 74%, transparent);
+        background: color-mix(in srgb, var(--panel) 96%, transparent);
+        padding: 18px 14px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 18px;
+      }
+      .brand-badge {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, var(--brand), var(--brand-hover));
+        color: #fff;
+        font-weight: 900;
+        display: grid;
+        place-items: center;
+      }
+      .brand h1 {
+        margin: 0;
+        font-size: 17px;
+      }
+      .brand p {
+        margin: 2px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .nav {
+        display: grid;
+        gap: 8px;
+      }
+      .nav button {
+        text-align: left;
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--muted);
+        padding: 10px 12px;
+        border-radius: 10px;
+        cursor: pointer;
+        font: inherit;
+      }
+      .nav button.active {
+        color: #e9f7ff;
+        border-color: color-mix(in srgb, var(--brand) 28%, transparent);
+        background: var(--brand-soft);
+      }
+      .nav button:hover { color: #d2e7ff; }
+
+      .sidebar-foot {
+        margin-top: 20px;
+        border-top: 1px dashed color-mix(in srgb, var(--line-strong) 85%, transparent);
+        padding-top: 14px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .main {
+        padding: 18px;
+      }
+      .topbar {
         display: flex;
         justify-content: space-between;
+        gap: 10px;
         align-items: center;
-        gap: 12px;
-        padding: 14px 16px;
-        border: 1px solid var(--line);
-        border-radius: 14px;
-        background: var(--panel);
+        margin-bottom: 14px;
       }
-      .title { margin: 0; font-size: 23px; }
-      .subtitle { color: var(--muted); font-size: 13px; }
-      .status-pill {
-        padding: 7px 11px;
+      .topbar h2 {
+        margin: 0;
+        font-size: 22px;
+      }
+      .topbar p {
+        margin: 4px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .status-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .theme-switch {
+        display: inline-flex;
+        gap: 4px;
+        padding: 3px;
         border-radius: 999px;
-        font-size: 12px;
         border: 1px solid var(--line);
-        background: #fff;
+        background: var(--bg-elevated);
       }
-      .status-pill.ok { border-color: #b7ecd2; background: #e8fff3; color: var(--ok); }
-      .status-pill.warn { border-color: #ffd8b2; background: #fff5ea; color: var(--warn); }
+      .theme-switch button {
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--muted);
+        border-radius: 999px;
+        padding: 5px 10px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .theme-switch button.active {
+        color: var(--text-strong);
+        background: var(--brand-soft);
+        border-color: color-mix(in srgb, var(--brand) 24%, transparent);
+      }
+      .pill {
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: var(--bg-elevated);
+        color: var(--muted);
+        padding: 7px 11px;
+        font-size: 12px;
+      }
+      .pill.ok { color: var(--ok); border-color: rgba(34, 197, 94, 0.45); background: rgba(34, 197, 94, 0.08); }
+      .pill.warn { color: var(--warn); border-color: rgba(245, 158, 11, 0.45); background: rgba(245, 158, 11, 0.08); }
 
       .notice {
-        margin-top: 10px;
-        border: 1px solid #c8dcff;
+        display: none;
+        margin-bottom: 12px;
+        border: 1px solid color-mix(in srgb, var(--brand) 28%, transparent);
         background: var(--brand-soft);
-        color: #214384;
-        border-radius: 12px;
+        border-radius: 10px;
         padding: 10px 12px;
         font-size: 13px;
-        display: none;
       }
       .notice.show { display: block; }
 
-      .tabs {
+      .view { display: none; }
+      .view.active { display: block; }
+
+      .grid {
         display: grid;
-        grid-template-columns: repeat(5, 1fr);
-        gap: 8px;
-        margin-top: 12px;
+        gap: 10px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
       }
-      .tab {
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        background: #fff;
-        padding: 10px;
-        cursor: pointer;
-      }
-      .tab.active { border-color: var(--brand); color: var(--brand); font-weight: 600; }
-
-      .panel {
-        margin-top: 12px;
-        border: 1px solid var(--line);
-        border-radius: 14px;
-        background: var(--panel);
-        padding: 14px;
-      }
-      .hidden { display: none; }
-
-      .cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
       .card {
         border: 1px solid var(--line);
-        border-radius: 12px;
+        border-radius: 14px;
+        background: var(--card);
         padding: 12px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.25);
       }
       .label { font-size: 12px; color: var(--muted); }
-      .value { margin-top: 4px; font-size: 18px; font-weight: 700; }
-      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+      .value { margin-top: 4px; font-size: 24px; font-weight: 800; }
 
-      .stack { display: grid; gap: 10px; }
-      .split { display: grid; gap: 12px; grid-template-columns: 1.1fr 1fr; }
-      .section-title { margin: 0 0 8px; font-size: 16px; }
+      .split {
+        margin-top: 10px;
+        display: grid;
+        gap: 10px;
+        grid-template-columns: 1.2fr 1fr;
+      }
+      .title-sm { margin: 0 0 10px; font-size: 18px; }
+      .mono { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
 
-      .data-table { width: 100%; border-collapse: collapse; }
-      .data-table th, .data-table td {
+      .table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .table th, .table td {
         border-bottom: 1px solid var(--line);
-        padding: 8px 6px;
         text-align: left;
+        padding: 8px 6px;
         font-size: 13px;
       }
-      .online { color: var(--ok); font-weight: 600; }
-      .offline { color: #8d3f3f; font-weight: 600; }
-      .stale { color: var(--warn); font-weight: 600; }
+      .online { color: var(--ok); font-weight: 700; }
+      .offline { color: #f48c8f; font-weight: 700; }
+      .stale { color: var(--warn); font-weight: 700; }
 
-      .row { display: grid; gap: 8px; grid-template-columns: 1fr 1fr; }
-      .field { display: grid; gap: 5px; }
-      .field label { color: var(--muted); font-size: 13px; }
+      .stack { display: grid; gap: 10px; }
+      .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      label { color: var(--muted); font-size: 13px; }
       input, textarea {
+        margin-top: 5px;
         width: 100%;
-        border: 1px solid var(--line);
         border-radius: 10px;
-        padding: 10px;
+        border: 1px solid var(--line);
+        background: var(--bg-elevated);
+        color: #eaf0ff;
         font: inherit;
-        background: #fff;
+        padding: 10px;
       }
-      textarea { min-height: 88px; resize: vertical; }
+      textarea { min-height: 90px; resize: vertical; }
 
-      .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+      .actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
       button {
         border: 1px solid transparent;
-        border-radius: 9px;
+        border-radius: 10px;
         background: var(--brand);
-        color: #fff;
-        padding: 9px 12px;
+        color: #ffffff;
+        font-weight: 700;
+        padding: 9px 13px;
         cursor: pointer;
       }
-      button.secondary { background: #fff; color: var(--text); border-color: var(--line); }
+      button.secondary {
+        border-color: var(--line-strong);
+        background: var(--bg-elevated);
+        color: var(--text);
+      }
+
       .feedback {
-        margin-top: 10px;
         border: 1px solid var(--line);
         border-radius: 10px;
-        padding: 8px 10px;
+        background: var(--bg-elevated);
+        padding: 9px;
         font-size: 13px;
         color: var(--muted);
       }
 
-      .log-box {
-        max-height: 350px;
+      .logs {
+        max-height: 420px;
         overflow: auto;
         border: 1px solid var(--line);
         border-radius: 12px;
+        background: var(--panel);
         padding: 10px;
-        background: #f9fbff;
       }
-      .log-entry { border-bottom: 1px dashed #d5deee; padding: 6px 0; font-size: 13px; }
-      .log-entry:last-child { border-bottom: 0; }
-      .log-info { color: #20407f; }
+      .log-item {
+        border-bottom: 1px dashed var(--line);
+        padding: 7px 0;
+      }
+      .log-item:last-child { border-bottom: 0; }
+      .log-info { color: #8dc6ff; }
       .log-warn { color: var(--warn); }
       .log-error { color: var(--err); }
 
-      @media (max-width: 900px) {
-        .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .toast {
+        position: fixed;
+        right: 16px;
+        bottom: 16px;
+        background: var(--bg-elevated);
+        border: 1px solid color-mix(in srgb, var(--brand) 32%, transparent);
+        color: var(--text);
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 13px;
+        min-width: 220px;
+        opacity: 0;
+        transform: translateY(8px);
+        pointer-events: none;
+        transition: all .2s ease;
+      }
+      .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      @media (max-width: 980px) {
+        .app { grid-template-columns: 1fr; }
+        .sidebar { border-right: 0; border-bottom: 1px solid var(--line); }
+        .nav { grid-template-columns: repeat(3, minmax(0,1fr)); }
+        .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .split, .row { grid-template-columns: 1fr; }
-        .tabs { grid-template-columns: repeat(2, 1fr); }
       }
     </style>
   </head>
   <body>
-    <div class="container">
-      <header class="header">
-        <div>
-          <h1 class="title">SilicaClaw Local Console</h1>
-          <div class="subtitle">LAN Preview Stabilized v0.3.1</div>
-        </div>
-        <div id="nodeStatus" class="status-pill">loading...</div>
-      </header>
-
-      <div id="initNotice" class="notice"></div>
-
-      <div class="tabs">
-        <button class="tab active" data-tab="overview">Overview</button>
-        <button class="tab" data-tab="profile">Profile</button>
-        <button class="tab" data-tab="network">Network</button>
-        <button class="tab" data-tab="peers">Peers</button>
-        <button class="tab" data-tab="logs">Logs</button>
-      </div>
-
-      <section id="overview" class="panel">
-        <div class="cards" id="overviewCards"></div>
-        <div class="split" style="margin-top:12px;">
-          <div class="card">
-            <h3 class="section-title">Discovered Agents</h3>
-            <div id="agentsWrap"></div>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-badge">SC</div>
+          <div>
+            <h1>SilicaClaw</h1>
+            <p>Control UI</p>
           </div>
+        </div>
+
+        <nav class="nav">
+          <button class="tab active" data-tab="overview">Overview</button>
+          <button class="tab" data-tab="profile">Profile</button>
+          <button class="tab" data-tab="network">Network</button>
+          <button class="tab" data-tab="peers">Peers</button>
+          <button class="tab" data-tab="logs">Logs</button>
+        </nav>
+
+        <div class="sidebar-foot" id="sideMeta">adapter: -<br/>namespace: -</div>
+      </aside>
+
+      <main class="main">
+        <div class="topbar">
+          <div>
+            <h2>Local Console</h2>
+            <p>OpenClaw-inspired local-first agent control surface</p>
+          </div>
+          <div class="status-row">
+            <div class="pill" id="pillAdapter">adapter: -</div>
+            <div class="pill" id="pillBroadcast">broadcast: -</div>
+            <div class="theme-switch">
+              <button id="themeDarkBtn" type="button">Dark</button>
+              <button id="themeLightBtn" type="button">Light</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="notice" id="initNotice"></div>
+
+        <section id="view-overview" class="view active">
+          <div class="grid" id="overviewCards"></div>
+          <div class="split">
+            <div class="card">
+              <h3 class="title-sm">Discovered Agents</h3>
+              <div id="agentsWrap"></div>
+            </div>
+            <div class="card">
+              <h3 class="title-sm">Node Snapshot</h3>
+              <div class="mono" id="snapshot"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="view-profile" class="view">
           <div class="card stack">
-            <h3 class="section-title">Node Snapshot</h3>
-            <div id="snapshot" class="mono"></div>
+            <h3 class="title-sm">Public Profile</h3>
+            <form id="profileForm" class="stack">
+              <div class="row">
+                <div>
+                  <label>Display Name</label>
+                  <input name="display_name" placeholder="Agent name" />
+                </div>
+                <div>
+                  <label>Avatar URL</label>
+                  <input name="avatar_url" placeholder="https://..." />
+                </div>
+              </div>
+              <div>
+                <label>Bio</label>
+                <textarea name="bio" placeholder="Public summary"></textarea>
+              </div>
+              <div>
+                <label>Tags (comma separated)</label>
+                <input name="tags" placeholder="ai,browser,local-first" />
+              </div>
+              <label><input type="checkbox" name="public_enabled" /> Public Enabled</label>
+              <div class="actions">
+                <button type="submit">Save Profile</button>
+                <button type="button" class="secondary" id="refreshProfileBtn">Reload</button>
+              </div>
+            </form>
+            <div id="profileFeedback" class="feedback">Ready.</div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section id="profile" class="panel hidden">
-        <h3 class="section-title">Public Profile</h3>
-        <form id="profileForm" class="stack">
-          <div class="row">
-            <div class="field">
-              <label>Display Name</label>
-              <input name="display_name" placeholder="Your public agent name" />
+        <section id="view-network" class="view">
+          <div class="grid" id="networkCards"></div>
+          <div class="split">
+            <div class="card">
+              <h3 class="title-sm">Runtime Components</h3>
+              <div class="mono" id="networkComponents"></div>
             </div>
-            <div class="field">
-              <label>Avatar URL</label>
-              <input name="avatar_url" placeholder="https://..." />
+            <div class="card">
+              <h3 class="title-sm">Actions</h3>
+              <div class="actions">
+                <button id="startBroadcastBtn">Start Broadcast</button>
+                <button class="secondary" id="stopBroadcastBtn">Stop Broadcast</button>
+                <button class="secondary" id="broadcastNowBtn">Broadcast Now</button>
+                <button class="secondary" id="refreshCacheBtn">Refresh Cache</button>
+              </div>
+              <div id="networkFeedback" class="feedback" style="margin-top:10px;">Ready.</div>
             </div>
           </div>
-          <div class="field">
-            <label>Bio</label>
-            <textarea name="bio" placeholder="Short public intro"></textarea>
-          </div>
-          <div class="field">
-            <label>Tags (comma separated)</label>
-            <input name="tags" placeholder="ai,browser,local-first" />
-          </div>
-          <label>
-            <input type="checkbox" name="public_enabled" />
-            Public Enabled (broadcast to P2P directory)
-          </label>
-          <div class="toolbar">
-            <button type="submit">Save Profile</button>
-            <button type="button" class="secondary" id="refreshProfileBtn">Reload Form</button>
-          </div>
-        </form>
-        <div id="profileFeedback" class="feedback">Waiting for action.</div>
-      </section>
+        </section>
 
-      <section id="network" class="panel hidden">
-        <h3 class="section-title">Network Runtime</h3>
-        <div class="cards" id="networkCards"></div>
-        <div class="card" style="margin-top:10px;">
-          <h4 class="section-title">Adapter Components</h4>
-          <div id="networkComponents" class="mono"></div>
-        </div>
-        <div class="toolbar">
-          <button id="startBroadcastBtn">Start Broadcast</button>
-          <button id="stopBroadcastBtn" class="secondary">Stop Broadcast</button>
-          <button id="broadcastNowBtn" class="secondary">Broadcast Now</button>
-          <button id="refreshCacheBtn" class="secondary">Refresh Cache</button>
-        </div>
-        <div id="networkFeedback" class="feedback">Waiting for action.</div>
-      </section>
+        <section id="view-peers" class="view">
+          <div class="grid" id="peerCards"></div>
+          <div class="card" style="margin-top:10px;">
+            <h3 class="title-sm">Peer Inventory</h3>
+            <div id="peerTableWrap"></div>
+          </div>
+        </section>
 
-      <section id="peers" class="panel hidden">
-        <h3 class="section-title">Peers</h3>
-        <div class="cards" id="peerCards"></div>
-        <div class="card" style="margin-top:10px;">
-          <h4 class="section-title">Peer List</h4>
-          <div id="peerTableWrap"></div>
-        </div>
-      </section>
-
-      <section id="logs" class="panel hidden">
-        <h3 class="section-title">Recent Logs (50)</h3>
-        <div class="log-box" id="logList"></div>
-      </section>
+        <section id="view-logs" class="view">
+          <div class="card">
+            <h3 class="title-sm">Recent Logs</h3>
+            <div class="logs" id="logList"></div>
+          </div>
+        </section>
+      </main>
     </div>
 
-    <script>
-      const state = { tab: 'overview' };
+    <div id="toast" class="toast"></div>
 
+    <script>
       function ago(ts) {
         if (!ts) return '-';
-        const delta = Math.max(0, Math.floor((Date.now() - ts) / 1000));
-        if (delta < 60) return `${delta}s ago`;
-        if (delta < 3600) return `${Math.floor(delta / 60)}m ago`;
-        return `${Math.floor(delta / 3600)}h ago`;
+        const s = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+        if (s < 60) return `${s}s ago`;
+        if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+        return `${Math.floor(s / 3600)}h ago`;
       }
-
       function shortId(id) {
         if (!id) return '-';
         return `${id.slice(0, 10)}...${id.slice(-6)}`;
+      }
+      function toast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 2000);
+      }
+      function setFeedback(id, text, level = 'info') {
+        const el = document.getElementById(id);
+        el.textContent = text;
+        el.style.color = level === 'error' ? '#ff6b81' : level === 'warn' ? '#ffb454' : '#9aa7c3';
+      }
+      function applyTheme(mode) {
+        const next = mode === 'light' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme-mode', next);
+        localStorage.setItem('silicaclaw_theme_mode', next);
+        document.getElementById('themeDarkBtn').classList.toggle('active', next === 'dark');
+        document.getElementById('themeLightBtn').classList.toggle('active', next === 'light');
       }
 
       async function api(path, options = {}) {
@@ -284,141 +492,124 @@
         return json;
       }
 
-      function setFeedback(id, text, level = 'info') {
-        const el = document.getElementById(id);
-        el.textContent = text;
-        el.style.color = level === 'error' ? '#ad2234' : level === 'warn' ? '#b55200' : '#687288';
-      }
-
       function switchTab(tab) {
-        state.tab = tab;
-        document.querySelectorAll('.tab').forEach((el) => el.classList.toggle('active', el.dataset.tab === tab));
-        ['overview', 'profile', 'network', 'peers', 'logs'].forEach((id) => {
-          document.getElementById(id).classList.toggle('hidden', id !== tab);
+        document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
+        ['overview', 'profile', 'network', 'peers', 'logs'].forEach((k) => {
+          document.getElementById(`view-${k}`).classList.toggle('active', k === tab);
         });
       }
 
       async function refreshOverview() {
-        const [overviewResp, discoveredResp] = await Promise.all([api('/api/overview'), api('/api/search?q=')]);
-        const overview = overviewResp.data;
-        const discovered = discoveredResp.data;
+        const [overview, discovered] = await Promise.all([api('/api/overview'), api('/api/search?q=')]);
+        const o = overview.data;
+        const d = discovered.data || [];
 
-        const cards = [
-          ['Discovered', String(overview.discovered_count)],
-          ['Online', String(overview.online_count)],
-          ['Offline', String(overview.offline_count)],
-          ['TTL', `${Math.floor(overview.presence_ttl_ms / 1000)}s`],
-        ];
-        document.getElementById('overviewCards').innerHTML = cards.map(([k, v]) => `<div class="card"><div class="label">${k}</div><div class="value">${v}</div></div>`).join('');
+        document.getElementById('overviewCards').innerHTML = [
+          ['Discovered', o.discovered_count],
+          ['Online', o.online_count],
+          ['Offline', o.offline_count],
+          ['Presence TTL', `${Math.floor(o.presence_ttl_ms / 1000)}s`],
+        ].map(([k,v]) => `<div class="card"><div class="label">${k}</div><div class="value">${v}</div></div>`).join('');
 
-        if (!discovered.length) {
+        document.getElementById('snapshot').textContent = [
+          `agent_id: ${o.agent_id || '-'}`,
+          `public_enabled: ${o.public_enabled}`,
+          `broadcast_enabled: ${o.broadcast_enabled}`,
+          `last_broadcast: ${ago(o.last_broadcast_at)}`,
+        ].join('\n');
+
+        document.getElementById('pillBroadcast').textContent = o.broadcast_enabled ? 'broadcast: running' : 'broadcast: paused';
+        document.getElementById('pillBroadcast').className = `pill ${o.broadcast_enabled ? 'ok' : 'warn'}`;
+
+        const init = o.init_state || {};
+        const notice = document.getElementById('initNotice');
+        if (init.identity_auto_created || init.profile_auto_created) {
+          notice.classList.add('show');
+          notice.textContent = `First-start bootstrap done: identity_auto_created=${!!init.identity_auto_created}, profile_auto_created=${!!init.profile_auto_created}`;
+        } else {
+          notice.classList.remove('show');
+        }
+
+        if (!d.length) {
           document.getElementById('agentsWrap').innerHTML = '<div class="label">No discovered agents yet.</div>';
         } else {
           document.getElementById('agentsWrap').innerHTML = `
-            <table class="data-table">
+            <table class="table">
               <thead><tr><th>Name</th><th>Agent ID</th><th>Status</th><th>Updated</th></tr></thead>
               <tbody>
-                ${discovered.slice(0, 8).map((agent) => `
+                ${d.slice(0, 8).map((a) => `
                   <tr>
-                    <td>${agent.display_name || '(unnamed)'}</td>
-                    <td class="mono">${shortId(agent.agent_id)}</td>
-                    <td class="${agent.online ? 'online' : 'offline'}">${agent.online ? 'online' : 'offline'}</td>
-                    <td>${ago(agent.updated_at)}</td>
+                    <td>${a.display_name || '(unnamed)'}</td>
+                    <td class="mono">${shortId(a.agent_id)}</td>
+                    <td class="${a.online ? 'online' : 'offline'}">${a.online ? 'online' : 'offline'}</td>
+                    <td>${ago(a.updated_at)}</td>
                   </tr>
                 `).join('')}
               </tbody>
             </table>
           `;
         }
-
-        document.getElementById('snapshot').textContent = [
-          `agent_id: ${overview.agent_id || '-'}`,
-          `public_enabled: ${overview.public_enabled}`,
-          `broadcast_enabled: ${overview.broadcast_enabled}`,
-          `last_broadcast: ${ago(overview.last_broadcast_at)}`,
-        ].join('\n');
-
-        const status = document.getElementById('nodeStatus');
-        status.textContent = overview.broadcast_enabled ? 'Broadcast Running' : 'Broadcast Paused';
-        status.className = `status-pill ${overview.broadcast_enabled ? 'ok' : 'warn'}`;
-
-        const init = overview.init_state || {};
-        const initNotice = document.getElementById('initNotice');
-        if (init.identity_auto_created || init.profile_auto_created) {
-          initNotice.classList.add('show');
-          initNotice.textContent = `First-start initialization completed: identity_auto_created=${!!init.identity_auto_created}, profile_auto_created=${!!init.profile_auto_created}`;
-        } else {
-          initNotice.classList.remove('show');
-        }
       }
 
       async function refreshProfile() {
-        const profileResp = await api('/api/profile');
-        const profile = profileResp.data;
-        if (!profile) return;
-        const form = document.getElementById('profileForm');
-        form.display_name.value = profile.display_name || '';
-        form.bio.value = profile.bio || '';
-        form.tags.value = (profile.tags || []).join(', ');
-        form.avatar_url.value = profile.avatar_url || '';
-        form.public_enabled.checked = !!profile.public_enabled;
+        const p = (await api('/api/profile')).data;
+        if (!p) return;
+        const f = document.getElementById('profileForm');
+        f.display_name.value = p.display_name || '';
+        f.bio.value = p.bio || '';
+        f.tags.value = (p.tags || []).join(', ');
+        f.avatar_url.value = p.avatar_url || '';
+        f.public_enabled.checked = !!p.public_enabled;
       }
 
       async function refreshNetwork() {
-        const [configResp, statsResp] = await Promise.all([
-          api('/api/network/config'),
-          api('/api/network/stats'),
-        ]);
-        const config = configResp.data;
-        const stats = statsResp.data;
-        const counters = stats.message_counters || {};
-        const peerCounters = stats.peer_counters || {};
-        const adapterStats = stats.adapter_stats || {};
-        const cards = [
-          ['Adapter', config.adapter],
-          ['Namespace', config.namespace || '-'],
-          ['Port', String(config.port ?? '-')],
-          ['Received', String(counters.received_total ?? 0)],
-          ['Broadcast', String(counters.broadcast_total ?? 0)],
-          ['Peers', String(peerCounters.total ?? 0)],
-          ['Last Inbound', ago(counters.last_message_at)],
-        ];
-        document.getElementById('networkCards').innerHTML = cards.map(([k, v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:16px;">${v}</div></div>`).join('');
+        const [cfg, sts] = await Promise.all([api('/api/network/config'), api('/api/network/stats')]);
+        const c = cfg.data;
+        const s = sts.data;
+        const msg = s.message_counters || {};
+        const p = s.peer_counters || {};
+        const a = s.adapter_stats || {};
 
-        const c = config.components || {};
-        const limits = config.limits || {};
+        document.getElementById('pillAdapter').textContent = `adapter: ${c.adapter}`;
+        document.getElementById('sideMeta').innerHTML = `adapter: ${c.adapter}<br/>namespace: ${c.namespace || '-'}<br/>port: ${c.port ?? '-'}`;
+
+        document.getElementById('networkCards').innerHTML = [
+          ['Adapter', c.adapter],
+          ['Namespace', c.namespace || '-'],
+          ['Port', c.port ?? '-'],
+          ['Recv', msg.received_total ?? 0],
+          ['Sent', msg.broadcast_total ?? 0],
+          ['Peers', p.total ?? 0],
+          ['Online Peers', p.online ?? 0],
+          ['Last Inbound', ago(msg.last_message_at)],
+        ].map(([k,v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join('');
+
+        const comp = c.components || {};
+        const lim = c.limits || {};
         document.getElementById('networkComponents').textContent = [
-          `demo_mode: ${config.demo_mode || '-'}`,
-          `transport: ${c.transport || '-'}`,
-          `discovery: ${c.discovery || '-'}`,
-          `envelope_codec: ${c.envelope_codec || '-'}`,
-          `topic_codec: ${c.topic_codec || '-'}`,
-          `max_message_bytes: ${limits.max_message_bytes ?? '-'}`,
-          `dedupe_window_ms: ${limits.dedupe_window_ms ?? '-'}`,
-          `dedupe_max_entries: ${limits.dedupe_max_entries ?? '-'}`,
-          `publish_attempted: ${adapterStats.publish_attempted ?? '-'}`,
-          `publish_sent: ${adapterStats.publish_sent ?? '-'}`,
-          `received_total: ${adapterStats.received_total ?? '-'}`,
-          `delivered_total: ${adapterStats.delivered_total ?? '-'}`,
-          `dropped_duplicate: ${adapterStats.dropped_duplicate ?? '-'}`,
-          `dropped_self: ${adapterStats.dropped_self ?? '-'}`,
-          `dropped_malformed: ${adapterStats.dropped_malformed ?? '-'}`,
-          `dropped_oversized: ${adapterStats.dropped_oversized ?? '-'}`,
-          `dropped_namespace_mismatch: ${adapterStats.dropped_namespace_mismatch ?? '-'}`,
-          `send_errors: ${adapterStats.send_errors ?? '-'}`,
+          `demo_mode: ${c.demo_mode || '-'}`,
+          `transport: ${comp.transport || '-'}`,
+          `discovery: ${comp.discovery || '-'}`,
+          `envelope_codec: ${comp.envelope_codec || '-'}`,
+          `topic_codec: ${comp.topic_codec || '-'}`,
+          `max_message_bytes: ${lim.max_message_bytes ?? '-'}`,
+          `dedupe_window_ms: ${lim.dedupe_window_ms ?? '-'}`,
+          `dedupe_max_entries: ${lim.dedupe_max_entries ?? '-'}`,
+          `dropped_duplicate: ${a.dropped_duplicate ?? '-'}`,
+          `dropped_self: ${a.dropped_self ?? '-'}`,
+          `dropped_malformed: ${a.dropped_malformed ?? '-'}`,
+          `dropped_namespace_mismatch: ${a.dropped_namespace_mismatch ?? '-'}`,
         ].join('\n');
       }
 
       async function refreshPeers() {
         const peers = (await api('/api/peers')).data;
-        const cards = [
-          ['Adapter', peers.adapter],
+        document.getElementById('peerCards').innerHTML = [
+          ['Total', peers.total || 0],
+          ['Online', peers.online || 0],
+          ['Stale', peers.stale || 0],
           ['Namespace', peers.namespace || '-'],
-          ['Total', String(peers.total || 0)],
-          ['Online', String(peers.online || 0)],
-          ['Stale', String(peers.stale || 0)],
-        ];
-        document.getElementById('peerCards').innerHTML = cards.map(([k, v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:16px;">${v}</div></div>`).join('');
+        ].map(([k,v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join('');
 
         if (!peers.items || !peers.items.length) {
           document.getElementById('peerTableWrap').innerHTML = '<div class="label">No peers discovered yet.</div>';
@@ -426,10 +617,8 @@
         }
 
         document.getElementById('peerTableWrap').innerHTML = `
-          <table class="data-table">
-            <thead>
-              <tr><th>Peer ID</th><th>Status</th><th>Last Seen</th><th>Messages</th><th>First Seen</th></tr>
-            </thead>
+          <table class="table">
+            <thead><tr><th>Peer</th><th>Status</th><th>Last Seen</th><th>Messages</th><th>First Seen</th></tr></thead>
             <tbody>
               ${peers.items.map((peer) => `
                 <tr>
@@ -447,15 +636,15 @@
 
       async function refreshLogs() {
         const logs = (await api('/api/logs')).data || [];
-        const logList = document.getElementById('logList');
+        const el = document.getElementById('logList');
         if (!logs.length) {
-          logList.innerHTML = '<div class="label">No logs yet.</div>';
+          el.innerHTML = '<div class="label">No logs yet.</div>';
           return;
         }
-        logList.innerHTML = logs.map((log) => `
-          <div class="log-entry">
-            <div class="log-${log.level}">[${String(log.level).toUpperCase()}] ${log.message}</div>
-            <div class="mono" style="color:#6f7a90;">${new Date(log.timestamp).toLocaleString()}</div>
+        el.innerHTML = logs.map((l) => `
+          <div class="log-item">
+            <div class="log-${l.level}">[${String(l.level).toUpperCase()}] ${l.message}</div>
+            <div class="mono" style="color:#90a2c3;">${new Date(l.timestamp).toLocaleString()}</div>
           </div>
         `).join('');
       }
@@ -463,65 +652,60 @@
       async function refreshAll() {
         try {
           await Promise.all([refreshOverview(), refreshProfile(), refreshNetwork(), refreshPeers(), refreshLogs()]);
-        } catch (err) {
-          setFeedback('networkFeedback', err instanceof Error ? err.message : 'Unknown error', 'error');
+        } catch (e) {
+          setFeedback('networkFeedback', e instanceof Error ? e.message : 'Unknown error', 'error');
         }
       }
 
-      document.querySelectorAll('.tab').forEach((el) => el.addEventListener('click', () => switchTab(el.dataset.tab)));
+      document.querySelectorAll('.tab').forEach((btn) => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+      });
+      document.getElementById('themeDarkBtn').addEventListener('click', () => applyTheme('dark'));
+      document.getElementById('themeLightBtn').addEventListener('click', () => applyTheme('light'));
 
       document.getElementById('profileForm').addEventListener('submit', async (event) => {
         event.preventDefault();
-        const form = event.currentTarget;
-        const tags = String(form.tags.value || '').split(',').map((s) => s.trim()).filter(Boolean);
+        const f = event.currentTarget;
+        const tags = String(f.tags.value || '').split(',').map((s) => s.trim()).filter(Boolean);
         setFeedback('profileFeedback', 'Saving profile...');
         try {
-          const resp = await api('/api/profile', {
-            method: 'PUT',
-            body: JSON.stringify({
-              display_name: form.display_name.value,
-              bio: form.bio.value,
-              tags,
-              avatar_url: form.avatar_url.value,
-              public_enabled: !!form.public_enabled.checked,
-            }),
-          });
-          setFeedback('profileFeedback', resp.meta?.message || 'Profile saved.', 'info');
+          const r = await api('/api/profile', { method: 'PUT', body: JSON.stringify({
+            display_name: f.display_name.value,
+            bio: f.bio.value,
+            tags,
+            avatar_url: f.avatar_url.value,
+            public_enabled: !!f.public_enabled.checked,
+          })});
+          setFeedback('profileFeedback', r.meta?.message || 'Saved.');
+          toast('Profile saved');
           await refreshAll();
-        } catch (err) {
-          setFeedback('profileFeedback', err instanceof Error ? err.message : 'Save failed', 'error');
+        } catch (e) {
+          setFeedback('profileFeedback', e instanceof Error ? e.message : 'Failed', 'error');
         }
       });
 
       document.getElementById('refreshProfileBtn').addEventListener('click', async () => {
-        try { await refreshProfile(); setFeedback('profileFeedback', 'Form reloaded.', 'info'); }
-        catch (err) { setFeedback('profileFeedback', err instanceof Error ? err.message : 'Reload failed', 'error'); }
+        await refreshProfile();
+        toast('Profile form reloaded');
       });
 
-      document.getElementById('startBroadcastBtn').addEventListener('click', async () => {
-        setFeedback('networkFeedback', 'Starting broadcast loop...');
-        try { const r = await api('/api/broadcast/start', { method: 'POST' }); setFeedback('networkFeedback', r.meta?.message || 'Started', 'info'); await refreshAll(); }
-        catch (err) { setFeedback('networkFeedback', err instanceof Error ? err.message : 'Failed', 'error'); }
-      });
+      async function runAction(path, text, level = 'info') {
+        setFeedback('networkFeedback', text);
+        try {
+          const r = await api(path, { method: 'POST' });
+          setFeedback('networkFeedback', r.meta?.message || 'Done', level);
+          toast(r.meta?.message || 'Done');
+          await refreshAll();
+        } catch (e) {
+          setFeedback('networkFeedback', e instanceof Error ? e.message : 'Failed', 'error');
+        }
+      }
+      document.getElementById('startBroadcastBtn').addEventListener('click', () => runAction('/api/broadcast/start', 'Starting...'));
+      document.getElementById('stopBroadcastBtn').addEventListener('click', () => runAction('/api/broadcast/stop', 'Stopping...', 'warn'));
+      document.getElementById('broadcastNowBtn').addEventListener('click', () => runAction('/api/broadcast/now', 'Broadcasting now...'));
+      document.getElementById('refreshCacheBtn').addEventListener('click', () => runAction('/api/cache/refresh', 'Refreshing cache...'));
 
-      document.getElementById('stopBroadcastBtn').addEventListener('click', async () => {
-        setFeedback('networkFeedback', 'Stopping broadcast loop...');
-        try { const r = await api('/api/broadcast/stop', { method: 'POST' }); setFeedback('networkFeedback', r.meta?.message || 'Stopped', 'warn'); await refreshAll(); }
-        catch (err) { setFeedback('networkFeedback', err instanceof Error ? err.message : 'Failed', 'error'); }
-      });
-
-      document.getElementById('broadcastNowBtn').addEventListener('click', async () => {
-        setFeedback('networkFeedback', 'Sending broadcast now...');
-        try { const r = await api('/api/broadcast/now', { method: 'POST' }); setFeedback('networkFeedback', r.meta?.message || 'Done', 'info'); await refreshAll(); }
-        catch (err) { setFeedback('networkFeedback', err instanceof Error ? err.message : 'Failed', 'error'); }
-      });
-
-      document.getElementById('refreshCacheBtn').addEventListener('click', async () => {
-        setFeedback('networkFeedback', 'Refreshing cache and cleanup...');
-        try { const r = await api('/api/cache/refresh', { method: 'POST' }); setFeedback('networkFeedback', `Cache refreshed. removed_presence=${r.data?.removed_presence ?? 0}`, 'info'); await refreshAll(); }
-        catch (err) { setFeedback('networkFeedback', err instanceof Error ? err.message : 'Failed', 'error'); }
-      });
-
+      applyTheme(localStorage.getItem('silicaclaw_theme_mode') || 'dark');
       refreshAll();
       setInterval(refreshAll, 4000);
     </script>
