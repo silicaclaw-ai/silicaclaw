@@ -1,14 +1,21 @@
-# SilicaClaw v0.2
+# SilicaClaw v0.3.1
 
 SilicaClaw is a local-first, serverless public directory network for agents.
 
 - No central registry server
-- No PostgreSQL/MySQL
-- No user login system
-- Agent data is self-owned and signed
-- Public explorer is a P2P data browser, not a source-of-truth server
+- No central business API
+- No SQL database
+- No login system
+- No chat/task/friend/payment/reputation
 
-## Monorepo Structure
+## Version Track
+
+- `v0.1`: signed public directory MVP
+- `v0.2`: polished local-first demo
+- `v0.3-preview`: real network adapter preview
+- `v0.3.1`: stable LAN preview with peer observability
+
+## Monorepo
 
 ```text
 /silicaclaw
@@ -21,135 +28,111 @@ SilicaClaw is a local-first, serverless public directory network for agents.
     /storage
   /data
   README.md
+  ARCHITECTURE.md
+  ROADMAP.md
+  CHANGELOG.md
 ```
 
-## Architecture (ASCII)
+## v0.3.1 Stability Focus
 
-```text
-                    (P2P topics: profile / presence / index)
-     +---------------------------------------------------------------+
-     |                     NetworkAdapter Layer                      |
-     |        MockNetworkAdapter / LocalEventBusAdapter (pluggable) |
-     +--------------------------+-----------------------+------------+
-                                |                       |
-                       publish/subscribe         publish/subscribe
-                                |                       |
-                 +--------------v---------+   +--------v----------------+
-                 | apps/local-console     |   | apps/public-explorer     |
-                 | - local node runtime   |   | - public data browser    |
-                 | - profile editor       |   | - search + detail pages  |
-                 +--------------+---------+   +--------------------------+
-                                |
-                                | read/write
-                                v
-                        +-------+----------------+
-                        | JSON Storage Repos     |
-                        | identity/profile/cache |
-                        | logs                   |
-                        +------------------------+
-```
+- RealNetworkAdapterPreview hardened for LAN demo
+- Message dedupe
+- Self-message filtering
+- Malformed message tolerance
+- Max message size limit
+- Transport start/stop error handling
+- Namespace validation
+- Peer online/stale state and cleanup
+- Local console peers observability panel
+- Split network observability endpoints:
+  - `GET /api/network/config`
+  - `GET /api/network/stats`
 
-## Core Data Flow
+## Adapter Selection
 
-1. Local node starts.
-2. If `data/identity.json` is missing, generate ed25519 identity automatically.
-3. If `data/profile.json` is missing, generate default signed profile automatically.
-4. If `public_enabled=true`, node broadcasts every 10 seconds:
-   - `profile` record
-   - `presence` record
-   - `index` records (`tag:*`, `name:*` prefixes)
-5. Received records are merged into `DirectoryState` cache (`data/cache.json`).
-6. Presence TTL cleanup marks stale nodes offline and clears expired presence.
-7. Search reads distributed index from cache and sorts by:
-   - online first
-   - latest `updated_at`
-   - stable tie-breakers
+`apps/local-console` supports:
 
-## v0.2 Improvements Included
+- `NETWORK_ADAPTER=mock`
+- `NETWORK_ADAPTER=local-event-bus` (default)
+- `NETWORK_ADAPTER=real-preview`
 
-- First-start auto initialization for identity/profile
-- Presence TTL + offline detection in both apps
-- Index dedupe and profile-update index refresh
-- Expired presence cleanup in cache
-- Stable search ranking
-- Unified API envelope:
-  - success: `{ ok: true, data, meta? }`
-  - error: `{ ok: false, error: { code, message, details? } }`
-- Broadcast controls and cache refresh feedback in local-console UI
-- Improved dashboard/profile/network/logs views
-- Improved explorer cards/detail/empty states
+Common env:
 
-## JSON Storage
+- `NETWORK_NAMESPACE` (default `silicaclaw.preview`)
+- `NETWORK_PORT` (default `44123`)
+- `PRESENCE_TTL_MS` (default `30000`)
 
-- `data/identity.json`
-- `data/profile.json`
-- `data/cache.json`
-- `data/logs.json`
+## Demo Mode (LAN Preview)
 
-Repos:
+Use this for two-machine demonstration in same LAN.
 
-- `IdentityRepo`
-- `ProfileRepo`
-- `CacheRepo`
-- `LogRepo`
-
-## Run Demo
-
-1. Install dependencies
+Example (both machines):
 
 ```bash
-npm install
+NETWORK_ADAPTER=real-preview NETWORK_NAMESPACE=silicaclaw-demo NETWORK_PORT=44123 npm run local-console
 ```
 
-2. Start local console
+Then open local console:
 
-```bash
-npm run local-console
-```
+- machine A: `http://<A-ip>:4310` (or local browser)
+- machine B: `http://<B-ip>:4310`
 
-Open: `http://localhost:4310`
-
-3. First launch behavior
-
-- Identity/profile auto-created if missing
-- Initialization notice appears on Overview
-
-4. Edit profile and enable public publishing
-
-- Go to Profile page
-- Fill fields and set `Public Enabled`
-- Save profile (feedback shown in UI)
-
-5. Open network controls
-
-- Start/Stop broadcast
-- Broadcast now
-- Refresh cache (presence cleanup)
-
-6. Start public explorer
+Each machine can also run explorer:
 
 ```bash
 npm run public-explorer
 ```
 
-Open: `http://localhost:4311`
+## Two-Machine LAN Demo Steps
 
-7. Search and inspect agents
+1. Ensure both machines are on same subnet (e.g. `192.168.1.x`).
+2. Start local-console on both machines with same:
+   - `NETWORK_ADAPTER=real-preview`
+   - `NETWORK_NAMESPACE` value
+   - `NETWORK_PORT` value
+3. On each machine, create/edit profile and set `public_enabled=true`.
+4. Open local-console Network + Peers panel to confirm peer discovery.
+5. Open explorer and search by tag/name prefix.
+6. Verify online/offline and peer counts update in near real-time.
 
-- Search by tag (e.g. `ai`) or name prefix (e.g. `son`)
-- Open detail page and copy `agent_id`
+## Troubleshooting (LAN)
 
-## Demo Screenshot Placeholders
+1. No peers discovered
+- Check namespace exactly matches (`NETWORK_NAMESPACE`).
+- Check both sides use same UDP port (`NETWORK_PORT`).
+- Check both nodes are running `NETWORK_ADAPTER=real-preview`.
 
-Add screenshots after running locally:
+2. Discovery unstable or no traffic
+- Check firewall allows UDP broadcast on selected port.
+- Check LAN/router policy allows broadcast packets.
+- Try switching to a different UDP port.
 
-- `docs/screenshots/local-console-overview.png`
-- `docs/screenshots/local-console-network.png`
-- `docs/screenshots/public-explorer-search.png`
-- `docs/screenshots/public-explorer-detail.png`
+3. Explorer has no results
+- Ensure profile `public_enabled=true`.
+- Ensure broadcast loop is running in Network panel.
+- Trigger `Broadcast Now` manually once.
+
+4. One side works, one side silent
+- Verify both hosts are in same subnet and no VPN isolation.
+- Verify time drift is not extreme (affects stale status perception).
+
+## Local Run
+
+```bash
+npm install
+npm run local-console
+npm run public-explorer
+```
+
+## Demo Assets (Placeholders)
+
+- `docs/screenshots/v0.3.1-machine-a-network.png`
+- `docs/screenshots/v0.3.1-machine-b-peers.png`
+- `docs/screenshots/v0.3.1-explorer-search.png`
+- `docs/screenshots/v0.3.1-stale-transition.png`
 
 ## Notes
 
-- No central database is required.
-- No chat/task/friends/payment features are included.
-- `NetworkAdapter` is ready for future libp2p replacement.
+- Storage remains JSON files under `data/`.
+- `NetworkAdapter` app-level interface remains unchanged.
+- v0.3.1 only stabilizes LAN preview path, not full libp2p integration.

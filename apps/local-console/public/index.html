@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SilicaClaw Local Console v0.2</title>
+    <title>SilicaClaw Local Console v0.3.1</title>
     <style>
       :root {
         --bg: #f4f7fb;
@@ -24,7 +24,7 @@
         color: var(--text);
         background: radial-gradient(circle at top left, #dfe9ff 0%, var(--bg) 44%, #edf3fa 100%);
       }
-      .container { max-width: 1180px; margin: 20px auto; padding: 0 16px 24px; }
+      .container { max-width: 1200px; margin: 20px auto; padding: 0 16px 24px; }
       .header {
         display: flex;
         justify-content: space-between;
@@ -61,7 +61,7 @@
 
       .tabs {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(5, 1fr);
         gap: 8px;
         margin-top: 12px;
       }
@@ -90,15 +90,15 @@
         padding: 12px;
       }
       .label { font-size: 12px; color: var(--muted); }
-      .value { margin-top: 4px; font-size: 19px; font-weight: 700; }
+      .value { margin-top: 4px; font-size: 18px; font-weight: 700; }
       .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
 
       .stack { display: grid; gap: 10px; }
       .split { display: grid; gap: 12px; grid-template-columns: 1.1fr 1fr; }
       .section-title { margin: 0 0 8px; font-size: 16px; }
 
-      .agents-table { width: 100%; border-collapse: collapse; }
-      .agents-table th, .agents-table td {
+      .data-table { width: 100%; border-collapse: collapse; }
+      .data-table th, .data-table td {
         border-bottom: 1px solid var(--line);
         padding: 8px 6px;
         text-align: left;
@@ -106,6 +106,7 @@
       }
       .online { color: var(--ok); font-weight: 600; }
       .offline { color: #8d3f3f; font-weight: 600; }
+      .stale { color: var(--warn); font-weight: 600; }
 
       .row { display: grid; gap: 8px; grid-template-columns: 1fr 1fr; }
       .field { display: grid; gap: 5px; }
@@ -165,7 +166,7 @@
       <header class="header">
         <div>
           <h1 class="title">SilicaClaw Local Console</h1>
-          <div class="subtitle">Local-first Agent Directory Node v0.2</div>
+          <div class="subtitle">LAN Preview Stabilized v0.3.1</div>
         </div>
         <div id="nodeStatus" class="status-pill">loading...</div>
       </header>
@@ -176,6 +177,7 @@
         <button class="tab active" data-tab="overview">Overview</button>
         <button class="tab" data-tab="profile">Profile</button>
         <button class="tab" data-tab="network">Network</button>
+        <button class="tab" data-tab="peers">Peers</button>
         <button class="tab" data-tab="logs">Logs</button>
       </div>
 
@@ -229,6 +231,10 @@
       <section id="network" class="panel hidden">
         <h3 class="section-title">Network Runtime</h3>
         <div class="cards" id="networkCards"></div>
+        <div class="card" style="margin-top:10px;">
+          <h4 class="section-title">Adapter Components</h4>
+          <div id="networkComponents" class="mono"></div>
+        </div>
         <div class="toolbar">
           <button id="startBroadcastBtn">Start Broadcast</button>
           <button id="stopBroadcastBtn" class="secondary">Stop Broadcast</button>
@@ -238,6 +244,15 @@
         <div id="networkFeedback" class="feedback">Waiting for action.</div>
       </section>
 
+      <section id="peers" class="panel hidden">
+        <h3 class="section-title">Peers</h3>
+        <div class="cards" id="peerCards"></div>
+        <div class="card" style="margin-top:10px;">
+          <h4 class="section-title">Peer List</h4>
+          <div id="peerTableWrap"></div>
+        </div>
+      </section>
+
       <section id="logs" class="panel hidden">
         <h3 class="section-title">Recent Logs (50)</h3>
         <div class="log-box" id="logList"></div>
@@ -245,11 +260,7 @@
     </div>
 
     <script>
-      const state = {
-        tab: 'overview',
-        overview: null,
-        network: null,
-      };
+      const state = { tab: 'overview' };
 
       function ago(ts) {
         if (!ts) return '-';
@@ -265,14 +276,10 @@
       }
 
       async function api(path, options = {}) {
-        const res = await fetch(path, {
-          headers: { 'Content-Type': 'application/json' },
-          ...options,
-        });
+        const res = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...options });
         const json = await res.json().catch(() => null);
         if (!res.ok || !json || !json.ok) {
-          const message = json?.error?.message || `Request failed (${res.status})`;
-          throw new Error(message);
+          throw new Error(json?.error?.message || `Request failed (${res.status})`);
         }
         return json;
       }
@@ -285,23 +292,16 @@
 
       function switchTab(tab) {
         state.tab = tab;
-        document.querySelectorAll('.tab').forEach((el) => {
-          el.classList.toggle('active', el.dataset.tab === tab);
-        });
-        ['overview', 'profile', 'network', 'logs'].forEach((id) => {
+        document.querySelectorAll('.tab').forEach((el) => el.classList.toggle('active', el.dataset.tab === tab));
+        ['overview', 'profile', 'network', 'peers', 'logs'].forEach((id) => {
           document.getElementById(id).classList.toggle('hidden', id !== tab);
         });
       }
 
       async function refreshOverview() {
-        const [overviewResp, discoveredResp] = await Promise.all([
-          api('/api/overview'),
-          api('/api/search?q='),
-        ]);
-
+        const [overviewResp, discoveredResp] = await Promise.all([api('/api/overview'), api('/api/search?q=')]);
         const overview = overviewResp.data;
         const discovered = discoveredResp.data;
-        state.overview = overview;
 
         const cards = [
           ['Discovered', String(overview.discovered_count)],
@@ -309,18 +309,14 @@
           ['Offline', String(overview.offline_count)],
           ['TTL', `${Math.floor(overview.presence_ttl_ms / 1000)}s`],
         ];
-        document.getElementById('overviewCards').innerHTML = cards.map(([k, v]) => `
-          <div class="card"><div class="label">${k}</div><div class="value">${v}</div></div>
-        `).join('');
+        document.getElementById('overviewCards').innerHTML = cards.map(([k, v]) => `<div class="card"><div class="label">${k}</div><div class="value">${v}</div></div>`).join('');
 
         if (!discovered.length) {
           document.getElementById('agentsWrap').innerHTML = '<div class="label">No discovered agents yet.</div>';
         } else {
           document.getElementById('agentsWrap').innerHTML = `
-            <table class="agents-table">
-              <thead>
-                <tr><th>Name</th><th>Agent ID</th><th>Status</th><th>Updated</th></tr>
-              </thead>
+            <table class="data-table">
+              <thead><tr><th>Name</th><th>Agent ID</th><th>Status</th><th>Updated</th></tr></thead>
               <tbody>
                 ${discovered.slice(0, 8).map((agent) => `
                   <tr>
@@ -369,25 +365,88 @@
       }
 
       async function refreshNetwork() {
-        const networkResp = await api('/api/network');
-        const network = networkResp.data;
-        state.network = network;
-
+        const [configResp, statsResp] = await Promise.all([
+          api('/api/network/config'),
+          api('/api/network/stats'),
+        ]);
+        const config = configResp.data;
+        const stats = statsResp.data;
+        const counters = stats.message_counters || {};
+        const peerCounters = stats.peer_counters || {};
+        const adapterStats = stats.adapter_stats || {};
         const cards = [
-          ['Adapter', network.adapter],
-          ['Received', String(network.received_count)],
-          ['Broadcast', String(network.broadcast_count)],
-          ['Peers', String(network.peers_discovered || 0)],
-          ['Last Inbound', ago(network.last_message_at)],
+          ['Adapter', config.adapter],
+          ['Namespace', config.namespace || '-'],
+          ['Port', String(config.port ?? '-')],
+          ['Received', String(counters.received_total ?? 0)],
+          ['Broadcast', String(counters.broadcast_total ?? 0)],
+          ['Peers', String(peerCounters.total ?? 0)],
+          ['Last Inbound', ago(counters.last_message_at)],
         ];
-        document.getElementById('networkCards').innerHTML = cards.map(([k, v]) => `
-          <div class="card"><div class="label">${k}</div><div class="value" style="font-size:16px;">${v}</div></div>
-        `).join('');
+        document.getElementById('networkCards').innerHTML = cards.map(([k, v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:16px;">${v}</div></div>`).join('');
+
+        const c = config.components || {};
+        const limits = config.limits || {};
+        document.getElementById('networkComponents').textContent = [
+          `demo_mode: ${config.demo_mode || '-'}`,
+          `transport: ${c.transport || '-'}`,
+          `discovery: ${c.discovery || '-'}`,
+          `envelope_codec: ${c.envelope_codec || '-'}`,
+          `topic_codec: ${c.topic_codec || '-'}`,
+          `max_message_bytes: ${limits.max_message_bytes ?? '-'}`,
+          `dedupe_window_ms: ${limits.dedupe_window_ms ?? '-'}`,
+          `dedupe_max_entries: ${limits.dedupe_max_entries ?? '-'}`,
+          `publish_attempted: ${adapterStats.publish_attempted ?? '-'}`,
+          `publish_sent: ${adapterStats.publish_sent ?? '-'}`,
+          `received_total: ${adapterStats.received_total ?? '-'}`,
+          `delivered_total: ${adapterStats.delivered_total ?? '-'}`,
+          `dropped_duplicate: ${adapterStats.dropped_duplicate ?? '-'}`,
+          `dropped_self: ${adapterStats.dropped_self ?? '-'}`,
+          `dropped_malformed: ${adapterStats.dropped_malformed ?? '-'}`,
+          `dropped_oversized: ${adapterStats.dropped_oversized ?? '-'}`,
+          `dropped_namespace_mismatch: ${adapterStats.dropped_namespace_mismatch ?? '-'}`,
+          `send_errors: ${adapterStats.send_errors ?? '-'}`,
+        ].join('\n');
+      }
+
+      async function refreshPeers() {
+        const peers = (await api('/api/peers')).data;
+        const cards = [
+          ['Adapter', peers.adapter],
+          ['Namespace', peers.namespace || '-'],
+          ['Total', String(peers.total || 0)],
+          ['Online', String(peers.online || 0)],
+          ['Stale', String(peers.stale || 0)],
+        ];
+        document.getElementById('peerCards').innerHTML = cards.map(([k, v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:16px;">${v}</div></div>`).join('');
+
+        if (!peers.items || !peers.items.length) {
+          document.getElementById('peerTableWrap').innerHTML = '<div class="label">No peers discovered yet.</div>';
+          return;
+        }
+
+        document.getElementById('peerTableWrap').innerHTML = `
+          <table class="data-table">
+            <thead>
+              <tr><th>Peer ID</th><th>Status</th><th>Last Seen</th><th>Messages</th><th>First Seen</th></tr>
+            </thead>
+            <tbody>
+              ${peers.items.map((peer) => `
+                <tr>
+                  <td class="mono">${shortId(peer.peer_id)}</td>
+                  <td class="${peer.status === 'online' ? 'online' : 'stale'}">${peer.status}</td>
+                  <td>${ago(peer.last_seen_at)}</td>
+                  <td>${peer.messages_seen || 0}</td>
+                  <td>${new Date(peer.first_seen_at).toLocaleTimeString()}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
       }
 
       async function refreshLogs() {
-        const logsResp = await api('/api/logs');
-        const logs = logsResp.data || [];
+        const logs = (await api('/api/logs')).data || [];
         const logList = document.getElementById('logList');
         if (!logs.length) {
           logList.innerHTML = '<div class="label">No logs yet.</div>';
@@ -403,22 +462,18 @@
 
       async function refreshAll() {
         try {
-          await Promise.all([refreshOverview(), refreshProfile(), refreshNetwork(), refreshLogs()]);
+          await Promise.all([refreshOverview(), refreshProfile(), refreshNetwork(), refreshPeers(), refreshLogs()]);
         } catch (err) {
-          const msg = err instanceof Error ? err.message : 'Unknown error';
-          setFeedback('networkFeedback', msg, 'error');
+          setFeedback('networkFeedback', err instanceof Error ? err.message : 'Unknown error', 'error');
         }
       }
 
-      document.querySelectorAll('.tab').forEach((el) => {
-        el.addEventListener('click', () => switchTab(el.dataset.tab));
-      });
+      document.querySelectorAll('.tab').forEach((el) => el.addEventListener('click', () => switchTab(el.dataset.tab)));
 
       document.getElementById('profileForm').addEventListener('submit', async (event) => {
         event.preventDefault();
         const form = event.currentTarget;
         const tags = String(form.tags.value || '').split(',').map((s) => s.trim()).filter(Boolean);
-
         setFeedback('profileFeedback', 'Saving profile...');
         try {
           const resp = await api('/api/profile', {
@@ -434,64 +489,37 @@
           setFeedback('profileFeedback', resp.meta?.message || 'Profile saved.', 'info');
           await refreshAll();
         } catch (err) {
-          const msg = err instanceof Error ? err.message : 'Save failed';
-          setFeedback('profileFeedback', msg, 'error');
+          setFeedback('profileFeedback', err instanceof Error ? err.message : 'Save failed', 'error');
         }
       });
 
       document.getElementById('refreshProfileBtn').addEventListener('click', async () => {
-        try {
-          await refreshProfile();
-          setFeedback('profileFeedback', 'Form reloaded.', 'info');
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : 'Reload failed';
-          setFeedback('profileFeedback', msg, 'error');
-        }
+        try { await refreshProfile(); setFeedback('profileFeedback', 'Form reloaded.', 'info'); }
+        catch (err) { setFeedback('profileFeedback', err instanceof Error ? err.message : 'Reload failed', 'error'); }
       });
 
       document.getElementById('startBroadcastBtn').addEventListener('click', async () => {
         setFeedback('networkFeedback', 'Starting broadcast loop...');
-        try {
-          const resp = await api('/api/broadcast/start', { method: 'POST' });
-          setFeedback('networkFeedback', resp.meta?.message || 'Broadcast started.', 'info');
-          await refreshAll();
-        } catch (err) {
-          setFeedback('networkFeedback', err instanceof Error ? err.message : 'Failed', 'error');
-        }
+        try { const r = await api('/api/broadcast/start', { method: 'POST' }); setFeedback('networkFeedback', r.meta?.message || 'Started', 'info'); await refreshAll(); }
+        catch (err) { setFeedback('networkFeedback', err instanceof Error ? err.message : 'Failed', 'error'); }
       });
 
       document.getElementById('stopBroadcastBtn').addEventListener('click', async () => {
         setFeedback('networkFeedback', 'Stopping broadcast loop...');
-        try {
-          const resp = await api('/api/broadcast/stop', { method: 'POST' });
-          setFeedback('networkFeedback', resp.meta?.message || 'Broadcast stopped.', 'warn');
-          await refreshAll();
-        } catch (err) {
-          setFeedback('networkFeedback', err instanceof Error ? err.message : 'Failed', 'error');
-        }
+        try { const r = await api('/api/broadcast/stop', { method: 'POST' }); setFeedback('networkFeedback', r.meta?.message || 'Stopped', 'warn'); await refreshAll(); }
+        catch (err) { setFeedback('networkFeedback', err instanceof Error ? err.message : 'Failed', 'error'); }
       });
 
       document.getElementById('broadcastNowBtn').addEventListener('click', async () => {
         setFeedback('networkFeedback', 'Sending broadcast now...');
-        try {
-          const resp = await api('/api/broadcast/now', { method: 'POST' });
-          setFeedback('networkFeedback', resp.meta?.message || 'Broadcast completed.', 'info');
-          await refreshAll();
-        } catch (err) {
-          setFeedback('networkFeedback', err instanceof Error ? err.message : 'Failed', 'error');
-        }
+        try { const r = await api('/api/broadcast/now', { method: 'POST' }); setFeedback('networkFeedback', r.meta?.message || 'Done', 'info'); await refreshAll(); }
+        catch (err) { setFeedback('networkFeedback', err instanceof Error ? err.message : 'Failed', 'error'); }
       });
 
       document.getElementById('refreshCacheBtn').addEventListener('click', async () => {
         setFeedback('networkFeedback', 'Refreshing cache and cleanup...');
-        try {
-          const resp = await api('/api/cache/refresh', { method: 'POST' });
-          const removed = resp.data?.removed_presence ?? 0;
-          setFeedback('networkFeedback', `Cache refreshed. removed_presence=${removed}`, 'info');
-          await refreshAll();
-        } catch (err) {
-          setFeedback('networkFeedback', err instanceof Error ? err.message : 'Failed', 'error');
-        }
+        try { const r = await api('/api/cache/refresh', { method: 'POST' }); setFeedback('networkFeedback', `Cache refreshed. removed_presence=${r.data?.removed_presence ?? 0}`, 'info'); await refreshAll(); }
+        catch (err) { setFeedback('networkFeedback', err instanceof Error ? err.message : 'Failed', 'error'); }
       });
 
       refreshAll();

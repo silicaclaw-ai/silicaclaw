@@ -1,38 +1,43 @@
 # SilicaClaw Roadmap
 
-## v0.3 Preview (current)
+## Current Baseline: v0.3.1-preview
 
-- Keep Mock + LocalEventBus adapters
-- Add `RealNetworkAdapterPreview`
-- Add pluggable abstractions:
+- Stable LAN preview route with `RealNetworkAdapterPreview`
+- Peer lifecycle + observability in local-console
+- Production of demo-ready dual-machine runbook
+
+## v0.4 Scope (Transport Upgrade Preview)
+
+Goal: validate a future transport/discovery stack without destabilizing demo flow.
+
+### Track A: Stable Demo Line (keep)
+
+- Keep `real-preview` as default demo path
+- Improve reliability tests and troubleshooting docs
+- Keep API/UX stable for demos
+
+### Track B: Future Validation Line (new preview)
+
+- Introduce `libp2p-preview` OR `webrtc-preview` branch adapter
+- Reuse existing abstractions:
   - transport
-  - peer discovery
-  - message envelope
+  - envelope
   - topic codec
-- Validate multi-process and LAN-level broadcast path
+  - peer discovery
+- Do not switch main demo line until validation quality is acceptable
 
-## v0.3.x hardening
+## v0.4 Deliverables
 
-- Add message size limit and input validation guards
-- Add dedup cache for `message_id`
-- Add optional topic allow-list and rate limiting
-- Add lightweight integration tests for multi-process UDP scenario
+- Pluggable transport config layer finalized
+- One experimental preview adapter behind feature flag/env
+- Side-by-side metrics with `real-preview`
+- No changes to app-level `NetworkAdapter` contract
 
-## v0.4 target
+## v0.5 Candidates
 
-- Add libp2p transport adapter (experimental)
-- Add WebRTC transport adapter (browser-to-browser preview)
-- Add discovery strategy plug-ins:
-  - DHT discovery
-  - mDNS (local network)
-  - optional manual bootstrap peers
-- Keep same `NetworkAdapter` API for app layer stability
-
-## v0.5 target
-
-- Envelope signing strategy for anti-spoof baseline
-- Topic schema versioning and compatibility policy
-- Better peer/session observability in local-console network view
+- Envelope signing policy for anti-spoof baseline
+- Topic schema versioning and compatibility guardrails
+- Integration test suite for multi-node LAN and preview transports
 
 ## Explicitly Out of Scope
 

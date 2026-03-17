@@ -1,5 +1,32 @@
 # Changelog
 
+## v0.3.1 - 2026-03-17
+
+### Stabilized
+
+- Real preview adapter hardened for LAN demos:
+  - message dedupe window/cache
+  - self-message filtering
+  - malformed envelope tolerance
+  - max message size limit
+  - namespace validation
+  - safer transport start/stop error handling
+- Peer health states:
+  - `online` / `stale`
+  - `first_seen_at` / `last_seen_at`
+  - `messages_seen`
+  - stale-to-remove lifecycle cleanup
+- Diagnostics/observability:
+  - real adapter diagnostics API (`components`, `limits`, `stats`, `peers`)
+  - split API endpoints:
+    - `GET /api/network/config`
+    - `GET /api/network/stats`
+  - local-console `Peers` panel
+  - network page now shows transport/discovery/envelope/topic codec names
+- release engineering assets:
+  - `VERSION`
+  - `RELEASE_NOTES.md`
+
 ## v0.3.0-preview - 2026-03-17
 
 ### Added

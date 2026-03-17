@@ -4,6 +4,7 @@ import { NetworkMessageEnvelope } from "../abstractions/messageEnvelope";
 type HeartbeatPeerDiscoveryOptions = {
   heartbeatIntervalMs?: number;
   staleAfterMs?: number;
+  removeAfterMs?: number;
   topic?: string;
 };
 
@@ -14,21 +15,24 @@ export class HeartbeatPeerDiscovery implements PeerDiscovery {
 
   private heartbeatIntervalMs: number;
   private staleAfterMs: number;
+  private removeAfterMs: number;
   private topic: string;
 
   constructor(options: HeartbeatPeerDiscoveryOptions = {}) {
     this.heartbeatIntervalMs = options.heartbeatIntervalMs ?? 12_000;
     this.staleAfterMs = options.staleAfterMs ?? 45_000;
+    this.removeAfterMs = options.removeAfterMs ?? 180_000;
     this.topic = options.topic ?? "__discovery/heartbeat";
   }
 
   async start(context: PeerDiscoveryContext): Promise<void> {
     this.context = context;
+    this.reconcilePeerHealth();
     await this.sendHeartbeat();
 
     this.timer = setInterval(async () => {
       await this.sendHeartbeat();
-      this.evictStalePeers();
+      this.reconcilePeerHealth();
     }, this.heartbeatIntervalMs);
   }
 
@@ -47,18 +51,33 @@ export class HeartbeatPeerDiscovery implements PeerDiscovery {
       return;
     }
 
+    const now = Date.now();
+    const existing = this.peers.get(envelope.source_peer_id);
+
     this.peers.set(envelope.source_peer_id, {
       peer_id: envelope.source_peer_id,
-      last_seen_at: Date.now(),
-      meta: envelope.topic === this.topic && typeof envelope.payload === "object" && envelope.payload !== null
-        ? (envelope.payload as Record<string, unknown>)
-        : undefined,
+      first_seen_at: existing?.first_seen_at ?? now,
+      last_seen_at: now,
+      status: "online",
+      stale_since_at: undefined,
+      messages_seen: (existing?.messages_seen ?? 0) + 1,
+      meta:
+        envelope.topic === this.topic && typeof envelope.payload === "object" && envelope.payload !== null
+          ? (envelope.payload as Record<string, unknown>)
+          : existing?.meta,
     });
   }
 
   listPeers(): PeerSnapshot[] {
-    this.evictStalePeers();
-    return Array.from(this.peers.values()).sort((a, b) => b.last_seen_at - a.last_seen_at);
+    this.reconcilePeerHealth();
+    return Array.from(this.peers.values()).sort((a, b) => {
+      const score = (p: PeerSnapshot) => (p.status === "online" ? 1 : 0);
+      const byStatus = score(b) - score(a);
+      if (byStatus !== 0) {
+        return byStatus;
+      }
+      return b.last_seen_at - a.last_seen_at;
+    });
   }
 
   private async sendHeartbeat(): Promise<void> {
@@ -72,11 +91,31 @@ export class HeartbeatPeerDiscovery implements PeerDiscovery {
     });
   }
 
-  private evictStalePeers(): void {
+  private reconcilePeerHealth(): void {
     const now = Date.now();
     for (const [peerId, peer] of this.peers.entries()) {
-      if (now - peer.last_seen_at > this.staleAfterMs) {
+      const age = now - peer.last_seen_at;
+
+      if (age > this.removeAfterMs) {
         this.peers.delete(peerId);
+        continue;
+      }
+
+      if (age > this.staleAfterMs) {
+        this.peers.set(peerId, {
+          ...peer,
+          status: "stale",
+          stale_since_at: peer.stale_since_at ?? now,
+        });
+        continue;
+      }
+
+      if (peer.status !== "online") {
+        this.peers.set(peerId, {
+          ...peer,
+          status: "online",
+          stale_since_at: undefined,
+        });
       }
     }
   }

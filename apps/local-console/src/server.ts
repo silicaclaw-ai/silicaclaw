@@ -81,23 +81,34 @@ class LocalNodeService {
   };
 
   private network: NetworkAdapter;
+  private adapterMode: "mock" | "local-event-bus" | "real-preview";
+  private networkNamespace: string;
+  private networkPort: number | null;
 
   constructor() {
+    this.networkNamespace = process.env.NETWORK_NAMESPACE || "silicaclaw.preview";
+    this.networkPort = Number(process.env.NETWORK_PORT || 44123);
+
     const mode = process.env.NETWORK_ADAPTER;
     if (mode === "mock") {
       this.network = new MockNetworkAdapter();
+      this.adapterMode = "mock";
+      this.networkPort = null;
       return;
     }
     if (mode === "real-preview") {
       this.network = new RealNetworkAdapterPreview({
-        namespace: process.env.NETWORK_NAMESPACE || "silicaclaw.preview",
+        namespace: this.networkNamespace,
         transport: new UdpLanBroadcastTransport({
-          port: Number(process.env.NETWORK_PORT || 44123),
+          port: this.networkPort,
         }),
       });
+      this.adapterMode = "real-preview";
       return;
     }
     this.network = new LocalEventBusAdapter();
+    this.adapterMode = "local-event-bus";
+    this.networkPort = null;
   }
 
   async start(): Promise<void> {
@@ -148,19 +159,12 @@ class LocalNodeService {
   }
 
   getNetworkSummary() {
-    const peerCount =
-      typeof (this.network as RealNetworkAdapterPreview).listPeers === "function"
-        ? (this.network as RealNetworkAdapterPreview).listPeers().length
-        : 0;
+    const diagnostics = this.getRealAdapterDiagnostics();
+    const peerCount = diagnostics?.peers.total ?? 0;
 
     return {
       status: "running",
-      adapter:
-        process.env.NETWORK_ADAPTER === "mock"
-          ? "mock"
-          : process.env.NETWORK_ADAPTER === "real-preview"
-            ? "real-preview"
-            : "local-event-bus",
+      adapter: this.adapterMode,
       received_count: this.receivedCount,
       broadcast_count: this.broadcastCount,
       last_message_at: this.lastMessageAt,
@@ -168,6 +172,82 @@ class LocalNodeService {
       received_by_topic: this.receivedByTopic,
       published_by_topic: this.publishedByTopic,
       peers_discovered: peerCount,
+      namespace: diagnostics?.namespace ?? this.networkNamespace,
+      port: this.networkPort,
+      components: diagnostics?.components ?? {
+        transport: "-",
+        discovery: "-",
+        envelope_codec: "-",
+        topic_codec: "-",
+      },
+      real_preview_stats: diagnostics?.stats ?? null,
+    };
+  }
+
+  getNetworkConfig() {
+    const diagnostics = this.getRealAdapterDiagnostics();
+    return {
+      adapter: this.adapterMode,
+      namespace: diagnostics?.namespace ?? this.networkNamespace,
+      port: this.networkPort,
+      components: diagnostics?.components ?? {
+        transport: "-",
+        discovery: "-",
+        envelope_codec: "-",
+        topic_codec: "-",
+      },
+      limits: diagnostics?.limits ?? null,
+      demo_mode: this.adapterMode === "real-preview" ? "lan-preview" : "local-process",
+    };
+  }
+
+  getNetworkStats() {
+    const diagnostics = this.getRealAdapterDiagnostics();
+    const peers = diagnostics?.peers.items ?? [];
+    const online = peers.filter((peer) => peer.status === "online").length;
+
+    return {
+      adapter: this.adapterMode,
+      message_counters: {
+        received_total: this.receivedCount,
+        broadcast_total: this.broadcastCount,
+        last_message_at: this.lastMessageAt,
+        last_broadcast_at: this.lastBroadcastAt,
+        received_by_topic: this.receivedByTopic,
+        published_by_topic: this.publishedByTopic,
+      },
+      peer_counters: {
+        total: peers.length,
+        online,
+        stale: Math.max(0, peers.length - online),
+      },
+      adapter_stats: diagnostics?.stats ?? null,
+    };
+  }
+
+  getPeersSummary() {
+    const diagnostics = this.getRealAdapterDiagnostics();
+    if (!diagnostics) {
+      return {
+        adapter: this.adapterMode,
+        namespace: this.networkNamespace,
+        total: 0,
+        online: 0,
+        stale: 0,
+        items: [],
+        stats: null,
+      };
+    }
+    return {
+      adapter: diagnostics.adapter,
+      namespace: diagnostics.namespace,
+      total: diagnostics.peers.total,
+      online: diagnostics.peers.online,
+      stale: diagnostics.peers.stale,
+      items: diagnostics.peers.items,
+      stats: diagnostics.stats,
+      components: diagnostics.components,
+      limits: diagnostics.limits,
     };
   }
 
@@ -432,6 +512,15 @@ class LocalNodeService {
       timestamp: Date.now(),
     });
   }
+
+  private getRealAdapterDiagnostics():
+    | ReturnType<RealNetworkAdapterPreview["getDiagnostics"]>
+    | null {
+    if (typeof (this.network as RealNetworkAdapterPreview).getDiagnostics !== "function") {
+      return null;
+    }
+    return (this.network as RealNetworkAdapterPreview).getDiagnostics();
+  }
 }
 
 function sendOk<T>(res: Response, data: T, meta?: Record<string, unknown>) {
@@ -513,6 +602,18 @@ async function main() {
 
   app.get("/api/network", (_req, res) => {
     sendOk(res, node.getNetworkSummary());
+  });
+
+  app.get("/api/network/config", (_req, res) => {
+    sendOk(res, node.getNetworkConfig());
+  });
+
+  app.get("/api/network/stats", (_req, res) => {
+    sendOk(res, node.getNetworkStats());
+  });
+
+  app.get("/api/peers", (_req, res) => {
+    sendOk(res, node.getPeersSummary());
   });
 
   app.post(

@@ -1,8 +1,14 @@
 import { NetworkMessageEnvelope } from "./messageEnvelope";
 
+export type PeerStatus = "online" | "stale";
+
 export type PeerSnapshot = {
   peer_id: string;
+  first_seen_at: number;
   last_seen_at: number;
+  status: PeerStatus;
+  stale_since_at?: number;
+  messages_seen: number;
   meta?: Record<string, unknown>;
 };
 
