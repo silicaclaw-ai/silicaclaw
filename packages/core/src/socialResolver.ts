@@ -4,6 +4,7 @@ import { resolve } from "path";
 import { AgentIdentity, ProfileInput, PublicProfile } from "./types";
 import { fromBase64, hashPublicKey } from "./crypto";
 import {
+  DefaultSocialTemplateOptions,
   SocialConfig,
   SocialLoadMeta,
   extractFrontmatter,
@@ -266,12 +267,15 @@ export function resolveProfileInputWithSocial(args: {
   };
 }
 
-export function ensureDefaultSocialMd(rootDir = process.cwd()): { path: string; created: boolean } {
+export function ensureDefaultSocialMd(
+  rootDir = process.cwd(),
+  options: DefaultSocialTemplateOptions = {}
+): { path: string; created: boolean } {
   const targetPath = resolve(rootDir, "social.md");
   if (existsSync(targetPath)) {
     return { path: targetPath, created: false };
   }
   mkdirSync(rootDir, { recursive: true });
-  writeFileSync(targetPath, generateDefaultSocialMdTemplate(), "utf8");
+  writeFileSync(targetPath, generateDefaultSocialMdTemplate(options), "utf8");
   return { path: targetPath, created: true };
 }

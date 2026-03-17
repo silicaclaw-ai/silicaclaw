@@ -4,6 +4,7 @@ type SocialRoutesDeps = {
   getSocialConfigView: () => unknown;
   getIntegrationSummary: () => unknown;
   exportSocialTemplate: () => { filename: string; content: string };
+  setNetworkModeRuntime: (mode: "local" | "lan" | "global-preview") => Promise<unknown>;
   reloadSocialConfig: () => Promise<unknown>;
   generateDefaultSocialMd: () => Promise<unknown>;
 };
@@ -34,6 +35,25 @@ export function registerSocialRoutes(app: Express, deps: SocialRoutesDeps): void
 
   app.get("/api/social/export-template", (_req, res) => {
     sendOk(res, deps.exportSocialTemplate());
+  });
+
+  app.post("/api/social/runtime-mode", async (req, res) => {
+    try {
+      const mode = String(req.body?.mode || "");
+      if (mode !== "local" && mode !== "lan" && mode !== "global-preview") {
+        sendError(res, 400, "INVALID_MODE", "mode must be local | lan | global-preview");
+        return;
+      }
+      const result = await deps.setNetworkModeRuntime(mode);
+      sendOk(res, result, { message: "Runtime network mode updated (social.md unchanged)" });
+    } catch (error) {
+      sendError(
+        res,
+        500,
+        "SOCIAL_RUNTIME_MODE_FAILED",
+        error instanceof Error ? error.message : "Runtime mode update failed"
+      );
+    }
   });
 
   app.post("/api/social/reload", async (_req, res) => {

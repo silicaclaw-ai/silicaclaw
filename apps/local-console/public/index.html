@@ -215,6 +215,24 @@
         font-size: 13px;
       }
       .notice.show { display: block; }
+      .integration-strip {
+        position: sticky;
+        top: 0;
+        z-index: 9;
+        margin-bottom: 12px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--bg-elevated) 92%, transparent);
+        padding: 9px 12px;
+        font-size: 13px;
+        color: var(--text);
+      }
+      .integration-strip.ok {
+        border-color: rgba(34, 197, 94, 0.35);
+      }
+      .integration-strip.warn {
+        border-color: rgba(245, 158, 11, 0.35);
+      }
 
       .view { display: none; }
       .view.active { display: block; }
@@ -480,8 +498,18 @@
             </div>
           </div>
         </div>
+        <div class="integration-strip warn" id="integrationStatusBar">
+          Connected to SilicaClaw: - · Network mode: - · Public discovery: -
+        </div>
 
         <div class="notice" id="initNotice"></div>
+        <div class="actions" id="onboardingActions" style="display:none; margin:8px 0 12px;">
+          <button id="enablePublicDiscoveryBtn">Enable Public Discovery</button>
+          <button class="secondary" id="disablePublicDiscoveryBtn">Disable Public Discovery</button>
+        </div>
+        <div class="field-hint" id="publicDiscoveryHint" style="margin-bottom:12px; display:none;">
+          Public discovery only shares signed profile/presence records. It does not share private files and does not enable chat or remote control.
+        </div>
 
         <section id="view-overview" class="view active">
           <div class="grid" id="overviewCards"></div>
@@ -548,6 +576,16 @@
                 <h4>Publish Status</h4>
                 <div class="mono" id="previewPublish">public_enabled: false</div>
               </div>
+              <div class="profile-meta">
+                <h4>Public Profile Preview</h4>
+                <div class="field-hint">This is the signed public profile view other nodes/explorer can see.</div>
+                <div class="actions" style="margin-top:8px;">
+                  <button class="secondary" type="button" id="copyPublicProfilePreviewBtn">Copy public profile preview summary</button>
+                </div>
+                <div class="field-hint" id="publicVisibilityHint" style="margin-top:8px;">Visible fields: - | Hidden fields: -</div>
+                <div class="mono" id="publicVisibilityList" style="margin-top:6px;">-</div>
+                <div class="mono mono-block" id="publicProfilePreviewWrap">-</div>
+              </div>
             </div>
           </div>
         </section>
@@ -613,9 +651,15 @@
             <h3 class="title-sm">Integration Status</h3>
             <div class="feedback" id="socialStatusLine">Checking integration status...</div>
             <div class="field-hint" id="socialStatusSubline">-</div>
+            <div class="field-hint" id="socialStateHint">-</div>
           </div>
-          <div class="grid" id="socialIntegrationCards" style="margin-top:10px;"></div>
-          <div class="grid" id="socialCards"></div>
+          <div class="grid" id="socialPrimaryCards" style="margin-top:10px;"></div>
+          <div class="grid" id="socialIntegrationCards"></div>
+          <details class="card" style="margin-top:10px;">
+            <summary class="title-sm" style="cursor:pointer;">Advanced Network Details</summary>
+            <div class="grid" id="socialAdvancedCards" style="margin-top:10px;"></div>
+            <div class="mono mono-block" id="socialAdvancedWrap" style="margin-top:10px;">-</div>
+          </details>
           <div class="split">
             <div class="card" style="margin-top:10px;">
               <h3 class="title-sm">Source & Parsed Frontmatter</h3>
@@ -634,6 +678,19 @@
           </div>
           <div class="card" style="margin-top:10px;">
             <h3 class="title-sm">Actions</h3>
+            <div class="toolbar">
+              <div class="field">
+                <label for="socialModeSelect">Network Mode (runtime)</label>
+                <select id="socialModeSelect">
+                  <option value="local">local</option>
+                  <option value="lan">lan</option>
+                  <option value="global-preview">global-preview</option>
+                </select>
+              </div>
+              <div>
+                <button class="secondary" id="socialModeApplyBtn">Apply Runtime Mode</button>
+              </div>
+            </div>
             <div class="actions">
               <button id="socialReloadBtn">Reload Config</button>
               <button class="secondary" id="socialGenerateBtn">Generate Default social.md</button>
@@ -702,6 +759,16 @@
         t.textContent = msg;
         t.classList.add('show');
         setTimeout(() => t.classList.remove('show'), 2000);
+      }
+      function flashButton(btn, doneText = 'Done') {
+        if (!btn) return;
+        const oldText = btn.textContent || '';
+        btn.disabled = true;
+        btn.textContent = doneText;
+        setTimeout(() => {
+          btn.textContent = oldText;
+          btn.disabled = false;
+        }, 900);
       }
       function setFeedback(id, text, level = 'info') {
         const el = document.getElementById(id);
@@ -876,12 +943,32 @@
         document.getElementById('pillBroadcast').className = `pill ${o.broadcast_enabled ? 'ok' : 'warn'}`;
 
         const init = o.init_state || {};
+        const onboarding = o.onboarding || {};
         const notice = document.getElementById('initNotice');
-        if (init.identity_auto_created || init.profile_auto_created) {
+        const onboardingActions = document.getElementById('onboardingActions');
+        const enableBtn = document.getElementById('enablePublicDiscoveryBtn');
+        const disableBtn = document.getElementById('disablePublicDiscoveryBtn');
+        const discoveryHint = document.getElementById('publicDiscoveryHint');
+        const showOnboarding = onboarding.first_run || init.identity_auto_created || init.profile_auto_created || init.social_auto_created;
+        if (onboarding.first_run || init.identity_auto_created || init.profile_auto_created || init.social_auto_created) {
           notice.classList.add('show');
-          notice.textContent = `First-start bootstrap done: identity_auto_created=${!!init.identity_auto_created}, profile_auto_created=${!!init.profile_auto_created}`;
+          notice.textContent = `OpenClaw already connected to SilicaClaw · mode=${onboarding.mode || '-'} · discoverable=${onboarding.discoverable ? 'yes' : 'no'} · next: update display name and export social.md`;
         } else {
           notice.classList.remove('show');
+        }
+        if (onboarding.can_enable_public_discovery || onboarding.public_enabled) {
+          onboardingActions.style.display = 'flex';
+          discoveryHint.style.display = 'block';
+          if (onboarding.public_enabled) {
+            enableBtn.style.display = 'none';
+            disableBtn.style.display = 'inline-block';
+          } else {
+            enableBtn.style.display = 'inline-block';
+            disableBtn.style.display = 'none';
+          }
+        } else {
+          onboardingActions.style.display = 'none';
+          discoveryHint.style.display = 'none';
         }
 
         if (!d.length) {
@@ -918,6 +1005,22 @@
         field(f, 'public_enabled').checked = !!p.public_enabled;
         renderProfilePreview(f);
         setProfileBaseline(f);
+        await refreshPublicProfilePreview();
+      }
+
+      async function refreshPublicProfilePreview() {
+        const summary = (await api('/api/public-profile/preview')).data;
+        document.getElementById('publicProfilePreviewWrap').textContent = toPrettyJson(summary || null);
+        const visibleFields = summary?.public_visibility?.visible_fields || [];
+        const hiddenFields = summary?.public_visibility?.hidden_fields || [];
+        const visible = visibleFields.join(', ') || '-';
+        const hidden = hiddenFields.join(', ') || '-';
+        document.getElementById('publicVisibilityHint').textContent = `Visible fields: ${visible} | Hidden fields: ${hidden}`;
+        const rows = [
+          ...visibleFields.map((field) => `[visible] ${field}`),
+          ...hiddenFields.map((field) => `[hidden]  ${field}`),
+        ];
+        document.getElementById('publicVisibilityList').textContent = rows.length ? rows.join('\n') : '-';
       }
 
       async function refreshNetwork() {
@@ -1091,48 +1194,73 @@
       }
 
       async function refreshSocial() {
-        const [socialRes, summaryRes] = await Promise.all([
+        const [socialRes, summaryRes, statusRes] = await Promise.all([
           api('/api/social/config'),
           api('/api/social/integration-summary'),
+          api('/api/integration/status'),
         ]);
         const social = socialRes.data || {};
         const summary = summaryRes.data || {};
+        const status = statusRes.data || {};
         const runtime = social.runtime || {};
         const config = social.social_config || {};
+        const network = config.network || {};
+        const runtimeNetwork = runtime.resolved_network || {};
+        const discoverable = status.discoverable === true;
+        const mode = status.network_mode || summary.current_network_mode || network.mode || runtimeNetwork.mode || '-';
+        const summaryLine = status.status_line || summary.summary_line || `${summary.connected ? 'Connected to SilicaClaw' : 'Not connected to SilicaClaw'} · ${discoverable ? 'Discoverable in current mode' : 'Not discoverable in current mode'} · Using ${mode}`;
+        const publicDiscoveryText = status.public_enabled ? 'Public discovery enabled' : 'Public discovery disabled';
 
-        const connectedText = summary.connected ? 'Connected to SilicaClaw' : 'Not connected to SilicaClaw';
-        const broadcastingText = summary.current_broadcast_status === 'running'
-          ? 'Public directory broadcasting enabled'
-          : 'Public directory broadcasting paused';
-        const namespaceText = `Running in namespace ${summary.current_namespace || '-'}`;
-        document.getElementById('socialStatusLine').textContent = `${connectedText} · ${broadcastingText}`;
+        const namespaceText = `${status.connected_to_silicaclaw ? 'Connected to SilicaClaw' : 'Not connected'} · ${publicDiscoveryText} · mode ${mode}`;
+        document.getElementById('socialStatusLine').textContent = summaryLine;
         document.getElementById('socialStatusSubline').textContent = namespaceText;
+        const bar = document.getElementById('integrationStatusBar');
+        bar.className = `integration-strip ${status.connected_to_silicaclaw && status.public_enabled ? 'ok' : 'warn'}`;
+        bar.textContent = `Connected to SilicaClaw: ${status.connected_to_silicaclaw ? 'yes' : 'no'} · Network mode: ${mode} · Public discovery: ${status.public_enabled ? 'enabled' : 'disabled'}`;
+        const reasons = [];
+        if (!status.configured && status.configured_reason) reasons.push(`Configured: ${status.configured_reason}`);
+        if (!status.running && status.running_reason) reasons.push(`Running: ${status.running_reason}`);
+        if (!status.discoverable && status.discoverable_reason) reasons.push(`Discoverable: ${status.discoverable_reason}`);
+        document.getElementById('socialStateHint').textContent = reasons.length ? reasons.join(' · ') : 'All integration checks passed.';
+        const modeSelect = document.getElementById('socialModeSelect');
+        if (modeSelect && mode !== '-') {
+          modeSelect.value = mode;
+        }
+
+        document.getElementById('socialPrimaryCards').innerHTML = [
+          ['Configured', status.configured ? 'yes' : 'no'],
+          ['Running', status.running ? 'yes' : 'no'],
+          ['Discoverable', discoverable ? 'yes' : 'no'],
+          ['Public discovery', status.public_enabled ? 'enabled' : 'disabled'],
+          ['network mode', mode],
+          ['connected', status.connected_to_silicaclaw ? 'yes' : 'no'],
+          ['discoverable reason', status.discoverable_reason || '-'],
+        ].map(([k,v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join('');
 
         document.getElementById('socialIntegrationCards').innerHTML = [
+          ['display name', status.display_name || '(unnamed)'],
+          ['agent id', shortId(status.agent_id || '')],
           ['social.md found', summary.social_md_found ? 'yes' : 'no'],
           ['social.md source', summary.social_md_source_path || '-'],
           ['runtime generated', summary.runtime_generated ? 'yes' : 'no'],
           ['reuse OpenClaw identity', summary.reused_openclaw_identity ? 'yes' : 'no'],
-          ['public_enabled', summary.current_public_enabled ? 'true' : 'false'],
-          ['adapter', summary.current_adapter || '-'],
-          ['namespace', summary.current_namespace || '-'],
+          ['mode', mode],
           ['broadcast status', summary.current_broadcast_status || '-'],
         ].map(([k,v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join('');
 
-        document.getElementById('socialCards').innerHTML = [
-          ['social.md found', social.found ? 'yes' : 'no'],
-          ['enabled', config.enabled === true ? 'true' : 'false'],
-          ['public_enabled', config.public_enabled === true ? 'true' : 'false'],
-          ['network adapter', config.network?.adapter || '-'],
-          ['namespace', config.network?.namespace || '-'],
-          ['port', config.network?.port ?? '-'],
-          ['room', config.network?.room || '-'],
-          ['signaling urls', (config.network?.signaling_urls || []).length || 0],
-          ['seed peers', (config.network?.seed_peers || []).length || 0],
-          ['bootstrap hints', (config.network?.bootstrap_hints || []).length || 0],
-          ['source path', social.source_path || '-'],
+        document.getElementById('socialAdvancedCards').innerHTML = [
+          ['adapter', runtimeNetwork.adapter || summary.current_adapter || '-'],
+          ['namespace', runtimeNetwork.namespace || summary.current_namespace || '-'],
+          ['room', runtimeNetwork.room || network.room || '-'],
+          ['signaling endpoints', (runtimeNetwork.signaling_urls || []).length || 0],
+          ['bootstrap sources', (runtimeNetwork.bootstrap_sources || []).length || 0],
+          ['seed peers', (runtimeNetwork.seed_peers || []).length || 0],
+          ['bootstrap hints', (runtimeNetwork.bootstrap_hints || []).length || 0],
           ['restart required', social.network_requires_restart ? 'yes' : 'no'],
         ].map(([k,v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join('');
+        document.getElementById('socialAdvancedWrap').textContent = toPrettyJson({
+          runtime_network: runtimeNetwork,
+        });
 
         document.getElementById('socialSourceWrap').textContent = toPrettyJson({
           found: social.found,
@@ -1180,7 +1308,7 @@
 
       async function refreshAll() {
         try {
-          const tasks = [refreshOverview(), refreshNetwork(), refreshPeers(), refreshDiscovery(), refreshSocial(), refreshLogs()];
+          const tasks = [refreshOverview(), refreshNetwork(), refreshPeers(), refreshDiscovery(), refreshSocial(), refreshLogs(), refreshPublicProfilePreview()];
           const shouldRefreshProfile = !(activeTab === 'profile' && profileDirty);
           if (shouldRefreshProfile) {
             tasks.push(refreshProfile());
@@ -1280,6 +1408,38 @@
         await refreshLogs();
         toast('Logs refreshed');
       });
+      document.getElementById('enablePublicDiscoveryBtn').addEventListener('click', async () => {
+        const ok = window.confirm(
+          'Enable public discovery now?\n\n' +
+          '- Only profile/presence are shared.\n' +
+          '- Private files are not shared.\n' +
+          '- Chat and remote control are not enabled.\n\n' +
+          'This updates runtime state and does not overwrite social.md.'
+        );
+        if (!ok) return;
+        setFeedback('networkFeedback', 'Enabling public discovery...');
+        try {
+          const res = await api('/api/public-discovery/enable', { method: 'POST' });
+          setFeedback('networkFeedback', res.meta?.message || 'Public discovery enabled.');
+          toast('Public discovery enabled');
+          await refreshAll();
+        } catch (e) {
+          setFeedback('networkFeedback', e instanceof Error ? e.message : 'Enable public discovery failed', 'error');
+        }
+      });
+      document.getElementById('disablePublicDiscoveryBtn').addEventListener('click', async () => {
+        const ok = window.confirm('Disable public discovery now? This updates runtime state and does not overwrite social.md.');
+        if (!ok) return;
+        setFeedback('networkFeedback', 'Disabling public discovery...');
+        try {
+          const res = await api('/api/public-discovery/disable', { method: 'POST' });
+          setFeedback('networkFeedback', res.meta?.message || 'Public discovery disabled.');
+          toast('Public discovery disabled');
+          await refreshAll();
+        } catch (e) {
+          setFeedback('networkFeedback', e instanceof Error ? e.message : 'Disable public discovery failed', 'error');
+        }
+      });
       document.getElementById('socialReloadBtn').addEventListener('click', async () => {
         setFeedback('socialFeedback', 'Reloading social config...');
         try {
@@ -1312,8 +1472,24 @@
           setFeedback('socialFeedback', e instanceof Error ? e.message : 'Export failed', 'error');
         }
       });
+      document.getElementById('socialModeApplyBtn').addEventListener('click', async () => {
+        const mode = document.getElementById('socialModeSelect').value;
+        setFeedback('socialFeedback', `Applying runtime mode: ${mode}...`);
+        try {
+          const res = await api('/api/social/runtime-mode', {
+            method: 'POST',
+            body: JSON.stringify({ mode }),
+          });
+          setFeedback('socialFeedback', res.meta?.message || 'Runtime mode updated.');
+          toast(`Runtime mode: ${mode}`);
+          await refreshAll();
+        } catch (e) {
+          setFeedback('socialFeedback', e instanceof Error ? e.message : 'Runtime mode update failed', 'error');
+        }
+      });
       document.getElementById('socialCopyBtn').addEventListener('click', async () => {
         setFeedback('socialFeedback', 'Copying template...');
+        const btn = document.getElementById('socialCopyBtn');
         try {
           if (!socialTemplate) {
             await exportSocialTemplate();
@@ -1321,6 +1497,7 @@
           await navigator.clipboard.writeText(socialTemplate);
           setFeedback('socialFeedback', 'Template copied to clipboard.');
           toast('Copied');
+          flashButton(btn, 'Copied');
         } catch (e) {
           setFeedback('socialFeedback', e instanceof Error ? e.message : 'Copy failed', 'error');
         }
@@ -1343,6 +1520,17 @@
           toast('Downloaded');
         } catch (e) {
           setFeedback('socialFeedback', e instanceof Error ? e.message : 'Download failed', 'error');
+        }
+      });
+      document.getElementById('copyPublicProfilePreviewBtn').addEventListener('click', async () => {
+        const btn = document.getElementById('copyPublicProfilePreviewBtn');
+        try {
+          const summary = (await api('/api/public-profile/preview')).data || null;
+          await navigator.clipboard.writeText(toPrettyJson(summary));
+          toast('Public profile preview copied');
+          flashButton(btn, 'Copied');
+        } catch (e) {
+          setFeedback('profileFeedback', e instanceof Error ? e.message : 'Copy preview failed', 'error');
         }
       });
       document.getElementById('logLevelFilter').addEventListener('change', (event) => {

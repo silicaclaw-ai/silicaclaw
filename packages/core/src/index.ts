@@ -5,6 +5,7 @@ export * from "./profile";
 export * from "./presence";
 export * from "./indexing";
 export * from "./directory";
+export * from "./publicProfileSummary";
 export * from "./socialConfig";
 export * from "./socialResolver";
 export * from "./socialTemplate";

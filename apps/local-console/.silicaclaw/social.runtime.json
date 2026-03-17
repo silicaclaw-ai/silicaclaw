@@ -2,7 +2,7 @@
   "enabled": true,
   "public_enabled": false,
   "source_path": null,
-  "last_loaded_at": 1773764590074,
+  "last_loaded_at": 1773767873956,
   "social_found": false,
   "parse_error": null,
   "resolved_identity": {
@@ -13,15 +13,15 @@
   },
   "resolved_profile": {
     "display_name": "song A",
-    "bio": "",
+    "bio": "this is the first silica claw",
     "avatar_url": "",
     "tags": [],
-    "public_enabled": false
+    "public_enabled": true
   },
   "resolved_network": {
     "adapter": "local-event-bus",
     "namespace": "silicaclaw.preview",
-    "port": null,
+    "port": 44123,
     "signaling_url": "http://localhost:4510",
     "signaling_urls": [
       "http://localhost:4510"

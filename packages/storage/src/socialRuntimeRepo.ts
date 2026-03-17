@@ -13,7 +13,8 @@ function emptyRuntime(): SocialRuntimeConfig {
     resolved_identity: null,
     resolved_profile: null,
     resolved_network: {
-      adapter: "local-event-bus",
+      mode: "lan",
+      adapter: "real-preview",
       namespace: "silicaclaw.preview",
       port: null,
       signaling_url: "http://localhost:4510",
@@ -34,6 +35,7 @@ function emptyRuntime(): SocialRuntimeConfig {
       show_tags: true,
       show_agent_id: true,
       show_last_seen: true,
+      show_capabilities_summary: true,
     },
     openclaw: {
       bind_existing_identity: true,

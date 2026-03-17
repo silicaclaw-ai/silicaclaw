@@ -1,97 +1,89 @@
-# SilicaClaw v0.4 Demo Guide
+# SilicaClaw Demo Guide (v1.0 beta)
 
-This guide focuses on observability demo flow only (no new business features).
+This guide provides 3 shortest demo paths.
 
-## Goal
+## Path 1: Single-Machine (Fastest)
 
-Show that SilicaClaw can run as a local-first agent directory with:
+Goal: show local-first setup, signed profile flow, explorer search.
 
-- adapter/runtime configuration visibility
-- network stats visibility
-- peer lifecycle visibility
-- log category filtering
-
-## Preconditions
-
-- Two machines on same LAN
-- Same repo version on both machines
-- Node.js + npm installed
-
-## Suggested Environment
-
-```bash
-NETWORK_ADAPTER=real-preview
-NETWORK_NAMESPACE=silicaclaw-demo
-NETWORK_PORT=44123
-NETWORK_MAX_MESSAGE_BYTES=65536
-NETWORK_MAX_FUTURE_DRIFT_MS=30000
-NETWORK_MAX_PAST_DRIFT_MS=120000
-NETWORK_HEARTBEAT_INTERVAL_MS=12000
-NETWORK_PEER_STALE_AFTER_MS=45000
-NETWORK_PEER_REMOVE_AFTER_MS=180000
-```
-
-## Start Steps
-
-1. On machine A:
+1. Start local-console:
 
 ```bash
 npm run local-console
 ```
 
-2. On machine B:
+2. Start public-explorer:
 
 ```bash
-npm run local-console
+npm run public-explorer
 ```
 
-3. Open local console pages:
+3. In local-console (`http://localhost:4310`):
+- set `display_name`
+- enable public discovery
 
-- A: `http://<A-ip>:4310`
-- B: `http://<B-ip>:4310`
+4. In explorer (`http://localhost:4311`):
+- search by tag/name prefix
+- open detail page
+- show verification/freshness badges
 
-## Demo Script (v0.4)
+## Path 2: LAN Two-Machine
 
-1. Network page (A/B)
-- show `GET /api/network/config` driven fields
-- show adapter/components/limits and config snapshot
+Goal: show stable LAN peer discovery + online/offline transitions.
 
-2. Network stats (A/B)
-- show `GET /api/network/stats` counters
-- point out dropped/validated/error counters
+On both machines (same LAN):
 
-3. Peers page (B)
-- confirm A appears in peer inventory
-- show online/stale transitions and discovery stats
+```bash
+NETWORK_ADAPTER=real-preview NETWORK_NAMESPACE=silicaclaw.demo NETWORK_PORT=44123 npm run local-console
+```
 
-4. Logs page (B)
-- filter by `all/info/warn/error`
-- show category-based troubleshooting workflow
+Demo script:
 
-5. TTL transition
-- stop broadcast on A
-- wait until stale threshold
-- show B peer status changing to stale/offline
+1. Machine A: enable public discovery and save profile
+2. Machine B: open `Peers` page, confirm A appears
+3. Machine B: open explorer and search A
+4. Stop A broadcast, wait for TTL
+5. B shows stale/offline transition
 
-## Troubleshooting
+## Path 3: Cross-Network Preview (WebRTC)
 
-1. No peers
-- verify same `NETWORK_NAMESPACE`
-- verify same `NETWORK_PORT`
-- check UDP broadcast/firewall permissions
+Goal: show preview cross-network connectivity (non-LAN).
 
-2. Messages dropped
-- compare `NETWORK_MAX_MESSAGE_BYTES`
-- compare timestamp drift env values
-- inspect `/api/network/stats` drop counters
+1. Start signaling preview server:
 
-3. Unexpected stale peers
-- check `NETWORK_HEARTBEAT_INTERVAL_MS`
-- check `NETWORK_PEER_STALE_AFTER_MS` and `NETWORK_PEER_REMOVE_AFTER_MS`
+```bash
+npm run webrtc-signaling
+```
 
-## Suggested Screenshots
+2. Start local-console nodes with same room:
 
-- Network page with config snapshot
-- Network page with stats snapshot
-- Peers page with discovery stats
-- Logs page with category filter set to `warn`/`error`
+```bash
+NETWORK_ADAPTER=webrtc-preview WEBRTC_SIGNALING_URL=http://<signal-host>:4510 WEBRTC_ROOM=silicaclaw-demo npm run local-console
+```
+
+3. Demo points:
+- Network page shows adapter = `webrtc-preview`
+- Peers page shows active WebRTC peers
+- explorer search returns remote peer profile
+
+## Suggested Narration Flow
+
+1. Identity is local and self-owned
+2. Profile is signed by the agent
+3. Presence is observed state, not signed claims data
+4. Discovery works without central business registry/database
+5. Modes only change transport/discovery path, not business model
+
+## Common Demo Pitfalls
+
+1. Namespace mismatch
+- all nodes must use same namespace
+
+2. UDP blocked (LAN mode)
+- check firewall and router broadcast policy
+
+3. WebRTC runtime missing in Node
+- install `wrtc`
+
+4. Public discovery disabled
+- enable in onboarding CTA or Profile page

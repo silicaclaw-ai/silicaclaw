@@ -35,26 +35,11 @@ export function generateSocialMdTemplate(runtimeConfig: SocialRuntimeConfig | nu
 
   const displayName = asString(profile?.display_name, "");
   const bio = asString(profile?.bio, "");
-  const avatarUrl = asString(profile?.avatar_url, "");
   const tags = asStringArray(profile?.tags, ["openclaw", "local-first"]);
-
-  const namespace = asString(network?.namespace, "silicaclaw.preview");
-  const adapter =
-    network?.adapter === "mock" ||
-    network?.adapter === "local-event-bus" ||
-    network?.adapter === "real-preview" ||
-    network?.adapter === "webrtc-preview"
-      ? network.adapter
-      : "local-event-bus";
-  const port = Number.isFinite(network?.port) ? Number(network?.port) : 44123;
-  const signalingUrl = asString(network?.signaling_url, "http://localhost:4510");
-  const signalingUrls = asStringArray(
-    network?.signaling_urls,
-    signalingUrl ? [signalingUrl] : ["http://localhost:4510"]
-  );
-  const room = asString(network?.room, "silicaclaw-room");
-  const seedPeers = asStringArray(network?.seed_peers, []);
-  const bootstrapHints = asStringArray(network?.bootstrap_hints, []);
+  const mode =
+    network?.mode === "local" || network?.mode === "lan" || network?.mode === "global-preview"
+      ? network.mode
+      : "lan";
 
   const discoverable = asBool(discovery?.discoverable, true);
   const allowProfileBroadcast = asBool(discovery?.allow_profile_broadcast, true);
@@ -65,6 +50,7 @@ export function generateSocialMdTemplate(runtimeConfig: SocialRuntimeConfig | nu
   const showTags = asBool(visibility?.show_tags, true);
   const showAgentId = asBool(visibility?.show_agent_id, true);
   const showLastSeen = asBool(visibility?.show_last_seen, true);
+  const showCapabilitiesSummary = asBool(visibility?.show_capabilities_summary, true);
 
   const bindExistingIdentity = asBool(openclaw?.bind_existing_identity, true);
   const useOpenClawProfile = asBool(openclaw?.use_openclaw_profile_if_available, true);
@@ -76,20 +62,11 @@ public_enabled: ${publicEnabled}
 identity:
   display_name: ${yamlString(displayName)}
   bio: ${yamlString(bio)}
-  avatar_url: ${yamlString(avatarUrl)}
   tags:
 ${yamlStringList(tags.map((tag) => asString(tag, "")), "    ")}
 
 network:
-  namespace: ${yamlString(namespace)}
-  adapter: ${yamlString(adapter)}
-  port: ${port}
-  signaling_url: ${yamlString(signalingUrl)}
-  signaling_urls:
-${yamlStringList(signalingUrls, "    ")}
-  room: ${yamlString(room)}
-  seed_peers:${seedPeers.length > 0 ? `\n${yamlStringList(seedPeers, "    ")}` : " []"}
-  bootstrap_hints:${bootstrapHints.length > 0 ? `\n${yamlStringList(bootstrapHints, "    ")}` : " []"}
+  mode: ${yamlString(mode)}
 
 discovery:
   discoverable: ${discoverable}
@@ -102,6 +79,7 @@ visibility:
   show_tags: ${showTags}
   show_agent_id: ${showAgentId}
   show_last_seen: ${showLastSeen}
+  show_capabilities_summary: ${showCapabilitiesSummary}
 
 openclaw:
   bind_existing_identity: ${bindExistingIdentity}
@@ -114,5 +92,6 @@ Generated from current SilicaClaw runtime state.
 
 - Save as \`social.md\` in your OpenClaw workspace.
 - This export does not auto-overwrite any existing file.
+- Advanced network fields are intentionally hidden in template and resolved in runtime.
 `;
 }

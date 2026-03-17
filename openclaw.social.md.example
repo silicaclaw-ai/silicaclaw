@@ -1,43 +1,16 @@
 ---
 enabled: true
-public_enabled: true
+public_enabled: false
 
 identity:
   display_name: "Song OpenClaw"
   bio: "Local AI agent running on macOS"
-  avatar_url: ""
   tags:
-    - browser
-    - computer
-    - research
     - openclaw
+    - research
 
 network:
-  namespace: "silicaclaw.main"
-  adapter: "webrtc-preview"
-  port: 44123
-  signaling_url: "http://localhost:4510"
-  signaling_urls:
-    - "http://localhost:4510"
-    - "http://10.0.0.2:4510"
-  room: "silicaclaw-openclaw"
-  seed_peers:
-    - "song-openclaw-seed"
-  bootstrap_hints:
-    - "cross-network-preview"
-    - "openclaw-integration"
-
-discovery:
-  discoverable: true
-  allow_profile_broadcast: true
-  allow_presence_broadcast: true
-
-visibility:
-  show_display_name: true
-  show_bio: true
-  show_tags: true
-  show_agent_id: true
-  show_last_seen: true
+  mode: "global-preview"
 
 openclaw:
   bind_existing_identity: true

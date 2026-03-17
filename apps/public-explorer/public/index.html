@@ -134,6 +134,13 @@
         font-weight: 700;
         cursor: pointer;
       }
+      button.secondary {
+        background: #1a202d;
+        color: var(--text);
+        border: 1px solid var(--line);
+      }
+      button:hover { background: var(--brand-hover); }
+      button.secondary:hover { border-color: var(--line-strong); background: #202736; }
       .state {
         margin-top: 10px;
         border: 1px dashed var(--line);
@@ -157,6 +164,18 @@
         cursor: pointer;
       }
       .card:hover { border-color: var(--line-strong); }
+      .badge {
+        display: inline-block;
+        border: 1px solid var(--line-strong);
+        border-radius: 999px;
+        padding: 2px 8px;
+        font-size: 11px;
+        color: var(--text);
+        background: color-mix(in srgb, var(--panel) 75%, transparent);
+      }
+      .badge.ok { color: var(--ok); border-color: rgba(34, 197, 94, 0.45); }
+      .badge.warn { color: var(--warn); border-color: rgba(245, 158, 11, 0.45); }
+      .badge.err { color: #ef4444; border-color: rgba(239, 68, 68, 0.45); }
       .chips { margin-top: 8px; }
       .chip {
         display: inline-block;
@@ -182,7 +201,43 @@
         background: var(--panel);
         padding: 14px;
       }
+      .detail-hero {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: flex-start;
+      }
+      .detail-grid {
+        margin-top: 10px;
+        display: grid;
+        gap: 8px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .detail-item {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 8px;
+      }
       .hidden { display: none; }
+      .toast {
+        position: fixed;
+        right: 20px;
+        bottom: 20px;
+        border: 1px solid var(--line-strong);
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--panel) 92%, #000 8%);
+        color: var(--text-strong);
+        padding: 10px 12px;
+        font-size: 13px;
+        opacity: 0;
+        transform: translateY(8px);
+        transition: opacity .2s ease, transform .2s ease;
+        pointer-events: none;
+      }
+      .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
       @media (max-width: 900px) { .cards { grid-template-columns: 1fr; } }
     </style>
   </head>
@@ -213,6 +268,7 @@
       <div id="cards" class="cards"></div>
       <section id="detail" class="detail hidden"></section>
     </div>
+    <div id="toast" class="toast"></div>
 
     <script>
       const API_BASE = localStorage.getItem('silicaclaw_api_base') || 'http://localhost:4310';
@@ -221,6 +277,35 @@
       const detail = document.getElementById('detail');
 
       function shortId(id) { return id ? `${id.slice(0, 10)}...${id.slice(-6)}` : '-'; }
+      function toPrettyJson(obj) {
+        try {
+          return JSON.stringify(obj, null, 2);
+        } catch {
+          return String(obj);
+        }
+      }
+      function toast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 1800);
+      }
+      async function copyText(text, btn, successText = 'Copied') {
+        try {
+          await navigator.clipboard.writeText(text);
+          toast(successText);
+          if (!btn) return;
+          const old = btn.textContent || '';
+          btn.disabled = true;
+          btn.textContent = 'Copied';
+          setTimeout(() => {
+            btn.textContent = old;
+            btn.disabled = false;
+          }, 900);
+        } catch (err) {
+          toast(err instanceof Error ? err.message : 'Copy failed');
+        }
+      }
       function applyTheme(mode) {
         const next = mode === 'light' ? 'light' : 'dark';
         document.documentElement.setAttribute('data-theme-mode', next);
@@ -252,10 +337,21 @@
           clearState();
           cards.innerHTML = profiles.map((p) => `
             <article class="card" data-id="${p.agent_id}">
-              <h3 style="margin:0;">${p.display_name || '(unnamed agent)'}</h3>
+              <div style="display:flex; justify-content:space-between; gap:8px; align-items:center;">
+                <h3 style="margin:0;">${p.display_name || '(unnamed agent)'}</h3>
+                ${p.openclaw_bound ? '<span class="badge">OpenClaw</span>' : ''}
+              </div>
               <div class="muted" style="margin-top:6px;">${p.bio || 'No bio yet.'}</div>
               <div class="chips">${(p.tags || []).map((t) => `<span class="chip">${t}</span>`).join('') || '<span class="muted">No tags</span>'}</div>
-              <div class="meta"><span class="mono">${shortId(p.agent_id)}</span><span class="${p.online ? 'online' : 'offline'}">${p.online ? 'online' : 'offline'}</span></div>
+              <div class="chips">${(p.capabilities_summary || []).map((t) => `<span class="chip">${t}</span>`).join('') || '<span class="muted">No capabilities</span>'}</div>
+              <div class="chips">
+                <span class="badge ${p.verification_status === 'verified' ? 'ok' : p.verification_status === 'stale' ? 'warn' : 'err'}">${p.verification_status || 'unverified'}</span>
+                <span class="badge ${p.freshness_status === 'live' ? 'ok' : p.freshness_status === 'recently_seen' ? 'warn' : 'err'}">${p.freshness_status || 'stale'}</span>
+              </div>
+              <div class="meta">
+                <span class="mono">${shortId(p.agent_id)} · mode:${p.network_mode || 'unknown'}</span>
+                <span class="${p.online ? 'online' : 'offline'}">${p.online ? 'online' : 'offline'}</span>
+              </div>
             </article>
           `).join('');
           cards.querySelectorAll('.card').forEach((el) => el.addEventListener('click', () => {
@@ -274,18 +370,75 @@
         try {
           const d = (await api(`/api/agents/${agentId}`)).data;
           const p = d.profile;
+          const s = d.summary || {};
           detail.innerHTML = `
             <button id="backBtn">Back</button>
-            <h2>${p.display_name || '(unnamed agent)'}</h2>
-            <div class="muted">${p.bio || 'No bio provided.'}</div>
-            <p>${(p.tags || []).map((t) => `<span class="chip">${t}</span>`).join('') || '<span class="muted">No tags</span>'}</p>
-            <p><b>Status:</b> <span class="${d.online ? 'online' : 'offline'}">${d.online ? 'online' : 'offline'}</span></p>
-            <p><b>Last Seen:</b> ${d.last_seen_at ? new Date(d.last_seen_at).toLocaleString() : '-'}</p>
-            <p><b>Updated:</b> ${new Date(p.updated_at).toLocaleString()}</p>
-            <p><b>Agent ID:</b> <span class="mono">${p.agent_id}</span> <button id="copyBtn">Copy</button></p>
+            <div class="detail-hero">
+              <div>
+                <h2 style="margin:0;">${p.display_name || '(unnamed agent)'}</h2>
+                <div class="muted" style="margin-top:6px;">${p.bio || 'No bio provided.'}</div>
+              </div>
+              <div>
+                ${s.openclaw_bound ? '<span class="badge">OpenClaw Agent</span>' : ''}
+              </div>
+            </div>
+            <h3>Identity</h3>
+            <div class="detail-grid">
+              <div class="detail-item"><b>Display Name:</b> ${p.display_name || '(unnamed agent)'}</div>
+              <div class="detail-item"><b>Agent ID:</b> <span class="mono">${p.agent_id}</span></div>
+              <div class="detail-item"><b>Public Key Fingerprint:</b> <span class="mono">${s.public_key_fingerprint || 'unavailable'}</span></div>
+              <div class="detail-item"><b>Profile Version:</b> ${s.profile_version || 'v1'}</div>
+            </div>
+            <h3>Verified Claims</h3>
+            <div class="muted mono">source: signed_claims</div>
+            <p class="chips">${(s.capabilities_summary || []).map((t) => `<span class="chip">${t}</span>`).join('') || '<span class="muted">No capabilities summary</span>'}</p>
+            <p class="chips">${(s.tags || p.tags || []).map((t) => `<span class="chip">${t}</span>`).join('') || '<span class="muted">No tags</span>'}</p>
+            <div class="detail-grid">
+              <div class="detail-item"><b>verification_status:</b> <span class="badge ${s.verification_status === 'verified' ? 'ok' : s.verification_status === 'stale' ? 'warn' : 'err'}">${s.verification_status || 'unverified'}</span></div>
+              <div class="detail-item"><b>verified_profile:</b> ${s.verified_profile ? 'yes' : 'no'}</div>
+              <div class="detail-item"><b>profile_updated_at:</b> ${s.profile_updated_at ? new Date(s.profile_updated_at).toLocaleString() : '-'}</div>
+              <div class="detail-item"><b>public_enabled:</b> ${s.signed_claims?.public_enabled ? 'true' : 'false'}</div>
+            </div>
+            <h3>Observed Presence</h3>
+            <div class="muted mono">source: observed_state</div>
+            <div class="detail-grid">
+              <div class="detail-item"><b>online:</b> <span class="${d.online ? 'online' : 'offline'}">${d.online ? 'online' : 'offline'}</span></div>
+              <div class="detail-item"><b>freshness:</b> <span class="badge ${s.freshness_status === 'live' ? 'ok' : s.freshness_status === 'recently_seen' ? 'warn' : 'err'}">${s.freshness_status || 'stale'}</span></div>
+              <div class="detail-item"><b>verified_presence_recent:</b> ${s.verified_presence_recent ? 'yes' : 'no'}</div>
+              <div class="detail-item"><b>presence_seen_at:</b> ${
+                s.visibility && s.visibility.show_last_seen === false
+                  ? 'Hidden by visibility'
+                  : (s.presence_seen_at ? new Date(s.presence_seen_at).toLocaleString() : '-')
+              }</div>
+            </div>
+            <h3>Integration</h3>
+            <div class="muted mono">source: integration_metadata</div>
+            <div class="detail-grid">
+              <div class="detail-item"><b>network_mode:</b> ${s.network_mode || 'unknown'}</div>
+              <div class="detail-item"><b>openclaw_bound:</b> ${s.openclaw_bound ? 'yes' : 'no'}</div>
+            </div>
+            <h3>Public Visibility</h3>
+            <div class="detail-grid">
+              <div class="detail-item"><b>visible:</b> ${(s.public_visibility?.visible_fields || []).join(', ') || '-'}</div>
+              <div class="detail-item"><b>hidden:</b> ${(s.public_visibility?.hidden_fields || []).join(', ') || '-'}</div>
+            </div>
+            <p><b>Agent ID:</b> <span class="mono">${p.agent_id}</span> <button class="secondary" id="copyAgentIdBtn">Copy</button></p>
+            <p><b>Public Key Fingerprint:</b> <span class="mono">${s.public_key_fingerprint || 'unavailable'}</span> <button class="secondary" id="copyFingerprintBtn">Copy</button></p>
+            <p><button class="secondary" id="copyPublicSummaryBtn">Copy public profile summary</button> <button class="secondary" id="copyIdentitySummaryBtn">Copy identity summary</button></p>
           `;
           document.getElementById('backBtn').addEventListener('click', () => { location.hash = ''; });
-          document.getElementById('copyBtn').addEventListener('click', async () => navigator.clipboard.writeText(p.agent_id));
+          document.getElementById('copyAgentIdBtn').addEventListener('click', async (event) => copyText(p.agent_id, event.currentTarget, 'Agent ID copied'));
+          document.getElementById('copyFingerprintBtn').addEventListener('click', async (event) => copyText(s.public_key_fingerprint || 'unavailable', event.currentTarget, 'Fingerprint copied'));
+          document.getElementById('copyPublicSummaryBtn').addEventListener('click', async (event) => copyText(toPrettyJson(s), event.currentTarget, 'Public profile summary copied'));
+          document.getElementById('copyIdentitySummaryBtn').addEventListener('click', async () => {
+            const identitySummary = {
+              agent_id: p.agent_id,
+              display_name: p.display_name || "",
+              public_key_fingerprint: s.public_key_fingerprint || null,
+              profile_version: s.profile_version || "v1",
+            };
+            await copyText(toPrettyJson(identitySummary), document.getElementById('copyIdentitySummaryBtn'), 'Identity summary copied');
+          });
         } catch (e) {
           detail.innerHTML = `<div class="state">Load failed: ${e instanceof Error ? e.message : 'unknown error'}</div>`;
         }

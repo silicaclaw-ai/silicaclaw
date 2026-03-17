@@ -6,8 +6,10 @@ export type SocialIdentityConfig = {
 };
 
 export type SocialNetworkAdapter = "mock" | "local-event-bus" | "real-preview" | "webrtc-preview";
+export type SocialNetworkMode = "local" | "lan" | "global-preview";
 
 export type SocialNetworkConfig = {
+  mode: SocialNetworkMode;
   namespace: string;
   adapter: SocialNetworkAdapter;
   port: number;
@@ -30,6 +32,7 @@ export type SocialVisibilityConfig = {
   show_tags: boolean;
   show_agent_id: boolean;
   show_last_seen: boolean;
+  show_capabilities_summary: boolean;
 };
 
 export type SocialOpenClawConfig = {
@@ -75,6 +78,7 @@ export type SocialRuntimeConfig = {
     public_enabled: boolean;
   } | null;
   resolved_network: {
+    mode: SocialNetworkMode;
     adapter: SocialNetworkAdapter;
     namespace: string;
     port: number | null;
@@ -100,8 +104,9 @@ const DEFAULT_SOCIAL_CONFIG: SocialConfig = {
     tags: [],
   },
   network: {
+    mode: "lan",
     namespace: "silicaclaw.preview",
-    adapter: "local-event-bus",
+    adapter: "real-preview",
     port: 44123,
     signaling_url: "http://localhost:4510",
     signaling_urls: [],
@@ -120,6 +125,7 @@ const DEFAULT_SOCIAL_CONFIG: SocialConfig = {
     show_tags: true,
     show_agent_id: true,
     show_last_seen: true,
+    show_capabilities_summary: true,
   },
   openclaw: {
     bind_existing_identity: true,
@@ -299,6 +305,19 @@ function asAdapter(value: unknown, fallback: SocialNetworkAdapter): SocialNetwor
   return fallback;
 }
 
+function asMode(value: unknown, fallback: SocialNetworkMode): SocialNetworkMode {
+  if (value === "local" || value === "lan" || value === "global-preview") {
+    return value;
+  }
+  return fallback;
+}
+
+function adapterForMode(mode: SocialNetworkMode): SocialNetworkAdapter {
+  if (mode === "local") return "local-event-bus";
+  if (mode === "lan") return "real-preview";
+  return "webrtc-preview";
+}
+
 export function normalizeSocialConfig(input: unknown): SocialConfig {
   const root = asObject(input);
   const identity = asObject(root.identity);
@@ -312,6 +331,7 @@ export function normalizeSocialConfig(input: unknown): SocialConfig {
     network.signaling_urls,
     DEFAULT_SOCIAL_CONFIG.network.signaling_urls
   );
+  const mode = asMode(network.mode, DEFAULT_SOCIAL_CONFIG.network.mode);
 
   return {
     enabled: asBool(root.enabled, DEFAULT_SOCIAL_CONFIG.enabled),
@@ -323,8 +343,9 @@ export function normalizeSocialConfig(input: unknown): SocialConfig {
       tags: asStringArray(identity.tags, DEFAULT_SOCIAL_CONFIG.identity.tags),
     },
     network: {
+      mode,
       namespace: asString(network.namespace, DEFAULT_SOCIAL_CONFIG.network.namespace),
-      adapter: asAdapter(network.adapter, DEFAULT_SOCIAL_CONFIG.network.adapter),
+      adapter: asAdapter(network.adapter, adapterForMode(mode)),
       port: asNumber(network.port, DEFAULT_SOCIAL_CONFIG.network.port),
       signaling_url: signalingUrl,
       signaling_urls: signalingUrls.length > 0 ? signalingUrls : signalingUrl ? [signalingUrl] : [],
@@ -358,6 +379,10 @@ export function normalizeSocialConfig(input: unknown): SocialConfig {
         visibility.show_last_seen,
         DEFAULT_SOCIAL_CONFIG.visibility.show_last_seen
       ),
+      show_capabilities_summary: asBool(
+        visibility.show_capabilities_summary,
+        DEFAULT_SOCIAL_CONFIG.visibility.show_capabilities_summary
+      ),
     },
     openclaw: {
       bind_existing_identity: asBool(
@@ -376,41 +401,32 @@ export function getDefaultSocialConfig(): SocialConfig {
   return JSON.parse(JSON.stringify(DEFAULT_SOCIAL_CONFIG)) as SocialConfig;
 }
 
-export function generateDefaultSocialMdTemplate(): string {
+export type DefaultSocialTemplateOptions = {
+  display_name?: string;
+  bio?: string;
+  tags?: string[];
+  mode?: SocialNetworkMode;
+  public_enabled?: boolean;
+};
+
+export function generateDefaultSocialMdTemplate(options: DefaultSocialTemplateOptions = {}): string {
+  const displayName = options.display_name?.trim() || "My OpenClaw Agent";
+  const bio = options.bio?.trim() || "Local AI agent running on this machine";
+  const tags = Array.isArray(options.tags) && options.tags.length > 0 ? options.tags : ["openclaw", "local-first"];
+  const mode = options.mode ?? "lan";
+  const publicEnabled = typeof options.public_enabled === "boolean" ? options.public_enabled : false;
   return `---
 enabled: true
-public_enabled: false
+public_enabled: ${publicEnabled}
 
 identity:
-  display_name: "My OpenClaw Agent"
-  bio: "Local AI agent running on this machine"
-  avatar_url: ""
+  display_name: ${JSON.stringify(displayName)}
+  bio: ${JSON.stringify(bio)}
   tags:
-    - openclaw
-    - local-first
+${tags.map((tag) => `    - ${tag}`).join("\n")}
 
 network:
-  namespace: "silicaclaw.preview"
-  adapter: "local-event-bus"
-  port: 44123
-  signaling_url: "http://localhost:4510"
-  signaling_urls:
-    - "http://localhost:4510"
-  room: "silicaclaw-room"
-  seed_peers: []
-  bootstrap_hints: []
-
-discovery:
-  discoverable: true
-  allow_profile_broadcast: true
-  allow_presence_broadcast: true
-
-visibility:
-  show_display_name: true
-  show_bio: true
-  show_tags: true
-  show_agent_id: true
-  show_last_seen: true
+  mode: ${JSON.stringify(mode)}
 
 openclaw:
   bind_existing_identity: true

@@ -1,5 +1,235 @@
 # Changelog
 
+## v1.0 beta - 2026-03-18
+
+### Release Polish
+
+- added release docs:
+  - `INSTALL.md`
+  - `DEMO_GUIDE.md`
+  - `RELEASE_NOTES_v1.0.md`
+- README first-screen and structure polish:
+  - fixed v1.0 beta project positioning
+  - added concise feature summary
+  - added clear 3-mode overview (`local` / `lan` / `global-preview`)
+  - streamlined OpenClaw + `social.md` quick start
+- lightweight UI consistency polish:
+  - aligned copy feedback in local-console and public-explorer
+  - added consistent copy success toast/button feedback flow
+- demo path clarity:
+  - single-machine
+  - LAN two-machine
+  - cross-network preview
+
+### Kept
+
+- No central business server
+- No database
+- No chat/task/friend/payment modules
+- No changes to `network/discovery/profile/presence/signature` core logic
+
+## v0.9 - 2026-03-18
+
+### Added (Public Identity Page Model Polish)
+
+- claim model/view-model polish on display layer (no signed payload format change):
+  - `signed_claims`
+  - `observed_state`
+  - `integration_metadata`
+- timestamp clarity in summaries and detail page:
+  - `profile_updated_at`
+  - `presence_seen_at`
+- public-explorer detail sectioning:
+  - Identity
+  - Verified Claims
+  - Observed Presence
+  - Integration
+  - Public Visibility
+- copy/export helpers:
+  - public-explorer: `Copy public profile summary`, `Copy identity summary`
+  - local-console preview: `Copy public profile preview summary`
+- local-console Public Profile Preview visibility polish:
+  - explicit visible/hidden field markers
+
+### Kept
+
+- No central business server
+- No database
+- No chat/task/friend/payment modules
+- No reputation/trust graph / remote-permission systems
+- No changes to core network/discovery/profile/presence/signature logic
+
+## v0.8 - 2026-03-18
+
+### Added (Verification + Freshness Profile Signals)
+
+- lightweight verification summary on public profile display layer:
+  - `verified_profile`
+  - `verified_presence_recent`
+  - `verification_status` (`verified | stale | unverified`)
+- identity display polish:
+  - `public_key_fingerprint` in profile summary
+  - copy controls for `agent_id` and fingerprint in public explorer detail
+- freshness status labels:
+  - `live`
+  - `recently_seen`
+  - `stale`
+- public explorer UI enhancements:
+  - search cards show verification/freshness badges
+  - detail page includes verification summary block
+- local-console profile page:
+  - `Public Profile Preview` now emphasizes signed public profile output
+
+### Kept
+
+- No central business server
+- No database
+- No chat/task/friend/payment modules
+- No reputation/trust graph system
+- No changes to core network/discovery/profile/presence behavior or signature mechanism
+
+## v0.7 - 2026-03-18
+
+### Added (Public Agent Profile Polish)
+
+- display-layer public profile summary fields (no change to signed profile core):
+  - `network_mode`
+  - `openclaw_bound`
+  - `capabilities_summary`
+  - `profile_version`
+- lightweight capabilities summary generator (display-only):
+  - `browser`
+  - `computer`
+  - `research`
+  - `openclaw`
+- public explorer UI upgrades:
+  - search cards now show mode/capabilities/OpenClaw badge
+  - detail page styled as agent public profile page
+- visibility controls support extended:
+  - `show_tags`
+  - `show_last_seen`
+  - `show_capabilities_summary`
+- local-console Profile page:
+  - new `Public Profile Preview` section showing effective public summary
+
+### Kept
+
+- No central business server
+- No database
+- No chat/task/friend/payment modules
+- No changes to core network/discovery/profile/presence behavior
+
+## v0.6.4 - 2026-03-18
+
+### Improved (Public Discovery UX Clarity)
+
+- added fixed top status strip in local-console showing:
+  - `Connected to SilicaClaw`
+  - `Network mode`
+  - `Public discovery enabled/disabled`
+- onboarding/public CTA clarity:
+  - enable flow now includes concise privacy/scope explanation
+  - explanation states profile/presence-only sharing, no private files, no chat/remote-control
+- added public discovery disable endpoint:
+  - `POST /api/public-discovery/disable`
+  - state refreshes immediately after toggle
+- status reason polish:
+  - when discoverable is false due visibility policy, reason remains explicit: `Public discovery is disabled`
+
+### Kept
+
+- No central business server
+- No database
+- No chat/task/friend/payment modules
+- No changes to core network/discovery/profile/presence logic
+
+## v0.6.3 - 2026-03-18
+
+### Improved (First-Run Public Strategy)
+
+- first-run generated `social.md` keeps:
+  - `enabled: true`
+  - `public_enabled: false`
+- onboarding CTA added on home top area when public discovery is disabled:
+  - `Enable Public Discovery`
+  - explicit confirmation required
+  - runtime state update only (no silent `social.md` overwrite)
+- integration status reason polishing:
+  - when discoverable is false due visibility, reason is now `Public discovery is disabled`
+- Social Config status wording now clearly separates:
+  - connectivity (`Connected to SilicaClaw`)
+  - public visibility (`Public discovery enabled/disabled`)
+
+### Kept
+
+- No central business server
+- No database
+- No chat/task/friend/payment modules
+- No changes to core network/discovery/profile/presence logic
+
+## v0.6.2 - 2026-03-18
+
+### Added (OpenClaw Native Integration Preview)
+
+- unified integration status summary structure:
+  - `configured`
+  - `running`
+  - `discoverable`
+  - `network_mode`
+  - `public_enabled`
+  - `agent_id`
+  - `display_name`
+  - `connected_to_silicaclaw`
+- new endpoint:
+  - `GET /api/integration/status`
+  - includes concise reason hints for unmet states
+- Social Config UI polish:
+  - explicit tri-state cards (Configured / Running / Discoverable)
+  - top summary sentence for integration status
+  - short reason hints when a state is not satisfied
+
+### Kept
+
+- No central business server
+- No database
+- No chat/task/friend/payment modules
+- No changes to core network/discovery/profile/presence logic
+
+## v0.6.1 - 2026-03-18
+
+### Improved (User Config UX)
+
+- introduced `network.mode` as primary social config entrypoint:
+  - `local` -> `local-event-bus`
+  - `lan` -> `real-preview`
+  - `global-preview` -> `webrtc-preview`
+- simplified default templates (`social.md.example`, `openclaw.social.md.example`, export template):
+  - keep only minimal user fields
+  - hide advanced signaling/bootstrap fields by default
+- runtime still expands full resolved network fields in `.silicaclaw/social.runtime.json`:
+  - `adapter`, `signaling_urls`, `room`, `bootstrap_sources`, `seed_peers`, `bootstrap_hints`
+- `global-preview` now resolves built-in bootstrap defaults when advanced fields are not provided
+- local-console Social Config page now prioritizes:
+  - network mode
+  - connected status
+  - discoverable status
+  - advanced network details moved into a collapsed section
+- first-run onboarding improvements:
+  - auto-generate minimal `social.md` when missing
+  - auto default `identity.display_name` for generated template
+  - top onboarding notice includes connected/mode/discoverable + suggested next steps
+- one-click runtime mode switch in Social Config:
+  - `local | lan | global-preview`
+  - updates runtime/template flow only
+  - does not auto-overwrite existing `social.md`
+
+### Kept
+
+- No central business server
+- No database
+- No chat/task/friend/payment modules
+- No DHT mainnet / complex routing
+
 ## v0.6 - 2026-03-18
 
 ### Added (Bootstrap / Discovery Groundwork)

@@ -2,6 +2,8 @@ import express, { NextFunction, Request, Response } from "express";
 import cors from "cors";
 import { resolve } from "path";
 import { existsSync } from "fs";
+import { createHash } from "crypto";
+import { hostname } from "os";
 import {
   AgentIdentity,
   DirectoryState,
@@ -9,7 +11,9 @@ import {
   PresenceRecord,
   ProfileInput,
   PublicProfile,
+  PublicProfileSummary,
   SignedProfileRecord,
+  buildPublicProfileSummary,
   buildIndexRecords,
   cleanupExpiredPresence,
   createDefaultProfileInput,
@@ -63,6 +67,7 @@ const WEBRTC_SIGNALING_URLS = process.env.WEBRTC_SIGNALING_URLS || "";
 const WEBRTC_ROOM = process.env.WEBRTC_ROOM || "silicaclaw-room";
 const WEBRTC_SEED_PEERS = process.env.WEBRTC_SEED_PEERS || "";
 const WEBRTC_BOOTSTRAP_HINTS = process.env.WEBRTC_BOOTSTRAP_HINTS || "";
+const PROFILE_VERSION = "v0.9";
 
 function parseListEnv(raw: string): string[] {
   return raw
@@ -84,12 +89,23 @@ type ApiErrorShape = {
 type InitState = {
   identity_auto_created: boolean;
   profile_auto_created: boolean;
+  social_auto_created: boolean;
   initialized_at: number;
 };
 
-type SearchResult = PublicProfile & {
-  last_seen_at: number;
-  online: boolean;
+type IntegrationStatusSummary = {
+  configured: boolean;
+  running: boolean;
+  discoverable: boolean;
+  network_mode: "local" | "lan" | "global-preview";
+  public_enabled: boolean;
+  agent_id: string;
+  display_name: string;
+  connected_to_silicaclaw: boolean;
+  configured_reason: string;
+  running_reason: string;
+  discoverable_reason: string;
+  status_line: string;
 };
 
 class LocalNodeService {
@@ -116,11 +132,13 @@ class LocalNodeService {
   private initState: InitState = {
     identity_auto_created: false,
     profile_auto_created: false,
+    social_auto_created: false,
     initialized_at: 0,
   };
 
   private network: NetworkAdapter;
   private adapterMode: "mock" | "local-event-bus" | "real-preview" | "webrtc-preview";
+  private networkMode: "local" | "lan" | "global-preview" = "lan";
   private networkNamespace: string;
   private networkPort: number | null;
   private socialConfig: SocialConfig;
@@ -140,7 +158,18 @@ class LocalNodeService {
   private webrtcBootstrapSources: string[] = [];
 
   constructor() {
-    const loadedSocial = loadSocialConfig(process.cwd());
+    let loadedSocial = loadSocialConfig(process.cwd());
+    if (!loadedSocial.meta.found) {
+      ensureDefaultSocialMd(process.cwd(), {
+        display_name: this.getDefaultDisplayName(),
+        bio: "Local AI agent connected to SilicaClaw",
+        tags: ["openclaw", "local-first"],
+        mode: "lan",
+        public_enabled: false,
+      });
+      loadedSocial = loadSocialConfig(process.cwd());
+      this.initState.social_auto_created = true;
+    }
     this.socialConfig = loadedSocial.config;
     this.socialSourcePath = loadedSocial.meta.source_path;
     this.socialFound = loadedSocial.meta.found;
@@ -151,7 +180,7 @@ class LocalNodeService {
     this.networkPort = Number(this.socialConfig.network.port || process.env.NETWORK_PORT || 44123);
     this.applyResolvedNetworkConfig();
 
-    const mode = this.socialConfig.network.adapter || process.env.NETWORK_ADAPTER;
+    const mode = (process.env.NETWORK_ADAPTER as typeof this.adapterMode | undefined) || this.socialConfig.network.adapter;
     if (mode === "mock") {
       this.network = new MockNetworkAdapter();
       this.adapterMode = "mock";
@@ -247,10 +276,12 @@ class LocalNodeService {
       offline_count: Math.max(0, profiles.length - onlineCount),
       init_state: this.initState,
       presence_ttl_ms: PRESENCE_TTL_MS,
+      onboarding: this.getOnboardingSummary(),
       social: {
         found: this.socialFound,
         enabled: this.socialConfig.enabled,
         source_path: this.socialSourcePath,
+        network_mode: this.networkMode,
       },
     };
   }
@@ -262,6 +293,7 @@ class LocalNodeService {
     return {
       status: "running",
       adapter: this.adapterMode,
+      mode: this.networkMode,
       received_count: this.receivedCount,
       broadcast_count: this.broadcastCount,
       last_message_at: this.lastMessageAt,
@@ -300,6 +332,7 @@ class LocalNodeService {
     const diagnostics = this.getAdapterDiagnostics();
     return {
       adapter: this.adapterMode,
+      mode: this.networkMode,
       namespace: diagnostics?.namespace ?? this.networkNamespace,
       port: this.networkPort,
       components: diagnostics?.components ?? {
@@ -360,6 +393,7 @@ class LocalNodeService {
 
     return {
       adapter: this.adapterMode,
+      mode: this.networkMode,
       message_counters: {
         received_total: this.receivedCount,
         broadcast_total: this.broadcastCount,
@@ -439,6 +473,7 @@ class LocalNodeService {
     const diagnostics = this.getAdapterDiagnostics();
     return {
       adapter: this.adapterMode,
+      mode: this.networkMode,
       namespace: diagnostics?.namespace ?? this.networkNamespace,
       total: diagnostics?.discovery_events_total ?? 0,
       last_event_at: diagnostics?.last_discovery_event_at ?? 0,
@@ -458,41 +493,133 @@ class LocalNodeService {
       social_config: this.socialConfig,
       raw_frontmatter: this.socialRawFrontmatter,
       runtime: this.socialRuntime,
+      init_state: this.initState,
     };
   }
 
   getIntegrationSummary() {
+    const status = this.getIntegrationStatus();
     const runtimeGenerated = Boolean(this.socialRuntime && this.socialRuntime.last_loaded_at > 0);
     const identitySource = this.socialRuntime?.resolved_identity?.source ?? this.resolvedIdentitySource;
-    const connected = this.socialFound && runtimeGenerated;
-    const running = this.socialConfig.enabled && this.broadcastEnabled;
-    const discoverable =
-      running &&
-      Boolean(this.profile?.public_enabled) &&
-      this.socialConfig.discovery.discoverable &&
-      this.socialConfig.discovery.allow_profile_broadcast &&
-      this.socialConfig.discovery.allow_presence_broadcast;
 
     return {
-      connected,
-      discoverable,
+      connected: status.connected_to_silicaclaw,
+      discoverable: status.discoverable,
+      summary_line: status.status_line,
       social_md_found: this.socialFound,
       social_md_source_path: this.socialSourcePath,
       runtime_generated: runtimeGenerated,
       reused_openclaw_identity: identitySource === "openclaw-existing",
       openclaw_identity_source_path: this.resolvedOpenClawIdentityPath,
-      current_public_enabled: Boolean(this.profile?.public_enabled),
+      current_public_enabled: status.public_enabled,
+      current_network_mode: status.network_mode,
       current_adapter: this.adapterMode,
       current_namespace: this.networkNamespace,
       current_broadcast_status: this.broadcastEnabled ? "running" : "paused",
       configured_enabled: this.socialConfig.enabled,
       configured_public_enabled: this.socialConfig.public_enabled,
       configured_discoverable: this.socialConfig.discovery.discoverable,
+      configured: status.configured,
+      running: status.running,
+      configured_reason: status.configured_reason,
+      running_reason: status.running_reason,
+      discoverable_reason: status.discoverable_reason,
+      agent_id: status.agent_id,
+      display_name: status.display_name,
+    };
+  }
+
+  getIntegrationStatus(): IntegrationStatusSummary {
+    const runtimeGenerated = Boolean(this.socialRuntime && this.socialRuntime.last_loaded_at > 0);
+    const connected = this.socialFound && runtimeGenerated && !this.socialParseError;
+    const configured = connected && this.socialConfig.enabled;
+    const running = configured && this.broadcastEnabled;
+    const publicEnabled = Boolean(this.profile?.public_enabled);
+    const discoveryEnabled =
+      this.socialConfig.discovery.discoverable &&
+      this.socialConfig.discovery.allow_profile_broadcast &&
+      this.socialConfig.discovery.allow_presence_broadcast;
+    const discoverable = running && publicEnabled && discoveryEnabled;
+
+    const configuredReason = configured
+      ? "configured"
+      : !this.socialFound
+        ? "social.md not found"
+        : this.socialParseError
+          ? "social.md parse error"
+          : !this.socialConfig.enabled
+            ? "integration disabled"
+            : "runtime not ready";
+
+    const runningReason = running
+      ? "running"
+      : !configured
+        ? "not configured"
+        : !this.broadcastEnabled
+          ? "broadcast paused"
+          : "not running";
+
+    const discoverableReason = discoverable
+      ? "discoverable"
+      : !running
+        ? "not running"
+        : !publicEnabled
+          ? "Public discovery is disabled"
+          : !this.socialConfig.discovery.discoverable
+            ? "discovery disabled"
+            : !this.socialConfig.discovery.allow_profile_broadcast
+              ? "profile broadcast disabled"
+              : !this.socialConfig.discovery.allow_presence_broadcast
+                ? "presence broadcast disabled"
+                : "not discoverable";
+
+    return {
+      configured,
+      running,
+      discoverable,
+      network_mode: this.networkMode,
+      public_enabled: publicEnabled,
+      agent_id: this.identity?.agent_id ?? "",
+      display_name: this.profile?.display_name ?? "",
+      connected_to_silicaclaw: connected,
+      configured_reason: configuredReason,
+      running_reason: runningReason,
+      discoverable_reason: discoverableReason,
+      status_line: `${connected ? "Connected to SilicaClaw" : "Not connected to SilicaClaw"} · ${publicEnabled ? "Public discovery enabled" : "Public discovery disabled"} · Using ${this.networkMode}`,
+    };
+  }
+
+  async setPublicDiscoveryRuntime(enabled: boolean) {
+    const profile = await this.updateProfile({ public_enabled: enabled });
+    this.socialConfig.public_enabled = enabled;
+    await this.writeSocialRuntime();
+    return {
+      public_enabled: profile.public_enabled,
+      note: "Runtime public discovery updated. Existing social.md is unchanged.",
+    };
+  }
+
+  async setNetworkModeRuntime(mode: "local" | "lan" | "global-preview") {
+    const currentMode = this.networkMode;
+    if (mode !== "local" && mode !== "lan" && mode !== "global-preview") {
+      throw new Error("invalid_network_mode");
+    }
+    this.socialConfig.network.mode = mode;
+    this.socialConfig.network.adapter = this.adapterForMode(mode);
+    this.applyResolvedNetworkConfig();
+    this.socialNetworkRequiresRestart = currentMode !== mode || this.adapterMode !== this.socialConfig.network.adapter;
+    await this.writeSocialRuntime();
+    return {
+      mode: this.networkMode,
+      adapter: this.socialConfig.network.adapter,
+      network_requires_restart: this.socialNetworkRequiresRestart,
+      note: "Runtime mode updated. Existing social.md is unchanged.",
     };
   }
 
   async reloadSocialConfig() {
     const before = {
+      mode: this.networkMode,
       adapter: this.adapterMode,
       namespace: this.networkNamespace,
       port: this.networkPort,
@@ -509,11 +636,13 @@ class LocalNodeService {
     await this.applySocialConfigOnCurrentState();
 
     const after = {
+      mode: this.networkMode,
       adapter: this.socialConfig.network.adapter,
       namespace: this.networkNamespace,
       port: this.networkPort,
     };
     this.socialNetworkRequiresRestart =
+      before.mode !== after.mode ||
       before.adapter !== after.adapter ||
       before.namespace !== after.namespace ||
       (before.port ?? null) !== (after.port ?? null);
@@ -524,7 +653,13 @@ class LocalNodeService {
   }
 
   async generateDefaultSocialMd() {
-    const result = ensureDefaultSocialMd(process.cwd());
+    const result = ensureDefaultSocialMd(process.cwd(), {
+      display_name: this.getDefaultDisplayName(),
+      bio: "Local AI agent connected to SilicaClaw",
+      tags: ["openclaw", "local-first"],
+      mode: this.networkMode,
+      public_enabled: Boolean(this.profile?.public_enabled),
+    });
     await this.reloadSocialConfig();
     return result;
   }
@@ -541,16 +676,29 @@ class LocalNodeService {
     return this.directory;
   }
 
-  search(keyword: string): SearchResult[] {
+  search(keyword: string): PublicProfileSummary[] {
     this.compactCacheInMemory();
     return searchDirectory(this.directory, keyword, { presenceTTLms: PRESENCE_TTL_MS }).map((profile) => {
       const lastSeenAt = this.directory.presence[profile.agent_id] ?? 0;
-      return {
-        ...profile,
-        last_seen_at: lastSeenAt,
-        online: isAgentOnline(lastSeenAt, Date.now(), PRESENCE_TTL_MS),
-      };
+      return this.toPublicProfileSummary(profile, { last_seen_at: lastSeenAt });
     });
+  }
+
+  getPublicProfilePreview(): PublicProfileSummary | null {
+    if (!this.profile) {
+      return null;
+    }
+    const lastSeenAt = this.directory.presence[this.profile.agent_id] ?? 0;
+    return this.toPublicProfileSummary(this.profile, { last_seen_at: lastSeenAt });
+  }
+
+  getAgentPublicSummary(agentId: string): PublicProfileSummary | null {
+    const profile = this.directory.profiles[agentId];
+    if (!profile) {
+      return null;
+    }
+    const lastSeenAt = this.directory.presence[agentId] ?? 0;
+    return this.toPublicProfileSummary(profile, { last_seen_at: lastSeenAt });
   }
 
   getProfile(): PublicProfile | null {
@@ -686,8 +834,12 @@ class LocalNodeService {
     this.initState = {
       identity_auto_created: false,
       profile_auto_created: false,
+      social_auto_created: this.initState.social_auto_created,
       initialized_at: Date.now(),
     };
+    if (this.initState.social_auto_created) {
+      await this.log("info", "social.md missing, auto-generated minimal default template");
+    }
 
     const existingIdentity = await this.identityRepo.get();
     const resolvedIdentity = resolveIdentityWithSocial({
@@ -785,6 +937,7 @@ class LocalNodeService {
           }
         : null,
       resolved_network: {
+        mode: this.networkMode,
         adapter: this.adapterMode,
         namespace: this.networkNamespace,
         port: this.networkPort,
@@ -899,9 +1052,93 @@ class LocalNodeService {
     return (this.network as any).getDiagnostics();
   }
 
+  private toPublicProfileSummary(
+    profile: PublicProfile,
+    options?: { last_seen_at?: number }
+  ): PublicProfileSummary {
+    const lastSeenAt = options?.last_seen_at ?? this.directory.presence[profile.agent_id] ?? 0;
+    const online = isAgentOnline(lastSeenAt, Date.now(), PRESENCE_TTL_MS);
+    const isSelf = profile.agent_id === this.identity?.agent_id;
+    const visibility = isSelf
+      ? {
+          show_tags: this.socialConfig.visibility.show_tags,
+          show_last_seen: this.socialConfig.visibility.show_last_seen,
+          show_capabilities_summary: this.socialConfig.visibility.show_capabilities_summary,
+        }
+      : {
+          show_tags: true,
+          show_last_seen: true,
+          show_capabilities_summary: true,
+        };
+
+    const selfPublicKey = isSelf ? this.identity?.public_key ?? null : null;
+    const verifiedProfile = Boolean(
+      isSelf &&
+        selfPublicKey &&
+        verifyProfile(profile, selfPublicKey)
+    );
+
+    return buildPublicProfileSummary({
+      profile,
+      online,
+      last_seen_at: lastSeenAt || null,
+      network_mode: isSelf ? this.networkMode : "unknown",
+      openclaw_bound: isSelf
+        ? this.resolvedIdentitySource === "openclaw-existing"
+        : profile.tags.some((tag) => String(tag).trim().toLowerCase() === "openclaw"),
+      visibility,
+      profile_version: PROFILE_VERSION,
+      public_key_fingerprint: selfPublicKey ? this.fingerprintPublicKey(selfPublicKey) : null,
+      verified_profile: verifiedProfile,
+      now: Date.now(),
+      presence_ttl_ms: PRESENCE_TTL_MS,
+    });
+  }
+
+  private fingerprintPublicKey(publicKey: string): string {
+    const digest = createHash("sha256").update(publicKey, "utf8").digest("hex");
+    return `${digest.slice(0, 12)}:${digest.slice(-8)}`;
+  }
+
+  private getOnboardingSummary() {
+    const summary = this.getIntegrationSummary();
+    const publicEnabled = Boolean(this.profile?.public_enabled);
+    return {
+      first_run: Boolean(
+        this.initState.social_auto_created ||
+        this.initState.identity_auto_created ||
+        this.initState.profile_auto_created
+      ),
+      connected: summary.connected,
+      discoverable: summary.discoverable,
+      mode: this.networkMode,
+      public_enabled: publicEnabled,
+      can_enable_public_discovery: !publicEnabled,
+      next_steps: [
+        "Update display name in Profile page",
+        "Export social.md from Social Config",
+      ],
+    };
+  }
+
+  private getDefaultDisplayName(): string {
+    const host = hostname().trim().replace(/\s+/g, "-").slice(0, 24);
+    return host ? `OpenClaw @ ${host}` : "OpenClaw Agent";
+  }
+
+  private adapterForMode(mode: "local" | "lan" | "global-preview"): "local-event-bus" | "real-preview" | "webrtc-preview" {
+    if (mode === "local") return "local-event-bus";
+    if (mode === "lan") return "real-preview";
+    return "webrtc-preview";
+  }
+
   private applyResolvedNetworkConfig(): void {
+    this.networkMode = this.socialConfig.network.mode || "lan";
     this.networkNamespace = this.socialConfig.network.namespace || process.env.NETWORK_NAMESPACE || "silicaclaw.preview";
     this.networkPort = Number(this.socialConfig.network.port || process.env.NETWORK_PORT || 44123);
+
+    const builtInGlobalSignalingUrls = ["http://localhost:4510"];
+    const builtInGlobalRoom = "silicaclaw-global-preview";
 
     const signalingUrlsSocial = dedupeStrings(this.socialConfig.network.signaling_urls || []);
     const signalingUrlSocial = String(this.socialConfig.network.signaling_url || "").trim();
@@ -916,6 +1153,9 @@ class LocalNodeService {
     } else if (signalingUrlSocial) {
       signalingUrls = [signalingUrlSocial];
       signalingSource = "social.md:network.signaling_url";
+    } else if (this.networkMode === "global-preview") {
+      signalingUrls = builtInGlobalSignalingUrls;
+      signalingSource = "built-in-defaults:global-preview.signaling_urls";
     } else if (signalingUrlsEnv.length > 0) {
       signalingUrls = signalingUrlsEnv;
       signalingSource = "env:WEBRTC_SIGNALING_URLS";
@@ -929,12 +1169,18 @@ class LocalNodeService {
 
     const roomSocial = String(this.socialConfig.network.room || "").trim();
     const roomEnv = String(WEBRTC_ROOM || "").trim();
-    const room = roomSocial || roomEnv || "silicaclaw-room";
+    const room =
+      roomSocial ||
+      (this.networkMode === "global-preview" ? builtInGlobalRoom : "") ||
+      roomEnv ||
+      "silicaclaw-room";
     const roomSource = roomSocial
       ? "social.md:network.room"
-      : roomEnv
-        ? "env:WEBRTC_ROOM"
-        : "default:silicaclaw-room";
+      : this.networkMode === "global-preview"
+        ? "built-in-defaults:global-preview.room"
+        : roomEnv
+          ? "env:WEBRTC_ROOM"
+          : "default:silicaclaw-room";
 
     const seedPeersSocial = dedupeStrings(this.socialConfig.network.seed_peers || []);
     const seedPeersEnv = dedupeStrings(parseListEnv(WEBRTC_SEED_PEERS));
@@ -1034,6 +1280,10 @@ async function main() {
     sendOk(res, node.getProfile());
   });
 
+  app.get("/api/public-profile/preview", (_req, res) => {
+    sendOk(res, node.getPublicProfilePreview());
+  });
+
   app.put(
     "/api/profile",
     asyncRoute(async (req, res) => {
@@ -1057,6 +1307,10 @@ async function main() {
 
   app.get("/api/overview", (_req, res) => {
     sendOk(res, node.getOverview());
+  });
+
+  app.get("/api/integration/status", (_req, res) => {
+    sendOk(res, node.getIntegrationStatus());
   });
 
   app.get("/api/network", (_req, res) => {
@@ -1083,6 +1337,7 @@ async function main() {
     getSocialConfigView: () => node.getSocialConfigView(),
     getIntegrationSummary: () => node.getIntegrationSummary(),
     exportSocialTemplate: () => node.exportSocialTemplate(),
+    setNetworkModeRuntime: (mode) => node.setNetworkModeRuntime(mode),
     reloadSocialConfig: () => node.reloadSocialConfig(),
     generateDefaultSocialMd: () => node.generateDefaultSocialMd(),
   });
@@ -1092,6 +1347,22 @@ async function main() {
     asyncRoute(async (_req, res) => {
       const summary = await node.setBroadcastEnabled(true);
       sendOk(res, summary, { message: "Broadcast started" });
+    })
+  );
+
+  app.post(
+    "/api/public-discovery/enable",
+    asyncRoute(async (_req, res) => {
+      const result = await node.setPublicDiscoveryRuntime(true);
+      sendOk(res, result, { message: "Public discovery enabled (runtime)" });
+    })
+  );
+
+  app.post(
+    "/api/public-discovery/disable",
+    asyncRoute(async (_req, res) => {
+      const result = await node.setPublicDiscoveryRuntime(false);
+      sendOk(res, result, { message: "Public discovery disabled (runtime)" });
     })
   );
 
@@ -1143,9 +1414,11 @@ async function main() {
     }
 
     const lastSeenAt = state.presence[agentId] ?? 0;
+    const summary = node.getAgentPublicSummary(agentId);
     sendOk(res, {
       profile,
-      last_seen_at: lastSeenAt,
+      summary,
+      last_seen_at: summary?.last_seen_at ?? null,
       online: isAgentOnline(lastSeenAt, Date.now(), PRESENCE_TTL_MS),
       presence_ttl_ms: PRESENCE_TTL_MS,
     });
