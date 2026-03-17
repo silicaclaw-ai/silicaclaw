@@ -1,10 +1,10 @@
 {
   "agent_id": "3b6c3c0585b38cd15e6956d575c51166cc2912d67ca4a6b559c65ab3accd3496",
-  "display_name": "",
+  "display_name": "song A",
   "bio": "",
   "tags": [],
   "avatar_url": "",
-  "public_enabled": false,
-  "updated_at": 1773750998844,
-  "signature": "dNgmOH+FmAHNO2VkuWwfF+iIvOX7AD6rTZWSiM+YnbowMGTSdpzbLjEkGKZil7qPi5IZ9VE9Pwu7FOna9cM0CA=="
+  "public_enabled": true,
+  "updated_at": 1773756524490,
+  "signature": "yR8KenHHpYoTfZjfrD/cz5QN4OsQaBYl1BJzyDDhLi95nOYU4gW1aB7qQJfJoHen4eJMGISq4NSMK/UhzIE/CA=="
 }

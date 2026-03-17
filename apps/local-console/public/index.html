@@ -279,6 +279,68 @@
         font-size: 13px;
         color: var(--muted);
       }
+      .profile-layout {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: 1.1fr .9fr;
+      }
+      .profile-meta {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px;
+        background: color-mix(in srgb, var(--card) 86%, transparent);
+      }
+      .profile-meta h4 {
+        margin: 0 0 8px;
+        font-size: 14px;
+        color: var(--text-strong);
+      }
+      .preview-name {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text-strong);
+      }
+      .preview-bio {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      .tag-chips {
+        margin-top: 10px;
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .tag-chip {
+        border: 1px solid var(--line-strong);
+        border-radius: 999px;
+        background: var(--chip);
+        color: var(--text);
+        padding: 3px 9px;
+        font-size: 12px;
+      }
+      .tag-chip.muted {
+        color: var(--muted);
+        border-style: dashed;
+      }
+      .field-hint {
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .field-error {
+        margin-top: 4px;
+        color: var(--err);
+        font-size: 12px;
+      }
+      .input-invalid {
+        border-color: color-mix(in srgb, var(--err) 55%, transparent);
+      }
+      .save-busy {
+        opacity: 0.7;
+        cursor: wait;
+      }
 
       .logs {
         max-height: 420px;
@@ -323,7 +385,7 @@
         .sidebar { border-right: 0; border-bottom: 1px solid var(--line); }
         .nav { grid-template-columns: repeat(3, minmax(0,1fr)); }
         .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .split, .row { grid-template-columns: 1fr; }
+        .split, .row, .profile-layout { grid-template-columns: 1fr; }
       }
     </style>
   </head>
@@ -372,6 +434,7 @@
           <div class="split">
             <div class="card">
               <h3 class="title-sm">Discovered Agents</h3>
+              <div class="field-hint" id="agentsCountHint">0 agents</div>
               <div id="agentsWrap"></div>
             </div>
             <div class="card">
@@ -382,34 +445,56 @@
         </section>
 
         <section id="view-profile" class="view">
-          <div class="card stack">
-            <h3 class="title-sm">Public Profile</h3>
-            <form id="profileForm" class="stack">
-              <div class="row">
-                <div>
-                  <label>Display Name</label>
-                  <input name="display_name" placeholder="Agent name" />
+          <div class="profile-layout">
+            <div class="card stack">
+              <h3 class="title-sm">Public Profile Editor</h3>
+              <form id="profileForm" class="stack">
+                <div class="row">
+                  <div>
+                    <label>Display Name</label>
+                    <input name="display_name" placeholder="Agent name" maxlength="48" />
+                    <div class="field-hint">Recommended 2-32 chars for better discoverability.</div>
+                    <div class="field-error" id="errDisplayName"></div>
+                  </div>
+                  <div>
+                    <label>Avatar URL</label>
+                    <input name="avatar_url" placeholder="https://..." />
+                    <div class="field-hint">Optional. Must be http(s) URL if provided.</div>
+                    <div class="field-error" id="errAvatarUrl"></div>
+                  </div>
                 </div>
                 <div>
-                  <label>Avatar URL</label>
-                  <input name="avatar_url" placeholder="https://..." />
+                  <label>Bio</label>
+                  <textarea name="bio" placeholder="Public summary" maxlength="280"></textarea>
+                  <div class="field-hint"><span id="bioCount">0</span>/280</div>
                 </div>
+                <div>
+                  <label>Tags (comma separated)</label>
+                  <input name="tags" placeholder="ai,browser,local-first" />
+                  <div class="field-hint">Up to 8 tags, each <= 20 chars.</div>
+                  <div class="field-error" id="errTags"></div>
+                </div>
+                <label><input type="checkbox" name="public_enabled" /> Public Enabled</label>
+                <div class="actions">
+                  <button type="submit" id="saveProfileBtn">Save Profile</button>
+                  <button type="button" class="secondary" id="refreshProfileBtn">Reload</button>
+                </div>
+              </form>
+              <div id="profileFeedback" class="feedback">Ready.</div>
+            </div>
+            <div class="card stack">
+              <h3 class="title-sm">Live Preview</h3>
+              <div class="profile-meta">
+                <h4>Public Card</h4>
+                <div id="previewName" class="preview-name">(unnamed agent)</div>
+                <div id="previewBio" class="preview-bio">No bio yet.</div>
+                <div id="previewTags" class="tag-chips"></div>
               </div>
-              <div>
-                <label>Bio</label>
-                <textarea name="bio" placeholder="Public summary"></textarea>
+              <div class="profile-meta">
+                <h4>Publish Status</h4>
+                <div class="mono" id="previewPublish">public_enabled: false</div>
               </div>
-              <div>
-                <label>Tags (comma separated)</label>
-                <input name="tags" placeholder="ai,browser,local-first" />
-              </div>
-              <label><input type="checkbox" name="public_enabled" /> Public Enabled</label>
-              <div class="actions">
-                <button type="submit">Save Profile</button>
-                <button type="button" class="secondary" id="refreshProfileBtn">Reload</button>
-              </div>
-            </form>
-            <div id="profileFeedback" class="feedback">Ready.</div>
+            </div>
           </div>
         </section>
 
@@ -453,6 +538,11 @@
     <div id="toast" class="toast"></div>
 
     <script>
+      let activeTab = 'overview';
+      let profileBaseline = '';
+      let profileDirty = false;
+      let profileSaving = false;
+
       function ago(ts) {
         if (!ts) return '-';
         const s = Math.max(0, Math.floor((Date.now() - ts) / 1000));
@@ -482,6 +572,117 @@
         document.getElementById('themeDarkBtn').classList.toggle('active', next === 'dark');
         document.getElementById('themeLightBtn').classList.toggle('active', next === 'light');
       }
+      function parseTags(raw) {
+        return String(raw || '')
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .filter((tag, idx, arr) => arr.indexOf(tag) === idx);
+      }
+      function field(form, name) {
+        return form.querySelector(`[name="${name}"]`);
+      }
+      function normalizeTagsInput(raw) {
+        return parseTags(raw).join(', ');
+      }
+      function profileSnapshot(form) {
+        const displayNameEl = field(form, 'display_name');
+        const bioEl = field(form, 'bio');
+        const avatarEl = field(form, 'avatar_url');
+        const tagsEl = field(form, 'tags');
+        const publicEl = field(form, 'public_enabled');
+        return JSON.stringify({
+          display_name: String(displayNameEl?.value || '').trim(),
+          bio: String(bioEl?.value || '').trim(),
+          avatar_url: String(avatarEl?.value || '').trim(),
+          tags: parseTags(tagsEl?.value || ''),
+          public_enabled: !!publicEl?.checked,
+        });
+      }
+      function updateDirtyState(form, fromUserInput = false) {
+        const now = profileSnapshot(form);
+        profileDirty = now !== profileBaseline;
+        if (fromUserInput && !profileSaving) {
+          setFeedback(
+            'profileFeedback',
+            profileDirty ? 'You have unsaved changes.' : 'All changes saved.',
+            profileDirty ? 'warn' : 'info'
+          );
+        }
+      }
+      function setProfileBaseline(form) {
+        profileBaseline = profileSnapshot(form);
+        profileDirty = false;
+      }
+      function setInputError(inputEl, errorElId, message) {
+        const errEl = document.getElementById(errorElId);
+        errEl.textContent = message || '';
+        if (inputEl) {
+          inputEl.classList.toggle('input-invalid', Boolean(message));
+        }
+      }
+      function validateProfileForm(form) {
+        const displayNameEl = field(form, 'display_name');
+        const avatarEl = field(form, 'avatar_url');
+        const tagsEl = field(form, 'tags');
+        const displayName = String(displayNameEl?.value || '').trim();
+        const avatarUrl = String(avatarEl?.value || '').trim();
+        const tags = parseTags(tagsEl?.value || '');
+
+        let ok = true;
+        let err = '';
+        if (displayName.length > 0 && displayName.length < 2) {
+          err = 'Display name should be at least 2 chars.';
+          ok = false;
+        } else if (displayName.length > 48) {
+          err = 'Display name too long.';
+          ok = false;
+        }
+        setInputError(displayNameEl, 'errDisplayName', err);
+
+        err = '';
+        if (avatarUrl && !/^https?:\/\//i.test(avatarUrl)) {
+          err = 'Avatar URL must start with http:// or https://';
+          ok = false;
+        }
+        setInputError(avatarEl, 'errAvatarUrl', err);
+
+        err = '';
+        if (tags.length > 8) {
+          err = 'Too many tags (max 8).';
+          ok = false;
+        } else if (tags.some((t) => t.length > 20)) {
+          err = 'Each tag must be <= 20 chars.';
+          ok = false;
+        }
+        setInputError(tagsEl, 'errTags', err);
+        return { ok, tags };
+      }
+      function renderProfilePreview(form) {
+        const displayName = String(field(form, 'display_name')?.value || '').trim();
+        const bio = String(field(form, 'bio')?.value || '').trim();
+        const tags = parseTags(field(form, 'tags')?.value || '');
+        const enabled = !!field(form, 'public_enabled')?.checked;
+
+        document.getElementById('previewName').textContent = displayName || '(unnamed agent)';
+        document.getElementById('previewBio').textContent = bio || 'No bio yet.';
+        document.getElementById('previewPublish').textContent = `public_enabled: ${enabled}`;
+        document.getElementById('bioCount').textContent = String(bio.length);
+
+        const tagBox = document.getElementById('previewTags');
+        if (!tags.length) {
+          tagBox.innerHTML = '<span class=\"tag-chip muted\">No tags</span>';
+          return;
+        }
+        tagBox.innerHTML = tags.map((tag) => `<span class=\"tag-chip\">${tag}</span>`).join('');
+      }
+      function setSaveBusy(busy) {
+        profileSaving = busy;
+        const btn = document.getElementById('saveProfileBtn');
+        btn.disabled = busy;
+        btn.classList.toggle('save-busy', busy);
+        btn.textContent = busy ? 'Saving...' : 'Save Profile';
+      }
 
       async function api(path, options = {}) {
         const res = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...options });
@@ -493,10 +694,20 @@
       }
 
       function switchTab(tab) {
+        if (activeTab === 'profile' && tab !== 'profile' && profileDirty && !profileSaving) {
+          const ok = window.confirm('You have unsaved profile changes. Leave anyway?');
+          if (!ok) {
+            return;
+          }
+        }
+        activeTab = tab;
         document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
         ['overview', 'profile', 'network', 'peers', 'logs'].forEach((k) => {
           document.getElementById(`view-${k}`).classList.toggle('active', k === tab);
         });
+        if (tab === 'profile' && !profileDirty && !profileSaving) {
+          refreshProfile().catch(() => {});
+        }
       }
 
       async function refreshOverview() {
@@ -531,13 +742,15 @@
         }
 
         if (!d.length) {
+          document.getElementById('agentsCountHint').textContent = '0 agents';
           document.getElementById('agentsWrap').innerHTML = '<div class="label">No discovered agents yet.</div>';
         } else {
+          document.getElementById('agentsCountHint').textContent = `${d.length} agents discovered`;
           document.getElementById('agentsWrap').innerHTML = `
             <table class="table">
               <thead><tr><th>Name</th><th>Agent ID</th><th>Status</th><th>Updated</th></tr></thead>
               <tbody>
-                ${d.slice(0, 8).map((a) => `
+                ${d.map((a) => `
                   <tr>
                     <td>${a.display_name || '(unnamed)'}</td>
                     <td class="mono">${shortId(a.agent_id)}</td>
@@ -555,11 +768,13 @@
         const p = (await api('/api/profile')).data;
         if (!p) return;
         const f = document.getElementById('profileForm');
-        f.display_name.value = p.display_name || '';
-        f.bio.value = p.bio || '';
-        f.tags.value = (p.tags || []).join(', ');
-        f.avatar_url.value = p.avatar_url || '';
-        f.public_enabled.checked = !!p.public_enabled;
+        field(f, 'display_name').value = p.display_name || '';
+        field(f, 'bio').value = p.bio || '';
+        field(f, 'tags').value = (p.tags || []).join(', ');
+        field(f, 'avatar_url').value = p.avatar_url || '';
+        field(f, 'public_enabled').checked = !!p.public_enabled;
+        renderProfilePreview(f);
+        setProfileBaseline(f);
       }
 
       async function refreshNetwork() {
@@ -651,7 +866,12 @@
 
       async function refreshAll() {
         try {
-          await Promise.all([refreshOverview(), refreshProfile(), refreshNetwork(), refreshPeers(), refreshLogs()]);
+          const tasks = [refreshOverview(), refreshNetwork(), refreshPeers(), refreshLogs()];
+          const shouldRefreshProfile = !(activeTab === 'profile' && profileDirty);
+          if (shouldRefreshProfile) {
+            tasks.push(refreshProfile());
+          }
+          await Promise.all(tasks);
         } catch (e) {
           setFeedback('networkFeedback', e instanceof Error ? e.message : 'Unknown error', 'error');
         }
@@ -666,27 +886,65 @@
       document.getElementById('profileForm').addEventListener('submit', async (event) => {
         event.preventDefault();
         const f = event.currentTarget;
-        const tags = String(f.tags.value || '').split(',').map((s) => s.trim()).filter(Boolean);
+        const result = validateProfileForm(f);
+        if (!result.ok) {
+          setFeedback('profileFeedback', 'Please fix validation errors before saving.', 'warn');
+          return;
+        }
+
+        const tags = result.tags;
         setFeedback('profileFeedback', 'Saving profile...');
+        setSaveBusy(true);
         try {
           const r = await api('/api/profile', { method: 'PUT', body: JSON.stringify({
-            display_name: f.display_name.value,
-            bio: f.bio.value,
+            display_name: field(f, 'display_name').value,
+            bio: field(f, 'bio').value,
             tags,
-            avatar_url: f.avatar_url.value,
-            public_enabled: !!f.public_enabled.checked,
+            avatar_url: field(f, 'avatar_url').value,
+            public_enabled: !!field(f, 'public_enabled').checked,
           })});
           setFeedback('profileFeedback', r.meta?.message || 'Saved.');
           toast('Profile saved');
+          field(f, 'tags').value = normalizeTagsInput(field(f, 'tags').value);
           await refreshAll();
         } catch (e) {
           setFeedback('profileFeedback', e instanceof Error ? e.message : 'Failed', 'error');
+        } finally {
+          setSaveBusy(false);
         }
       });
 
       document.getElementById('refreshProfileBtn').addEventListener('click', async () => {
         await refreshProfile();
         toast('Profile form reloaded');
+      });
+      const profileFormEl = document.getElementById('profileForm');
+      ['input', 'change'].forEach((evt) => {
+        profileFormEl.addEventListener(evt, () => {
+          renderProfilePreview(profileFormEl);
+          validateProfileForm(profileFormEl);
+          updateDirtyState(profileFormEl, true);
+        });
+      });
+      const tagsInputEl = field(profileFormEl, 'tags');
+      tagsInputEl.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        tagsInputEl.value = normalizeTagsInput(tagsInputEl.value);
+        renderProfilePreview(profileFormEl);
+        validateProfileForm(profileFormEl);
+        updateDirtyState(profileFormEl, true);
+      });
+      tagsInputEl.addEventListener('blur', () => {
+        tagsInputEl.value = normalizeTagsInput(tagsInputEl.value);
+        renderProfilePreview(profileFormEl);
+        validateProfileForm(profileFormEl);
+        updateDirtyState(profileFormEl, true);
+      });
+      window.addEventListener('beforeunload', (event) => {
+        if (!profileDirty || profileSaving) return;
+        event.preventDefault();
+        event.returnValue = '';
       });
 
       async function runAction(path, text, level = 'info') {

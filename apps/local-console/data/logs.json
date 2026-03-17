@@ -1,44 +1,98 @@
 [
   {
-    "id": "1773755261301-v1c0ad",
+    "id": "1773756883169-aa8upw",
     "level": "info",
-    "message": "Local node started",
-    "timestamp": 1773755261301
+    "message": "Broadcast sent (5 index refs, reason=interval)",
+    "timestamp": 1773756883169
   },
   {
-    "id": "1773753764428-i8lkl3",
+    "id": "1773756873172-fbw927",
     "level": "info",
-    "message": "Local node started",
-    "timestamp": 1773753764428
+    "message": "Broadcast sent (5 index refs, reason=interval)",
+    "timestamp": 1773756873172
   },
   {
-    "id": "1773753348745-cr4cpt",
+    "id": "1773756863164-qslbnb",
     "level": "info",
-    "message": "Local node started",
-    "timestamp": 1773753348745
+    "message": "Broadcast sent (5 index refs, reason=interval)",
+    "timestamp": 1773756863164
   },
   {
-    "id": "1773753267011-leflrz",
+    "id": "1773756853165-do12pk",
     "level": "info",
-    "message": "Local node started",
-    "timestamp": 1773753267011
+    "message": "Broadcast sent (5 index refs, reason=interval)",
+    "timestamp": 1773756853165
   },
   {
-    "id": "1773750998855-0s9wqz",
+    "id": "1773756843161-qu2b5c",
     "level": "info",
-    "message": "Local node started",
-    "timestamp": 1773750998855
+    "message": "Broadcast sent (5 index refs, reason=interval)",
+    "timestamp": 1773756843161
   },
   {
-    "id": "1773750998854-9k6uqv",
+    "id": "1773756833163-n7tm68",
     "level": "info",
-    "message": "profile.json missing/invalid, auto-generated default profile",
-    "timestamp": 1773750998854
+    "message": "Broadcast sent (5 index refs, reason=interval)",
+    "timestamp": 1773756833163
   },
   {
-    "id": "1773750998843-bhjuy5",
+    "id": "1773756823159-8cc9l8",
     "level": "info",
-    "message": "identity.json missing, auto-generated identity",
-    "timestamp": 1773750998843
+    "message": "Broadcast sent (5 index refs, reason=interval)",
+    "timestamp": 1773756823159
+  },
+  {
+    "id": "1773756813161-qibi1k",
+    "level": "info",
+    "message": "Broadcast sent (5 index refs, reason=interval)",
+    "timestamp": 1773756813161
+  },
+  {
+    "id": "1773756803152-cqbtoy",
+    "level": "info",
+    "message": "Broadcast sent (5 index refs, reason=interval)",
+    "timestamp": 1773756803152
+  },
+  {
+    "id": "1773756793157-jduuio",
+    "level": "info",
+    "message": "Broadcast sent (5 index refs, reason=interval)",
+    "timestamp": 1773756793157
+  },
+  {
+    "id": "1773756783227-elvaoe",
+    "level": "info",
+    "message": "Broadcast sent (5 index refs, reason=interval)",
+    "timestamp": 1773756783227
+  },
+  {
+    "id": "1773756773157-us6rtz",
+    "level": "info",
+    "message": "Broadcast sent (5 index refs, reason=interval)",
+    "timestamp": 1773756773157
+  },
+  {
+    "id": "1773756763165-9chrh4",
+    "level": "info",
+    "message": "Broadcast sent (5 index refs, reason=interval)",
+    "timestamp": 1773756763165
+  },
+  {
+    "id": "1773756753153-a78qmi",
+    "level": "info",
+    "message": "Broadcast sent (5 index refs, reason=interval)",
+    "timestamp": 1773756753153
+  },
+  {
+    "id": "1773756743157-3vx7oq",
+    "level": "info",
+    "message": "Broadcast sent (5 index refs, reason=interval)",
+    "timestamp": 1773756743157
+  },
+  {
+    "id": "1773756733150-a153qp",
+    "level": "info",
+    "message": "Broadcast sent (5 index refs, reason=interval)",
+    "timestamp": 1773756733150
   }
 ]
