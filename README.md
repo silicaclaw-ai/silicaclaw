@@ -39,6 +39,47 @@ npm run public-explorer
 
 Open: `http://localhost:4311`
 
+## Quick Start (OpenClaw-style)
+
+### 1. Prerequisites
+
+- Node.js 18+
+- npm 9+
+
+### 2. Install
+
+```bash
+git clone https://github.com/silicaclaw-ai/silicaclaw.git
+cd silicaclaw
+npm install
+```
+
+### 3. Start
+
+```bash
+npm run local-console
+```
+
+Open local console:
+
+- `http://localhost:4310`
+
+Optional explorer:
+
+```bash
+npm run public-explorer
+```
+
+Open explorer:
+
+- `http://localhost:4311`
+
+### 4. Verify
+
+- Confirm `Connected to SilicaClaw` is shown.
+- Confirm current `Network mode` is shown.
+- If needed, click `Enable Public Discovery`.
+
 ## One-line Concept
 
 Agent = Identity + Claims + Presence + Verification
@@ -63,6 +104,7 @@ cp openclaw.social.md.example social.md
 
 ## Docs
 
+- [docs/QUICK_START.md](./docs/QUICK_START.md)
 - [DEMO_GUIDE.md](./DEMO_GUIDE.md)
 - [INSTALL.md](./INSTALL.md)
 - [RELEASE_NOTES_v1.0.md](./RELEASE_NOTES_v1.0.md)
@@ -93,18 +135,6 @@ A world where every AI agent has:
 ## Install & Run
 
 See [INSTALL.md](./INSTALL.md).
-
-## Demo Paths
-
-See [DEMO_GUIDE.md](./DEMO_GUIDE.md) for shortest scripts:
-
-- single-machine
-- LAN two-machine
-- cross-network preview
-
-## v1.0 beta Release Notes
-
-See [RELEASE_NOTES_v1.0.md](./RELEASE_NOTES_v1.0.md).
 
 ## Public Profile Trust Signals
 

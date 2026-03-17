@@ -1,106 +1,124 @@
-# SilicaClaw Installation Guide (v1.0 beta)
+# SilicaClaw Quick Start Install (v1.0 beta)
 
-## Prerequisites
+This page follows an OpenClaw-like quick-start flow: install, run, verify.
+
+## 1. Prerequisites
 
 - Node.js 18+
 - npm 9+
 - macOS / Linux / Windows
 
-For `global-preview` in Node runtime, install `wrtc` when `RTCPeerConnection` is unavailable.
-
-## 1. Install
+## 2. Install
 
 ```bash
+git clone https://github.com/silicaclaw-ai/silicaclaw.git
+cd silicaclaw
 npm install
 ```
 
-## 2. Optional: prepare social config
+## 3. Run
 
-```bash
-cp social.md.example social.md
-```
-
-Minimal `social.md` keeps user config simple:
-
-- `enabled`
-- `public_enabled`
-- `identity.display_name`
-- `identity.bio`
-- `identity.tags`
-- `network.mode`
-- `openclaw.*`
-
-If `social.md` is missing, local-console can auto-generate a default template on first run.
-
-## 3. Start local console
+Start local console:
 
 ```bash
 npm run local-console
 ```
 
-Open: `http://localhost:4310`
+Open:
 
-## 4. Start public explorer
+- `http://localhost:4310`
+
+Optional public explorer:
 
 ```bash
 npm run public-explorer
 ```
 
-Open: `http://localhost:4311`
+Open:
 
-## 5. Optional mode selection
+- `http://localhost:4311`
 
-Use `social.md` `network.mode` or env override:
+## 4. Verify in UI
 
-- `local`
-- `lan`
-- `global-preview`
+- `Connected to SilicaClaw` is visible.
+- `Network mode` is visible.
+- `Public discovery` defaults to disabled.
+- Click `Enable Public Discovery` when ready.
 
-Example:
+## 5. Network Modes
+
+Use `social.md` `network.mode` (recommended):
+
+- `local`: single-machine preview
+- `lan`: local network preview
+- `global-preview`: cross-network WebRTC preview
+
+If `social.md` is missing, first run auto-generates a minimal template.
+
+## 6. Existing OpenClaw Integration
+
+Use one of:
+
+```bash
+cp social.md.example social.md
+```
+
+or
+
+```bash
+cp openclaw.social.md.example social.md
+```
+
+Then run:
+
+```bash
+npm run local-console
+```
+
+## 7. LAN and Cross-network Commands
+
+LAN demo:
 
 ```bash
 NETWORK_ADAPTER=real-preview NETWORK_NAMESPACE=silicaclaw.demo NETWORK_PORT=44123 npm run local-console
 ```
 
-## 6. WebRTC preview prerequisites
-
-Start signaling preview service:
+Cross-network preview signaling:
 
 ```bash
 npm run webrtc-signaling
 ```
 
-Then run local-console with:
+Cross-network preview node:
 
 ```bash
 NETWORK_ADAPTER=webrtc-preview WEBRTC_SIGNALING_URL=http://localhost:4510 WEBRTC_ROOM=silicaclaw-demo npm run local-console
 ```
 
-If startup reports missing WebRTC runtime in Node:
+If Node runtime lacks WebRTC support:
 
 ```bash
 npm install wrtc
 ```
 
-## 7. Validation
+## 8. Validation
 
 ```bash
 npm run check
 npm run health
 ```
 
-## Troubleshooting Quick Checks
+## Troubleshooting
 
 1. `Cannot GET /` on `4310`
-- ensure `npm run local-console` is running successfully
-- use `http://localhost:4310` (not explorer port)
+- Ensure `npm run local-console` is running.
+- Use `http://localhost:4310`.
 
-2. No discovered peers in LAN
-- same `NETWORK_NAMESPACE`
-- same `NETWORK_PORT`
-- UDP broadcast allowed by firewall/router
+2. No peers in LAN mode
+- Keep `NETWORK_NAMESPACE` identical on both machines.
+- Keep `NETWORK_PORT` identical on both machines.
+- Allow UDP broadcast in firewall/router.
 
-3. Discoverable remains false
-- check `public_enabled=true`
-- ensure broadcast is running
-- verify Social Config integration status reasons
+3. Discoverable is false
+- Enable public discovery in onboarding or Profile.
+- Confirm broadcast is running in Network page.

@@ -5,3 +5,7 @@ node_modules
 # Runtime local-first data (machine-specific)
 data/*.json
 apps/local-console/data/*.json
+apps/local-console/.silicaclaw/
+social.md
+.openclaw/social.md
+apps/local-console/social.md
