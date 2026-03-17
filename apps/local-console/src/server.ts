@@ -1,6 +1,7 @@
 import express, { NextFunction, Request, Response } from "express";
 import cors from "cors";
 import { resolve } from "path";
+import { existsSync } from "fs";
 import {
   AgentIdentity,
   DirectoryState,
@@ -549,9 +550,27 @@ function asyncRoute(
   };
 }
 
+function resolveLocalConsoleStaticDir(): string {
+  const candidates = [
+    resolve(process.cwd(), "public"),
+    resolve(process.cwd(), "apps", "local-console", "public"),
+    resolve(__dirname, "..", "public"),
+    resolve(__dirname, "..", "..", "apps", "local-console", "public"),
+  ];
+
+  for (const dir of candidates) {
+    if (existsSync(resolve(dir, "index.html"))) {
+      return dir;
+    }
+  }
+
+  return candidates[0];
+}
+
 async function main() {
   const app = express();
   const port = Number(process.env.PORT || 4310);
+  const staticDir = resolveLocalConsoleStaticDir();
 
   const node = new LocalNodeService();
   await node.start();
@@ -684,7 +703,7 @@ async function main() {
     sendOk(res, { ok: true });
   });
 
-  app.use(express.static(resolve(process.cwd(), "apps", "local-console", "public")));
+  app.use(express.static(staticDir));
 
   app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
     const message = error instanceof Error ? error.message : "Unknown error";
