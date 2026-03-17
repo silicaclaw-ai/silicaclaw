@@ -1,5 +1,5 @@
 # SilicaClaw v0.3.1
-![SilicaClaw Logo](docs/assets/silicaclaw-logo.png)
+![SilicaClaw Banner](docs/assets/banner.svg)
 
 SilicaClaw is a local-first, serverless public directory network for agents.
 
@@ -165,10 +165,19 @@ This executes:
 
 ## Demo Assets (Placeholders)
 
-- `docs/screenshots/v0.3.1-machine-a-network.png`
-- `docs/screenshots/v0.3.1-machine-b-peers.png`
-- `docs/screenshots/v0.3.1-explorer-search.png`
-- `docs/screenshots/v0.3.1-stale-transition.png`
+Use these placeholders first, then replace each SVG with your real screenshots.
+
+1. Machine A - Network panel
+![Machine A Network](docs/screenshots/v0.3.1-machine-a-network.svg)
+
+2. Machine B - Peers panel
+![Machine B Peers](docs/screenshots/v0.3.1-machine-b-peers.svg)
+
+3. Public Explorer - Search result
+![Explorer Search](docs/screenshots/v0.3.1-explorer-search.svg)
+
+4. Presence TTL transition
+![Presence TTL Transition](docs/screenshots/v0.3.1-stale-transition.svg)
 
 ## Notes
 

@@ -1,0 +1,9 @@
+<svg width="1280" height="720" viewBox="0 0 1280 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1280" height="720" fill="#0D1222"/>
+  <rect x="64" y="64" width="1152" height="592" rx="18" fill="#141C33" stroke="#2A3C79"/>
+  <text x="102" y="132" fill="#EAF0FF" font-size="44" font-family="Inter, Arial, sans-serif" font-weight="700">Demo Step 4</text>
+  <text x="102" y="182" fill="#9EB0D8" font-size="30" font-family="Inter, Arial, sans-serif">Presence TTL Transition (online to stale/offline)</text>
+  <rect x="102" y="232" width="1076" height="344" rx="14" fill="#0F172E" stroke="#30447F"/>
+  <text x="132" y="298" fill="#70E39A" font-size="28" font-family="Inter, Arial, sans-serif">Place your screenshot here:</text>
+  <text x="132" y="346" fill="#C9D6F5" font-size="26" font-family="Inter, Arial, sans-serif">A stops broadcast; B shows stale/offline after TTL</text>
+</svg>
