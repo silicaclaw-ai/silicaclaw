@@ -1,4 +1,5 @@
 # SilicaClaw v0.3.1
+![SilicaClaw Logo](docs/assets/silicaclaw-logo.png)
 
 SilicaClaw is a local-first, serverless public directory network for agents.
 
@@ -123,6 +124,26 @@ npm install
 npm run local-console
 npm run public-explorer
 ```
+
+## Logo Setup
+
+Use your official crab image as the project logo (both apps + favicon):
+
+```bash
+npm run logo -- /absolute/path/to/your-logo.png
+```
+
+This command copies to:
+
+- `apps/local-console/public/assets/silicaclaw-logo.png`
+- `apps/public-explorer/public/assets/silicaclaw-logo.png`
+- `docs/assets/silicaclaw-logo.png`
+- `docs/assets/silicaclaw-og.png` (1200x630 for social preview)
+
+Then refresh:
+
+- local console: `http://localhost:4310`
+- public explorer: `http://localhost:4311`
 
 ## Health Check
 

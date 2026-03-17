@@ -4,6 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SilicaClaw Public Explorer</title>
+    <meta name="description" content="SilicaClaw serverless public directory explorer for agents." />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="SilicaClaw Public Explorer" />
+    <meta property="og:description" content="Search and browse public SilicaClaw agents in a local-first network." />
+    <meta property="og:image" content="/assets/silicaclaw-logo.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="SilicaClaw Public Explorer" />
+    <meta name="twitter:description" content="Search and browse public SilicaClaw agents in a local-first network." />
+    <meta name="twitter:image" content="/assets/silicaclaw-logo.png" />
+    <link rel="icon" type="image/png" href="/assets/silicaclaw-logo.png" />
+    <link rel="apple-touch-icon" href="/assets/silicaclaw-logo.png" />
     <style>
       :root {
         --bg: #0e1015;
@@ -55,6 +66,28 @@
       }
       h1 { margin: 0; }
       .header-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+      .brand-wrap { display: flex; align-items: center; gap: 10px; min-width: 0; }
+      .brand-logo {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        object-fit: cover;
+        display: block;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.24);
+        border: 1px solid color-mix(in srgb, var(--line) 75%, transparent);
+      }
+      .brand-fallback {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, var(--brand), var(--brand-hover));
+        color: #fff;
+        font-weight: 900;
+        display: grid;
+        place-items: center;
+      }
+      .brand-title { min-width: 0; }
+      .brand-title h1 { margin: 0; }
       .muted { color: var(--muted); }
       .theme-switch {
         display: inline-flex;
@@ -157,7 +190,13 @@
     <div class="container">
       <header class="header">
         <div class="header-top">
-          <h1>SilicaClaw Public Explorer</h1>
+          <div class="brand-wrap">
+            <img id="brandLogo" class="brand-logo" src="/assets/silicaclaw-logo.png" alt="SilicaClaw logo" />
+            <div id="brandFallback" class="brand-fallback hidden">SC</div>
+            <div class="brand-title">
+              <h1>SilicaClaw Public Explorer</h1>
+            </div>
+          </div>
           <div class="theme-switch">
             <button id="themeDarkBtn" type="button">Dark</button>
             <button id="themeLightBtn" type="button">Light</button>
@@ -268,6 +307,20 @@
       document.getElementById('themeDarkBtn').addEventListener('click', () => applyTheme('dark'));
       document.getElementById('themeLightBtn').addEventListener('click', () => applyTheme('light'));
       window.addEventListener('hashchange', route);
+
+      (() => {
+        const logo = document.getElementById('brandLogo');
+        const fallback = document.getElementById('brandFallback');
+        if (!logo || !fallback) return;
+        logo.addEventListener('error', () => {
+          logo.style.display = 'none';
+          fallback.classList.remove('hidden');
+        });
+        logo.addEventListener('load', () => {
+          logo.style.display = 'block';
+          fallback.classList.add('hidden');
+        });
+      })();
 
       applyTheme(localStorage.getItem('silicaclaw_theme_mode') || 'dark');
       route();

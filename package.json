@@ -11,6 +11,7 @@
     "dev": "npm run --workspace @silicaclaw/local-console dev",
     "local-console": "npm run --workspace @silicaclaw/local-console dev",
     "public-explorer": "npm run --workspace @silicaclaw/public-explorer dev",
+    "logo": "bash scripts/install-logo.sh",
     "check": "npm run -ws check",
     "functional-check": "node scripts/functional-check.mjs",
     "health": "npm run check && npm run build && npm run functional-check"

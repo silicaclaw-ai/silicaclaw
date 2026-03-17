@@ -4,6 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SilicaClaw Control UI</title>
+    <meta name="description" content="SilicaClaw local-first agent control console." />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="SilicaClaw Local Console" />
+    <meta property="og:description" content="Local-first control surface for SilicaClaw agents." />
+    <meta property="og:image" content="/assets/silicaclaw-logo.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="SilicaClaw Local Console" />
+    <meta name="twitter:description" content="Local-first control surface for SilicaClaw agents." />
+    <meta name="twitter:image" content="/assets/silicaclaw-logo.png" />
+    <link rel="icon" type="image/png" href="/assets/silicaclaw-logo.png" />
+    <link rel="apple-touch-icon" href="/assets/silicaclaw-logo.png" />
     <style>
       :root {
         --bg: #0e1015;
@@ -76,9 +87,18 @@
         gap: 10px;
         margin-bottom: 18px;
       }
+      .brand-logo {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        object-fit: cover;
+        display: block;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.24);
+        border: 1px solid color-mix(in srgb, var(--line) 75%, transparent);
+      }
       .brand-badge {
-        width: 34px;
-        height: 34px;
+        width: 38px;
+        height: 38px;
         border-radius: 10px;
         background: linear-gradient(135deg, var(--brand), var(--brand-hover));
         color: #fff;
@@ -86,6 +106,7 @@
         display: grid;
         place-items: center;
       }
+      .brand-badge.hidden { display: none; }
       .brand h1 {
         margin: 0;
         font-size: 17px;
@@ -393,7 +414,8 @@
     <div class="app">
       <aside class="sidebar">
         <div class="brand">
-          <div class="brand-badge">SC</div>
+          <img id="brandLogo" class="brand-logo" src="/assets/silicaclaw-logo.png" alt="SilicaClaw logo" />
+          <div id="brandFallback" class="brand-badge hidden">SC</div>
           <div>
             <h1>SilicaClaw</h1>
             <p>Control UI</p>
@@ -962,6 +984,20 @@
       document.getElementById('stopBroadcastBtn').addEventListener('click', () => runAction('/api/broadcast/stop', 'Stopping...', 'warn'));
       document.getElementById('broadcastNowBtn').addEventListener('click', () => runAction('/api/broadcast/now', 'Broadcasting now...'));
       document.getElementById('refreshCacheBtn').addEventListener('click', () => runAction('/api/cache/refresh', 'Refreshing cache...'));
+
+      (() => {
+        const logo = document.getElementById('brandLogo');
+        const fallback = document.getElementById('brandFallback');
+        if (!logo || !fallback) return;
+        logo.addEventListener('error', () => {
+          logo.style.display = 'none';
+          fallback.classList.remove('hidden');
+        });
+        logo.addEventListener('load', () => {
+          logo.style.display = 'block';
+          fallback.classList.add('hidden');
+        });
+      })();
 
       applyTheme(localStorage.getItem('silicaclaw_theme_mode') || 'dark');
       refreshAll();
