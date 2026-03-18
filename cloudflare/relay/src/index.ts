@@ -11,6 +11,7 @@ type RoomState = {
 
 const PEER_STALE_MS = 120_000;
 const SIGNAL_DEDUPE_WINDOW_MS = 60_000;
+const TOUCH_WRITE_INTERVAL_MS = 30_000;
 
 function now(): number {
   return Date.now();
@@ -97,28 +98,56 @@ export class RoomRelay {
     this.cleanup(state);
 
     if (request.method === "GET" && url.pathname === "/peers") {
-      await this.persist(state);
-      return json({ ok: true, peers: Object.keys(state.peers) });
+      return json({
+        ok: true,
+        room: roomName(url.searchParams.get("room")),
+        peer_count: Object.keys(state.peers).length,
+        peers: Object.keys(state.peers),
+        peer_details: Object.entries(state.peers).map(([peerId, peer]) => ({
+          peer_id: peerId,
+          last_seen_at: peer.last_seen_at,
+          signal_queue_size: state.queues[peerId]?.length ?? 0,
+          relay_queue_size: state.relay_queues[peerId]?.length ?? 0,
+        })),
+      });
+    }
+
+    if (request.method === "GET" && url.pathname === "/room") {
+      return json({
+        ok: true,
+        room: roomName(url.searchParams.get("room")),
+        peer_count: Object.keys(state.peers).length,
+        peers: Object.entries(state.peers).map(([peerId, peer]) => ({
+          peer_id: peerId,
+          last_seen_at: peer.last_seen_at,
+          signal_queue_size: state.queues[peerId]?.length ?? 0,
+          relay_queue_size: state.relay_queues[peerId]?.length ?? 0,
+        })),
+      });
     }
 
     if (request.method === "GET" && url.pathname === "/poll") {
       const peerId = String(url.searchParams.get("peer_id") || "").trim();
       if (!peerId) return json({ ok: false, error: "missing_peer_id" }, { status: 400 });
-      this.touchPeer(state, peerId);
+      const touched = this.touchPeer(state, peerId);
       const messages = state.queues[peerId] || [];
       state.queues[peerId] = [];
-      await this.persist(state);
-      return json({ ok: true, messages });
+      if (touched || messages.length > 0) {
+        await this.persist(state);
+      }
+      return json({ ok: true, messages, peers: Object.keys(state.peers) });
     }
 
     if (request.method === "GET" && url.pathname === "/relay/poll") {
       const peerId = String(url.searchParams.get("peer_id") || "").trim();
       if (!peerId) return json({ ok: false, error: "missing_peer_id" }, { status: 400 });
-      this.touchPeer(state, peerId);
+      const touched = this.touchPeer(state, peerId);
       const messages = state.relay_queues[peerId] || [];
       state.relay_queues[peerId] = [];
-      await this.persist(state);
-      return json({ ok: true, messages });
+      if (touched || messages.length > 0) {
+        await this.persist(state);
+      }
+      return json({ ok: true, messages, peers: Object.keys(state.peers) });
     }
 
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
@@ -208,10 +237,14 @@ export class RoomRelay {
     await this.storage.put("room-state", state);
   }
 
-  private touchPeer(state: RoomState, peerId: string): void {
-    state.peers[peerId] = { last_seen_at: now() };
+  private touchPeer(state: RoomState, peerId: string): boolean {
+    const ts = now();
+    const previous = state.peers[peerId]?.last_seen_at ?? 0;
+    const shouldWrite = !previous || ts - previous >= TOUCH_WRITE_INTERVAL_MS;
+    state.peers[peerId] = { last_seen_at: shouldWrite ? ts : previous };
     if (!state.queues[peerId]) state.queues[peerId] = [];
     if (!state.relay_queues[peerId]) state.relay_queues[peerId] = [];
+    return shouldWrite;
   }
 
   private cleanup(state: RoomState): void {

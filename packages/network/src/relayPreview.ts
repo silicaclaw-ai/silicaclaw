@@ -22,6 +22,8 @@ type RelayPreviewOptions = {
   pollIntervalMs?: number;
   maxFutureDriftMs?: number;
   maxPastDriftMs?: number;
+  requestTimeoutMs?: number;
+  peerRefreshIntervalMs?: number;
 };
 
 type RelayPeer = {
@@ -40,11 +42,18 @@ type RelayDiagnostics = {
   room: string;
   signaling_url: string;
   signaling_endpoints: string[];
+  active_endpoint_index: number;
   bootstrap_sources: string[];
   seed_peers_count: number;
   bootstrap_hints_count: number;
   discovery_events_total: number;
   last_discovery_event_at: number;
+  last_join_at: number;
+  last_poll_at: number;
+  last_publish_at: number;
+  last_peer_refresh_at: number;
+  last_error_at: number;
+  last_error: string | null;
   discovery_events: Array<{
     id: string;
     type: string;
@@ -100,6 +109,14 @@ type RelayDiagnostics = {
     start_errors: number;
     stop_errors: number;
     received_validated: number;
+    join_attempted: number;
+    join_succeeded: number;
+    poll_attempted: number;
+    poll_succeeded: number;
+    peers_refresh_attempted: number;
+    peers_refresh_succeeded: number;
+    publish_succeeded: number;
+    poll_skipped_inflight: number;
   };
 };
 
@@ -119,6 +136,8 @@ export class RelayPreviewAdapter implements NetworkAdapter {
   private readonly pollIntervalMs: number;
   private readonly maxFutureDriftMs: number;
   private readonly maxPastDriftMs: number;
+  private readonly requestTimeoutMs: number;
+  private readonly peerRefreshIntervalMs: number;
   private readonly envelopeCodec: MessageEnvelopeCodec;
   private readonly topicCodec: TopicCodec;
 
@@ -134,6 +153,15 @@ export class RelayPreviewAdapter implements NetworkAdapter {
   private signalingMessagesSentTotal = 0;
   private signalingMessagesReceivedTotal = 0;
   private reconnectAttemptsTotal = 0;
+  private activeEndpointIndex = 0;
+  private lastJoinAt = 0;
+  private lastPollAt = 0;
+  private lastPublishAt = 0;
+  private lastPeerRefreshAt = 0;
+  private lastErrorAt = 0;
+  private lastError: string | null = null;
+  private pollInFlight = false;
+  private currentPollDelayMs = 0;
 
   private stats: RelayDiagnostics["stats"] = {
     publish_attempted: 0,
@@ -156,6 +184,14 @@ export class RelayPreviewAdapter implements NetworkAdapter {
     start_errors: 0,
     stop_errors: 0,
     received_validated: 0,
+    join_attempted: 0,
+    join_succeeded: 0,
+    poll_attempted: 0,
+    poll_succeeded: 0,
+    peers_refresh_attempted: 0,
+    peers_refresh_succeeded: 0,
+    publish_succeeded: 0,
+    poll_skipped_inflight: 0,
   };
 
   constructor(options: RelayPreviewOptions = {}) {
@@ -167,28 +203,30 @@ export class RelayPreviewAdapter implements NetworkAdapter {
         : [options.signalingUrl || "http://localhost:4510"])
     );
     this.activeEndpoint = this.signalingEndpoints[0] || "http://localhost:4510";
+    this.activeEndpointIndex = 0;
     this.room = String(options.room || "silicaclaw-global-preview").trim() || "silicaclaw-global-preview";
     this.seedPeers = dedupe(options.seedPeers || []);
     this.bootstrapHints = dedupe(options.bootstrapHints || []);
     this.bootstrapSources = dedupe(options.bootstrapSources || []);
     this.maxMessageBytes = options.maxMessageBytes ?? 64 * 1024;
-    this.pollIntervalMs = options.pollIntervalMs ?? 2000;
+    this.pollIntervalMs = options.pollIntervalMs ?? 5000;
     this.maxFutureDriftMs = options.maxFutureDriftMs ?? 30_000;
     this.maxPastDriftMs = options.maxPastDriftMs ?? 120_000;
+    this.requestTimeoutMs = options.requestTimeoutMs ?? 4000;
+    this.peerRefreshIntervalMs = options.peerRefreshIntervalMs ?? 30_000;
     this.envelopeCodec = new JsonMessageEnvelopeCodec();
     this.topicCodec = new JsonTopicCodec();
+    this.currentPollDelayMs = this.pollIntervalMs;
   }
 
   async start(): Promise<void> {
     if (this.started) return;
     try {
-      await this.post("/join", { room: this.room, peer_id: this.peerId });
+      await this.joinRoom("start");
       this.started = true;
       await this.refreshPeers();
       await this.pollOnce();
-      this.poller = setInterval(() => {
-        this.pollOnce().catch(() => {});
-      }, this.pollIntervalMs);
+      this.scheduleNextPoll(this.pollIntervalMs);
       this.recordDiscovery("signaling_connected", { endpoint: this.activeEndpoint });
     } catch (error) {
       this.stats.start_errors += 1;
@@ -199,7 +237,7 @@ export class RelayPreviewAdapter implements NetworkAdapter {
   async stop(): Promise<void> {
     if (!this.started) return;
     if (this.poller) {
-      clearInterval(this.poller);
+      clearTimeout(this.poller);
       this.poller = null;
     }
     try {
@@ -214,6 +252,7 @@ export class RelayPreviewAdapter implements NetworkAdapter {
   async publish(topic: string, data: any): Promise<void> {
     if (!this.started) return;
     this.stats.publish_attempted += 1;
+    await this.maybeRefreshJoin("publish");
     const envelope: NetworkMessageEnvelope = {
       version: 1,
       message_id: randomUUID(),
@@ -228,7 +267,9 @@ export class RelayPreviewAdapter implements NetworkAdapter {
       return;
     }
     await this.post("/relay/publish", { room: this.room, peer_id: this.peerId, envelope });
+    this.lastPublishAt = Date.now();
     this.stats.publish_sent += 1;
+    this.stats.publish_succeeded += 1;
     this.signalingMessagesSentTotal += 1;
   }
 
@@ -249,11 +290,18 @@ export class RelayPreviewAdapter implements NetworkAdapter {
       room: this.room,
       signaling_url: this.activeEndpoint,
       signaling_endpoints: this.signalingEndpoints,
+      active_endpoint_index: this.activeEndpointIndex,
       bootstrap_sources: this.bootstrapSources,
       seed_peers_count: this.seedPeers.length,
       bootstrap_hints_count: this.bootstrapHints.length,
       discovery_events_total: this.discoveryEventsTotal,
       last_discovery_event_at: this.lastDiscoveryEventAt,
+      last_join_at: this.lastJoinAt,
+      last_poll_at: this.lastPollAt,
+      last_publish_at: this.lastPublishAt,
+      last_peer_refresh_at: this.lastPeerRefreshAt,
+      last_error_at: this.lastErrorAt,
+      last_error: this.lastError,
       discovery_events: this.discoveryEvents,
       signaling_messages_sent_total: this.signalingMessagesSentTotal,
       signaling_messages_received_total: this.signalingMessagesReceivedTotal,
@@ -286,41 +334,46 @@ export class RelayPreviewAdapter implements NetworkAdapter {
   }
 
   private async pollOnce(): Promise<void> {
-    const payload = await this.get(`/relay/poll?room=${encodeURIComponent(this.room)}&peer_id=${encodeURIComponent(this.peerId)}`);
-    const messages = Array.isArray(payload?.messages) ? payload.messages : [];
-    for (const message of messages) {
-      this.signalingMessagesReceivedTotal += 1;
-      this.onEnvelope(message?.envelope);
+    if (this.pollInFlight) {
+      this.stats.poll_skipped_inflight += 1;
+      return;
     }
-    await this.refreshPeers();
+    this.pollInFlight = true;
+    await this.maybeRefreshJoin("poll");
+    this.stats.poll_attempted += 1;
+    try {
+      const payload = await this.get(`/relay/poll?room=${encodeURIComponent(this.room)}&peer_id=${encodeURIComponent(this.peerId)}`);
+      this.lastPollAt = Date.now();
+      this.stats.poll_succeeded += 1;
+      this.currentPollDelayMs = this.pollIntervalMs;
+      const messages = Array.isArray(payload?.messages) ? payload.messages : [];
+      for (const message of messages) {
+        this.signalingMessagesReceivedTotal += 1;
+        this.onEnvelope(message?.envelope);
+      }
+      if (Array.isArray(payload?.peers)) {
+        this.updatePeersFromList(payload.peers);
+      } else if (!this.lastPeerRefreshAt || Date.now() - this.lastPeerRefreshAt >= this.peerRefreshIntervalMs) {
+        await this.refreshPeers();
+      }
+    } catch (error) {
+      this.currentPollDelayMs = Math.min(15_000, Math.max(this.pollIntervalMs, this.currentPollDelayMs * 2));
+      throw error;
+    } finally {
+      this.pollInFlight = false;
+      if (this.started) {
+        this.scheduleNextPoll(this.currentPollDelayMs);
+      }
+    }
   }
 
   private async refreshPeers(): Promise<void> {
+    this.stats.peers_refresh_attempted += 1;
     const payload = await this.get(`/peers?room=${encodeURIComponent(this.room)}`);
-    const peerIds = Array.isArray(payload?.peers) ? payload.peers.map((value: unknown) => String(value || "").trim()).filter(Boolean) : [];
-    const now = Date.now();
-    const next = new Map<string, RelayPeer>();
-    for (const peerId of peerIds) {
-      if (peerId === this.peerId) continue;
-      const existing = this.peers.get(peerId);
-      if (!existing) {
-        this.recordDiscovery("peer_joined", { peer_id: peerId });
-      }
-      next.set(peerId, {
-        peer_id: peerId,
-        status: "online",
-        first_seen_at: existing?.first_seen_at ?? now,
-        last_seen_at: now,
-        messages_seen: existing?.messages_seen ?? 0,
-        reconnect_attempts: existing?.reconnect_attempts ?? 0,
-      });
-    }
-    for (const peerId of this.peers.keys()) {
-      if (!next.has(peerId)) {
-        this.recordDiscovery("peer_removed", { peer_id: peerId });
-      }
-    }
-    this.peers = next;
+    this.lastPeerRefreshAt = Date.now();
+    this.stats.peers_refresh_succeeded += 1;
+    const peerIds = Array.isArray(payload?.peers) ? payload.peers : [];
+    this.updatePeersFromList(peerIds);
   }
 
   private onEnvelope(envelope: unknown): void {
@@ -399,27 +452,101 @@ export class RelayPreviewAdapter implements NetworkAdapter {
     this.lastDiscoveryEventAt = event.at;
   }
 
-  private async get(path: string): Promise<any> {
-    const endpoint = this.activeEndpoint.replace(/\/+$/, "");
-    const response = await fetch(`${endpoint}${path}`);
-    if (!response.ok) {
-      this.stats.signaling_errors += 1;
-      throw new Error(`Relay GET failed (${response.status})`);
+  private async joinRoom(reason: string): Promise<void> {
+    this.stats.join_attempted += 1;
+    await this.post("/join", { room: this.room, peer_id: this.peerId });
+    this.lastJoinAt = Date.now();
+    this.stats.join_succeeded += 1;
+    this.recordDiscovery("join_ok", { endpoint: this.activeEndpoint, detail: reason });
+  }
+
+  private async maybeRefreshJoin(reason: string): Promise<void> {
+    if (!this.lastJoinAt || Date.now() - this.lastJoinAt > Math.max(45_000, this.pollIntervalMs * 6)) {
+      await this.joinRoom(reason);
     }
-    return response.json();
+  }
+
+  private async get(path: string): Promise<any> {
+    return this.requestJson("GET", path);
   }
 
   private async post(path: string, body: any): Promise<any> {
-    const endpoint = this.activeEndpoint.replace(/\/+$/, "");
-    const response = await fetch(`${endpoint}${path}`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!response.ok) {
-      this.stats.signaling_errors += 1;
-      throw new Error(`Relay POST failed (${response.status})`);
+    return this.requestJson("POST", path, body);
+  }
+
+  private async requestJson(method: "GET" | "POST", path: string, body?: any): Promise<any> {
+    const errors: string[] = [];
+    for (let offset = 0; offset < this.signalingEndpoints.length; offset += 1) {
+      const index = (this.activeEndpointIndex + offset) % this.signalingEndpoints.length;
+      const endpoint = this.signalingEndpoints[index]?.replace(/\/+$/, "");
+      if (!endpoint) continue;
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), this.requestTimeoutMs);
+        const response = await fetch(`${endpoint}${path}`, {
+          method,
+          headers: method === "POST" ? { "content-type": "application/json" } : undefined,
+          body: method === "POST" ? JSON.stringify(body) : undefined,
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        if (!response.ok) {
+          throw new Error(`${method} ${path} failed (${response.status})`);
+        }
+        this.activeEndpointIndex = index;
+        this.activeEndpoint = endpoint;
+        this.lastError = null;
+        return response.json();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        errors.push(`${endpoint}: ${message}`);
+        this.stats.signaling_errors += 1;
+        this.lastError = message;
+        this.lastErrorAt = Date.now();
+        this.reconnectAttemptsTotal += 1;
+        this.recordDiscovery("signaling_error", { endpoint, detail: message });
+      }
     }
-    return response.json();
+    throw new Error(errors.join(" | "));
+  }
+
+  private updatePeersFromList(values: unknown[]): void {
+    const peerIds = values.map((value) => String(value || "").trim()).filter(Boolean);
+    if (!peerIds.includes(this.peerId)) {
+      void this.joinRoom("self_missing_from_peers").catch(() => {});
+    }
+    const now = Date.now();
+    const next = new Map<string, RelayPeer>();
+    for (const peerId of peerIds) {
+      if (peerId === this.peerId) continue;
+      const existing = this.peers.get(peerId);
+      if (!existing) {
+        this.recordDiscovery("peer_joined", { peer_id: peerId });
+      }
+      next.set(peerId, {
+        peer_id: peerId,
+        status: "online",
+        first_seen_at: existing?.first_seen_at ?? now,
+        last_seen_at: now,
+        messages_seen: existing?.messages_seen ?? 0,
+        reconnect_attempts: existing?.reconnect_attempts ?? 0,
+      });
+    }
+    for (const peerId of this.peers.keys()) {
+      if (!next.has(peerId)) {
+        this.recordDiscovery("peer_removed", { peer_id: peerId });
+      }
+    }
+    this.peers = next;
+  }
+
+  private scheduleNextPoll(delayMs: number): void {
+    if (this.poller) {
+      clearTimeout(this.poller);
+    }
+    const jitterMs = Math.floor(Math.random() * 400);
+    this.poller = setTimeout(() => {
+      this.pollOnce().catch(() => {});
+    }, Math.max(1000, delayMs + jitterMs));
   }
 }

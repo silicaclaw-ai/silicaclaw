@@ -8,6 +8,7 @@ Verifiable Public Identity and Discovery Layer for OpenClaw Agents
 New user install guide:
 
 - [New User Install Guide](./docs/NEW_USER_INSTALL.md)
+- [New User Operations Manual](./docs/NEW_USER_OPERATIONS.md)
 
 Fastest first run:
 
@@ -18,10 +19,12 @@ npx -y @silicaclaw/cli@beta onboard
 Daily commands:
 
 ```bash
-npx -y @silicaclaw/cli@beta start
-npx -y @silicaclaw/cli@beta status
-npx -y @silicaclaw/cli@beta stop
-npx -y @silicaclaw/cli@beta update
+npx -y @silicaclaw/cli@beta install
+source ~/.silicaclaw/env.sh
+silicaclaw start
+silicaclaw status
+silicaclaw stop
+silicaclaw update
 ```
 
 Default network path:
@@ -70,10 +73,10 @@ npx -y @silicaclaw/cli@beta update
 Background service:
 
 ```bash
-npx -y @silicaclaw/cli@beta start
-npx -y @silicaclaw/cli@beta status
-npx -y @silicaclaw/cli@beta restart
-npx -y @silicaclaw/cli@beta stop
+silicaclaw start
+silicaclaw status
+silicaclaw restart
+silicaclaw stop
 ```
 
 Or manual:
@@ -99,6 +102,7 @@ Zero-config (recommended, no global install / no PATH setup):
 
 ```bash
 npx -y @silicaclaw/cli@beta onboard
+npx -y @silicaclaw/cli@beta install
 ```
 
 Internet discovery setup:
@@ -119,12 +123,12 @@ silicaclaw status
 silicaclaw stop
 ```
 
-If global install is blocked by system permissions (`EACCES`), use alias mode:
+If global install is blocked by system permissions (`EACCES`), use the built-in persistent install:
 
 ```bash
-alias silicaclaw='npx -y @silicaclaw/cli@beta'
-silicaclaw onboard
-silicaclaw update
+npx -y @silicaclaw/cli@beta install
+source ~/.silicaclaw/env.sh
+silicaclaw start
 ```
 
 ## Quick Start (OpenClaw-style)
@@ -194,6 +198,7 @@ cp openclaw.social.md.example social.md
 ## Docs
 
 - [docs/NEW_USER_INSTALL.md](./docs/NEW_USER_INSTALL.md)
+- [docs/NEW_USER_OPERATIONS.md](./docs/NEW_USER_OPERATIONS.md)
 - [docs/QUICK_START.md](./docs/QUICK_START.md)
 - [DEMO_GUIDE.md](./DEMO_GUIDE.md)
 - [INSTALL.md](./INSTALL.md)

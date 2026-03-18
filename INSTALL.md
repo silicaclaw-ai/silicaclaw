@@ -19,28 +19,30 @@ npm install
 CLI-style onboarding command (recommended, zero-config):
 
 ```bash
-npx @silicaclaw/cli@beta onboard
+npx -y @silicaclaw/cli@beta onboard
 ```
 
 Cross-network quick wizard (defaults to global-preview):
 
 ```bash
-npx @silicaclaw/cli@beta connect
+npx -y @silicaclaw/cli@beta connect
 ```
 
 Check/update CLI version:
 
 ```bash
-npx @silicaclaw/cli@beta update
+npx -y @silicaclaw/cli@beta update
 ```
 
 Gateway background service commands:
 
 ```bash
-npx @silicaclaw/cli@beta gateway start --mode=local
-npx @silicaclaw/cli@beta gateway status
-npx @silicaclaw/cli@beta gateway restart --mode=lan
-npx @silicaclaw/cli@beta gateway stop
+npx -y @silicaclaw/cli@beta install
+source ~/.silicaclaw/env.sh
+silicaclaw start --mode=global-preview
+silicaclaw status
+silicaclaw restart
+silicaclaw stop
 ```
 
 For most home users, just press Enter on defaults and use `local` mode first.
@@ -48,21 +50,21 @@ For most home users, just press Enter on defaults and use `local` mode first.
 Optional global install (advanced users only):
 
 ```bash
-npm i -g @silicaclaw/cli
+npm i -g @silicaclaw/cli@beta
 silicaclaw onboard
 silicaclaw connect
 silicaclaw update
-silicaclaw gateway start --mode=local
-silicaclaw gateway status
-silicaclaw gateway stop
+silicaclaw start
+silicaclaw status
+silicaclaw stop
 ```
 
-If global install fails with `EACCES`, use alias mode (no PATH edits):
+If global install fails with `EACCES`, use the built-in persistent install:
 
 ```bash
-alias silicaclaw='npx -y @silicaclaw/cli@beta'
-silicaclaw onboard
-silicaclaw update
+npx -y @silicaclaw/cli@beta install
+source ~/.silicaclaw/env.sh
+silicaclaw start
 ```
 
 ## 3. Run
@@ -78,7 +80,7 @@ Note: local-console runs in watch mode, so backend changes auto-reload during de
 OpenClaw-style interactive install/start guide (recommended):
 
 ```bash
-npm run quickstart
+npx -y @silicaclaw/cli@beta onboard
 ```
 
 It will guide you step-by-step in terminal:
@@ -87,6 +89,7 @@ It will guide you step-by-step in terminal:
 - install dependencies
 - prepare `social.md`
 - choose network mode
+- install the persistent `silicaclaw` command
 - start local-console with correct runtime args
 
 Open:

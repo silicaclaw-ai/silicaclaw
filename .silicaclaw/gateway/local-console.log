@@ -33,3 +33,38 @@ npm error workspace @silicaclaw/local-console@0.1.0
 npm error location /Users/pengs/Downloads/workspace/silicaclaw/apps/local-console
 npm error command failed
 npm error command sh -c tsx watch src/server.ts
+
+> @silicaclaw/cli@1.0.0-beta.26 local-console
+> npm run --workspace @silicaclaw/local-console dev
+
+
+> @silicaclaw/local-console@0.1.0 dev
+> tsx watch src/server.ts
+
+node:net:1890
+      const error = new UVExceptionWithHostPort(rval, 'listen', address, port);
+                    ^
+
+Error: listen EPERM: operation not permitted /var/folders/j2/fflc1tfj5kb5r71vyrfwlxtm0000gn/T/tsx-501/30304.pipe
+    at Server.setupListenHandle [as _listen2] (node:net:1890:21)
+    at listenInCluster (node:net:1969:12)
+    at Server.listen (node:net:2091:5)
+    at file:///Users/pengs/Downloads/workspace/silicaclaw/node_modules/tsx/dist/cli.mjs:53:31537
+    at new Promise (<anonymous>)
+    at createIpcServer (file:///Users/pengs/Downloads/workspace/silicaclaw/node_modules/tsx/dist/cli.mjs:53:31515)
+    at async file:///Users/pengs/Downloads/workspace/silicaclaw/node_modules/tsx/dist/cli.mjs:53:32752 {
+  code: 'EPERM',
+  errno: -1,
+  syscall: 'listen',
+  address: '/var/folders/j2/fflc1tfj5kb5r71vyrfwlxtm0000gn/T/tsx-501/30304.pipe',
+  port: -1
+}
+
+Node.js v22.12.0
+npm error Lifecycle script `dev` failed with error:
+npm error code 1
+npm error path /Users/pengs/Downloads/workspace/silicaclaw/apps/local-console
+npm error workspace @silicaclaw/local-console@0.1.0
+npm error location /Users/pengs/Downloads/workspace/silicaclaw/apps/local-console
+npm error command failed
+npm error command sh -c tsx watch src/server.ts

@@ -2,6 +2,77 @@
 
 ## v1.0 beta - 2026-03-18
 
+### Beta 28
+
+- local-console version visibility:
+  - the page now shows the current running SilicaClaw version in the brand area
+  - the top header now includes the active version
+  - node snapshot now includes `app_version`
+
+### Beta 27
+
+- terminal UX cleanup:
+  - CLI and gateway commands now share a cleaner product-style output format
+  - `status` now defaults to human-readable output while internal tooling uses `--json`
+  - `start` / `stop` / `restart` now show concise summaries instead of raw JSON blocks
+- onboarding and docs alignment:
+  - quickstart output now uses the same summary-oriented command language
+  - README and INSTALL now recommend `install -> source env -> silicaclaw start/status/stop/update`
+- messaging polish:
+  - error messages now provide clearer recovery guidance
+  - command help is grouped by task instead of one long usage block
+
+### Beta 26
+
+- install command resilience:
+  - `silicaclaw install` no longer fails hard when shell startup files are not writable
+  - install still creates the command shim and `~/.silicaclaw/env.sh`
+  - users now get a manual one-line fallback when rc file updates are blocked by permissions
+
+### Beta 25
+
+- relay load reduction:
+  - default relay poll interval increased to reduce request pressure
+  - peer refresh interval increased to reduce extra room lookups
+  - request timeout and retry behavior tightened to avoid stacked in-flight polls
+  - poll responses now reuse embedded peer lists to avoid separate `/peers` calls
+- relay durability improvements:
+  - Cloudflare relay now throttles peer heartbeat writes
+  - local signaling preview server now mirrors the same lower-write behavior
+- presence cost tuning:
+  - default broadcast interval increased
+  - default presence TTL increased to keep nodes visible without aggressive rebroadcasting
+
+### Beta 24
+
+- command install UX:
+  - `silicaclaw install` now creates a persistent user-level command in `~/.silicaclaw/bin`
+  - install now writes a shared `~/.silicaclaw/env.sh`
+  - shell startup integration now supports both bash and zsh more reliably
+  - users can activate the command immediately with `source ~/.silicaclaw/env.sh`
+- new user docs:
+  - added `NEW_USER_OPERATIONS.md`
+  - updated install/operations/readme docs to use the new command install flow
+
+### Beta 23
+
+- relay reliability + diagnostics:
+  - relay adapter now refreshes room membership automatically
+  - relay requests now expose last join/poll/publish/error timestamps
+  - Cloudflare relay and local signaling now expose room peer details for debugging
+- startup flow reliability:
+  - network subscriptions bind before adapter start
+  - public nodes broadcast immediately on startup instead of waiting for the interval
+- CLI command UX:
+  - added `silicaclaw install` for a persistent user-level command without `npm i -g`
+  - README and new user docs now recommend the persistent install flow instead of temporary alias usage
+- local-console UX alignment with OpenClaw:
+  - collapsible sidebar
+  - focus mode
+  - page hero with live mode/relay/room summary
+  - overview quick actions
+  - network and social pages now prioritize summary/status over raw snapshots
+
 ### Beta 22
 
 - internet-first defaults:

@@ -21,14 +21,47 @@ esac
 
 STEP=1
 
+ORANGE=$'\033[38;5;208m'
+BOLD=$'\033[1m'
+DIM=$'\033[2m'
+GREEN=$'\033[32m'
+YELLOW=$'\033[33m'
+RESET=$'\033[0m'
+
+if [ ! -t 1 ] || [ -n "${NO_COLOR:-}" ]; then
+  ORANGE=""
+  BOLD=""
+  DIM=""
+  GREEN=""
+  YELLOW=""
+  RESET=""
+fi
+
 line() {
   printf '\n%s\n' "------------------------------------------------------------"
 }
 
 title() {
   line
-  printf '[Step %s] %s\n' "$STEP" "$1"
+  printf '%s[Step %s]%s %s\n' "$BOLD" "$STEP" "$RESET" "$1"
   STEP=$((STEP + 1))
+}
+
+headline() {
+  printf '%sSilicaClaw%s %s%s%s\n' "$ORANGE$BOLD" "$RESET" "$DIM" "$(cat "$WORK_DIR/VERSION" 2>/dev/null || printf 'unknown')" "$RESET"
+  printf '%sPublic identity and discovery for OpenClaw agents.%s\n' "$DIM" "$RESET"
+}
+
+kv() {
+  printf '%s%-14s%s %s\n' "$DIM" "$1" "$RESET" "$2"
+}
+
+note() {
+  printf '%s%s%s\n' "$YELLOW" "$1" "$RESET"
+}
+
+success() {
+  printf '%s%s%s\n' "$GREEN" "$1" "$RESET"
 }
 
 run_cmd() {
@@ -190,8 +223,10 @@ url_port_or_default() {
 }
 
 title "SilicaClaw Quick Start 启动"
-echo "目录: $ROOT_DIR"
-echo "目标: 用终端一步步完成安装与启动（类似 OpenClaw Quick Start）"
+headline
+echo ""
+kv "目录" "$ROOT_DIR"
+kv "目标" "一步步完成安装、联网与启动"
 pause_continue
 
 if [ "$IS_NPX_MODE" -eq 1 ]; then
@@ -208,7 +243,8 @@ if [ "$IS_NPX_MODE" -eq 1 ]; then
   fi
 
   mkdir -p "$TARGET_DIR"
-  echo "正在复制项目文件到: $TARGET_DIR"
+  kv "安装目录" "$TARGET_DIR"
+  echo "正在复制项目文件..."
   if command -v rsync >/dev/null 2>&1; then
     rsync -a --delete \
       --exclude '.git/' \
@@ -221,7 +257,8 @@ if [ "$IS_NPX_MODE" -eq 1 ]; then
     rm -rf "$TARGET_DIR/.git" "$TARGET_DIR/node_modules" "$TARGET_DIR/.npm-cache"
   fi
   WORK_DIR="$TARGET_DIR"
-  echo "工作目录已切换到: $WORK_DIR"
+  success "工作目录已切换"
+  kv "目录" "$WORK_DIR"
   pause_continue
 fi
 
@@ -237,8 +274,8 @@ fi
 
 NODE_VER="$(node -p "process.versions.node")"
 NPM_VER="$(npm -v)"
-echo "node: $NODE_VER"
-echo "npm : $NPM_VER"
+kv "node" "$NODE_VER"
+kv "npm" "$NPM_VER"
 
 if ! node -e "const v=process.versions.node.split('.').map(Number); if (v[0] < 18) process.exit(1)"; then
   echo "Node.js 版本过低，请升级到 18+"
@@ -258,32 +295,33 @@ fi
 
 title "安装系统命令（silicaclaw）"
 if command -v silicaclaw >/dev/null 2>&1; then
-  echo "已检测到系统命令: $(command -v silicaclaw)"
-  echo "跳过命令安装。"
+  success "已检测到 silicaclaw 命令"
+  kv "路径" "$(command -v silicaclaw)"
 else
-  echo "将尝试无 sudo 安装 silicaclaw 命令到 PATH 中可写目录。"
+  echo "将尝试安装可持久使用的 silicaclaw 命令。"
   BIN_DIR="$(first_writable_path_dir || true)"
   INSTALLED=0
   if [ -n "${BIN_DIR:-}" ]; then
     if install_command_shim "$BIN_DIR"; then
-      echo "命令已安装: $BIN_DIR/silicaclaw"
+      success "命令已写入"
+      kv "路径" "$BIN_DIR/silicaclaw"
       hash -r || true
       if command -v silicaclaw >/dev/null 2>&1; then
-        echo "验证成功: $(command -v silicaclaw)"
+        kv "验证" "$(command -v silicaclaw)"
         INSTALLED=1
       else
-        echo "命令已写入，但当前 shell 未立即识别。请新开终端后运行 silicaclaw。"
+        note "当前 shell 还未刷新。新开终端后即可直接运行 silicaclaw。"
       fi
     else
-      echo "命令安装失败。可继续使用: npx @silicaclaw/cli@beta <command>"
+      note "命令安装未完成，仍可继续使用 npx。"
     fi
   else
-    echo "当前 PATH 中没有可写目录，无法无 sudo 安装系统命令。"
+    note "PATH 中没有可写目录，无法直接安装到现有 PATH。"
   fi
 
   if [ "$INSTALLED" != "1" ]; then
     SYS_BIN_DIR="$(default_system_bin_dir)"
-    echo "为保证开箱即用体验，建议安装到系统目录: $SYS_BIN_DIR/silicaclaw"
+    kv "建议路径" "$SYS_BIN_DIR/silicaclaw"
     if ask_yes_no "是否使用 sudo 安装系统命令？" "Y"; then
       run_cmd "sudo mkdir -p \"$SYS_BIN_DIR\""
       run_cmd "sudo tee \"$SYS_BIN_DIR/silicaclaw\" >/dev/null <<'EOF'
@@ -294,26 +332,27 @@ EOF"
       run_cmd "sudo chmod +x \"$SYS_BIN_DIR/silicaclaw\""
       hash -r || true
       if command -v silicaclaw >/dev/null 2>&1; then
-        echo "验证成功: $(command -v silicaclaw)"
+        success "系统命令安装完成"
+        kv "验证" "$(command -v silicaclaw)"
         INSTALLED=1
       else
-        echo "安装完成，但当前 shell 未刷新。请新开终端后运行 silicaclaw。"
+        note "安装完成，但当前 shell 未刷新。新开终端后再试。"
       fi
     else
-      echo "已跳过 sudo 安装。"
+      note "已跳过 sudo 安装。"
     fi
   fi
 
   if [ "$INSTALLED" != "1" ]; then
-    echo "无需改 PATH/环境变量，也可一键使用 silicaclaw。"
+    echo "你也可以选择无需全局安装的命令别名模式。"
     if ask_yes_no "是否自动写入 shell alias（silicaclaw -> npx @silicaclaw/cli@beta）？" "Y"; then
       if install_npx_alias; then
-        echo "alias 安装完成。新开终端后可直接使用 silicaclaw。"
+        success "alias 安装完成"
       else
-        echo "alias 安装失败。可继续使用: npx @silicaclaw/cli@beta <command>"
+        note "alias 安装失败。继续使用 npx 即可。"
       fi
     else
-      echo "你仍可继续使用: npx @silicaclaw/cli@beta <command>"
+      kv "临时用法" "npx @silicaclaw/cli@beta <command>"
     fi
   fi
 fi
@@ -334,8 +373,8 @@ title "选择网络模式"
 echo "1) local           单机预览（最快）"
 echo "2) lan             局域网预览（A/B 双机）"
 echo "3) global-preview  互联网预览（Relay，推荐）"
-echo "提示: 不确定就直接回车（默认 global-preview）。"
-echo "提示: 互联网场景需要一个所有节点都可访问的 relay/signaling 地址。"
+note "不确定就直接回车，默认 global-preview。"
+note "互联网模式需要所有节点都能访问同一个 relay。"
 if [ "$CONNECT_MODE" = "1" ]; then
   MODE_PICK="3"
   echo "connect 模式：已自动选择 global-preview。"
@@ -363,13 +402,13 @@ case "$MODE_PICK" in
     if [ -n "$PUBLIC_IP" ]; then
       SIGNALING_DEFAULT="https://relay.silicaclaw.com"
     fi
-    echo "提示: signaling 地址需要“所有节点可访问”。"
+    note "signaling 地址需要所有节点都可访问。"
     if [ -n "$PUBLIC_IP" ]; then
-      echo "已检测到本机公网 IP: $PUBLIC_IP"
-      echo "如果你这台机器就是 signaling 服务器，可直接回车使用默认值。"
+      kv "公网 IP" "$PUBLIC_IP"
+      note "如果这台机器就是 relay 所在主机，可直接使用默认值。"
     else
-      echo "未检测到公网 IP，将使用默认值: $SIGNALING_DEFAULT"
-      echo "如需私有 relay，可改成你自己的公网地址。"
+      kv "默认 relay" "$SIGNALING_DEFAULT"
+      note "如需私有 relay，可改成你自己的公网地址。"
     fi
     read -r -p "请输入 signaling URL（默认 ${SIGNALING_DEFAULT}）: " WEBRTC_SIGNALING_URL_INPUT || true
     WEBRTC_SIGNALING_URL_VALUE="${WEBRTC_SIGNALING_URL_INPUT:-$SIGNALING_DEFAULT}"
@@ -380,13 +419,13 @@ case "$MODE_PICK" in
 
     SIGNALING_HOST="$(url_host "$WEBRTC_SIGNALING_URL_VALUE")"
     if [ "$SIGNALING_HOST" = "localhost" ] || [ "$SIGNALING_HOST" = "127.0.0.1" ]; then
-      echo "提示: 当前 signaling URL 是本机地址，仅本机可用，不适合跨网络双机演示。"
+      note "当前 signaling URL 是本机地址，仅本机可用，不适合异地双机。"
     fi
 
     if ask_yes_no "是否在当前机器自动后台启动 signaling server（用于演示）？" "Y"; then
       AUTO_START_SIGNALING=1
       SIGNALING_PORT_VALUE="$(url_port_or_default "$WEBRTC_SIGNALING_URL_VALUE" "4510")"
-      echo "将尝试以 PORT=$SIGNALING_PORT_VALUE 后台启动 signaling server"
+      kv "本地 relay" "PORT=$SIGNALING_PORT_VALUE"
     fi
 
     read -r -p "请输入 room（默认 silicaclaw-global-preview）: " WEBRTC_ROOM_VALUE_INPUT || true
@@ -398,7 +437,9 @@ case "$MODE_PICK" in
     ;;
 esac
 
-echo "已选择: $NETWORK_MODE ($NETWORK_ADAPTER)"
+success "网络模式已选择"
+kv "Mode" "$NETWORK_MODE"
+kv "Adapter" "$NETWORK_ADAPTER"
 
 title "启动 local-console"
 echo "1) gateway（推荐）  后台服务模式，可用 start/stop/restart/status 管理"
@@ -413,18 +454,19 @@ if [ "$START_MODE_PICK" = "2" ]; then
       SIGNALING_LOG="$WORK_DIR/.silicaclaw/signaling.log"
       SIGNALING_PID_FILE="$WORK_DIR/.silicaclaw/signaling.pid"
       run_cmd "cd \"$WORK_DIR\" && PORT=${SIGNALING_PORT_VALUE:-4510} nohup npm run webrtc-signaling > \"$SIGNALING_LOG\" 2>&1 & echo \$! > \"$SIGNALING_PID_FILE\""
-      echo "已后台启动 signaling server，日志: $SIGNALING_LOG"
-      echo "停止 signaling: kill \$(cat \"$SIGNALING_PID_FILE\")"
+      success "已后台启动 signaling server"
+      kv "日志" "$SIGNALING_LOG"
+      kv "停止" "kill \$(cat \"$SIGNALING_PID_FILE\")"
     fi
     echo "将使用以下参数启动（dev watch）："
-    echo "NETWORK_ADAPTER=$NETWORK_ADAPTER"
-    echo "WEBRTC_SIGNALING_URL=$WEBRTC_SIGNALING_URL_VALUE"
-    echo "WEBRTC_ROOM=$WEBRTC_ROOM_VALUE"
+    kv "Adapter" "$NETWORK_ADAPTER"
+    kv "Relay" "$WEBRTC_SIGNALING_URL_VALUE"
+    kv "Room" "$WEBRTC_ROOM_VALUE"
     pause_continue
     run_cmd "cd \"$WORK_DIR\" && NETWORK_ADAPTER=$NETWORK_ADAPTER WEBRTC_SIGNALING_URL=$WEBRTC_SIGNALING_URL_VALUE WEBRTC_ROOM=$WEBRTC_ROOM_VALUE npm run local-console"
   else
     echo "将使用以下参数启动（dev watch）："
-    echo "NETWORK_ADAPTER=$NETWORK_ADAPTER"
+    kv "Adapter" "$NETWORK_ADAPTER"
     pause_continue
     run_cmd "cd \"$WORK_DIR\" && NETWORK_ADAPTER=$NETWORK_ADAPTER npm run local-console"
   fi
@@ -434,14 +476,16 @@ else
     GATEWAY_CMD="$GATEWAY_CMD --signaling-url=$WEBRTC_SIGNALING_URL_VALUE --room=$WEBRTC_ROOM_VALUE"
   fi
   echo "将使用 gateway 后台启动："
-  echo "$GATEWAY_CMD"
+  kv "Command" "$GATEWAY_CMD"
   pause_continue
   run_cmd "$GATEWAY_CMD"
   echo ""
-  echo "已启动完成。常用命令："
-  echo "cd \"$WORK_DIR\" && npm run gateway -- status"
-  echo "cd \"$WORK_DIR\" && npm run gateway -- logs local-console"
-  echo "cd \"$WORK_DIR\" && npm run gateway -- stop"
+  success "已启动完成"
+  kv "打开" "http://localhost:4310"
   echo ""
-  echo "打开: http://localhost:4310"
+  echo "常用命令："
+  kv "Status" "silicaclaw status"
+  kv "Logs" "silicaclaw logs local-console"
+  kv "Stop" "silicaclaw stop"
+  echo ""
 fi

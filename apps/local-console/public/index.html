@@ -74,13 +74,20 @@
         display: grid;
         grid-template-columns: 240px 1fr;
         min-height: 100vh;
+        transition: grid-template-columns .2s ease;
+      }
+      .app.nav-collapsed {
+        grid-template-columns: 84px 1fr;
       }
 
       .sidebar {
         border-right: 1px solid color-mix(in srgb, var(--line) 74%, transparent);
         background: color-mix(in srgb, var(--panel) 96%, transparent);
         padding: 18px 14px;
+        position: relative;
+        transition: padding .2s ease;
       }
+      .app.nav-collapsed .sidebar { padding-inline: 10px; }
       .brand {
         display: flex;
         align-items: center;
@@ -116,6 +123,39 @@
         color: var(--muted);
         font-size: 12px;
       }
+      .brand-version {
+        margin-top: 4px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .version-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 999px;
+        background: var(--brand);
+        opacity: .85;
+      }
+      .sidebar-toggle {
+        width: 100%;
+        margin: 0 0 12px;
+        border: 1px solid var(--line);
+        background: var(--bg-elevated);
+        color: var(--muted);
+        font-size: 12px;
+        text-align: left;
+      }
+      .app.nav-collapsed .brand h1,
+      .app.nav-collapsed .brand p,
+      .app.nav-collapsed .tab-copy,
+      .app.nav-collapsed .sidebar-foot {
+        display: none;
+      }
+      .app.nav-collapsed .brand {
+        justify-content: center;
+      }
 
       .nav {
         display: grid;
@@ -130,6 +170,18 @@
         border-radius: 10px;
         cursor: pointer;
         font: inherit;
+      }
+      .nav button .tab-title {
+        display: block;
+        font-weight: 700;
+        color: var(--text);
+      }
+      .nav button .tab-copy {
+        display: block;
+        margin-top: 3px;
+        font-size: 11px;
+        color: var(--muted);
+        line-height: 1.35;
       }
       .nav button.active {
         color: #e9f7ff;
@@ -148,6 +200,13 @@
 
       .main {
         padding: 18px;
+      }
+      .app.focus-mode .sidebar,
+      .app.focus-mode .topbar {
+        display: none;
+      }
+      .app.focus-mode {
+        grid-template-columns: 1fr;
       }
       .topbar {
         display: flex;
@@ -171,6 +230,11 @@
         gap: 8px;
         flex-wrap: wrap;
         align-items: center;
+      }
+      .utility-row {
+        display: flex;
+        gap: 8px;
+        margin-left: 6px;
       }
       .theme-switch {
         display: inline-flex;
@@ -233,6 +297,46 @@
       .integration-strip.warn {
         border-color: rgba(245, 158, 11, 0.35);
       }
+      .page-hero {
+        display: grid;
+        grid-template-columns: 1.2fr .8fr;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+      .hero-copy {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: color-mix(in srgb, var(--card) 92%, transparent);
+        padding: 14px;
+      }
+      .hero-copy h3 {
+        margin: 0;
+        font-size: 20px;
+        color: var(--text-strong);
+      }
+      .hero-copy p {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      .hero-meta {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: color-mix(in srgb, var(--bg-elevated) 90%, transparent);
+        padding: 14px;
+      }
+      .hero-meta-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .hero-meta-item {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--panel) 88%, transparent);
+        padding: 10px;
+      }
 
       .view { display: none; }
       .view.active { display: block; }
@@ -248,6 +352,11 @@
         background: var(--card);
         padding: 12px;
         box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+        transition: border-color .16s ease, transform .16s ease, box-shadow .16s ease;
+      }
+      .card:hover {
+        border-color: color-mix(in srgb, var(--brand) 14%, var(--line));
+        box-shadow: 0 6px 22px rgba(0, 0, 0, 0.18);
       }
       .label { font-size: 12px; color: var(--muted); }
       .value { margin-top: 4px; font-size: 24px; font-weight: 800; }
@@ -304,6 +413,31 @@
         display: flex;
         gap: 8px;
         flex-wrap: wrap;
+      }
+      .action-bar {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+      }
+      .summary-list {
+        display: grid;
+        gap: 8px;
+      }
+      .summary-item {
+        display: grid;
+        gap: 3px;
+        padding: 10px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: color-mix(in srgb, var(--bg-elevated) 88%, transparent);
+      }
+      .empty-state {
+        border: 1px dashed var(--line-strong);
+        border-radius: 12px;
+        padding: 16px;
+        color: var(--muted);
+        background: color-mix(in srgb, var(--panel) 88%, transparent);
       }
       button {
         border: 1px solid transparent;
@@ -468,29 +602,31 @@
       @media (max-width: 980px) {
         .app { grid-template-columns: 1fr; }
         .sidebar { border-right: 0; border-bottom: 1px solid var(--line); }
-        .nav { grid-template-columns: repeat(3, minmax(0,1fr)); }
+        .nav { grid-template-columns: repeat(2, minmax(0,1fr)); }
         .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .split, .row, .profile-layout { grid-template-columns: 1fr; }
+        .split, .row, .profile-layout, .page-hero { grid-template-columns: 1fr; }
       }
     </style>
   </head>
   <body>
-    <div class="app">
+    <div class="app" id="appShell">
       <aside class="sidebar">
+        <button class="secondary sidebar-toggle" id="sidebarToggleBtn" type="button">Collapse sidebar</button>
         <div class="brand">
           <img id="brandLogo" class="brand-logo" src="/assets/silicaclaw-logo.png" alt="SilicaClaw logo" />
           <div id="brandFallback" class="brand-badge hidden">SC</div>
           <div>
             <h1>SilicaClaw</h1>
             <p>Control UI</p>
+            <div class="brand-version"><span class="version-dot"></span><span id="brandVersion">version -</span></div>
           </div>
         </div>
 
         <nav class="nav">
-          <button class="tab active" data-tab="overview">Overview</button>
-          <button class="tab" data-tab="profile">Profile</button>
-          <button class="tab" data-tab="network">Network</button>
-          <button class="tab" data-tab="social">Social</button>
+          <button class="tab active" data-tab="overview"><span class="tab-title">Overview</span><span class="tab-copy">Agent summary and discovered peers</span></button>
+          <button class="tab" data-tab="profile"><span class="tab-title">Profile</span><span class="tab-copy">Public identity and saved profile</span></button>
+          <button class="tab" data-tab="network"><span class="tab-title">Network</span><span class="tab-copy">Relay health, broadcast, diagnostics</span></button>
+          <button class="tab" data-tab="social"><span class="tab-title">Social</span><span class="tab-copy">social.md config and runtime state</span></button>
         </nav>
 
         <div class="sidebar-foot" id="sideMeta">adapter: -<br/>namespace: -</div>
@@ -500,7 +636,7 @@
         <div class="topbar">
           <div>
             <h2>Local Console</h2>
-            <p>OpenClaw-inspired local-first agent control surface</p>
+            <p>OpenClaw-inspired local-first agent control surface · <span id="topVersion">version -</span></p>
           </div>
           <div class="status-row">
             <div class="pill" id="pillAdapter">adapter: -</div>
@@ -509,11 +645,29 @@
               <button id="themeDarkBtn" type="button">Dark</button>
               <button id="themeLightBtn" type="button">Light</button>
             </div>
+            <div class="utility-row">
+              <button class="secondary" id="refreshAllBtn" type="button">Refresh</button>
+              <button class="secondary" id="focusModeBtn" type="button">Focus mode</button>
+            </div>
           </div>
         </div>
         <div class="integration-strip warn" id="integrationStatusBar">
           Connected to SilicaClaw: - · Network mode: - · Public discovery: -
         </div>
+        <section class="page-hero">
+          <div class="hero-copy">
+            <h3 id="pageHeroTitle">Overview</h3>
+            <p id="pageHeroBody">See the live state of this node, whether discovery is working, and whether other public agents are visible.</p>
+          </div>
+          <div class="hero-meta">
+            <div class="hero-meta-grid">
+              <div class="hero-meta-item"><div class="label">Mode</div><div class="mono" id="heroMode">-</div></div>
+              <div class="hero-meta-item"><div class="label">Adapter</div><div class="mono" id="heroAdapter">-</div></div>
+              <div class="hero-meta-item"><div class="label">Relay</div><div class="mono" id="heroRelay">-</div></div>
+              <div class="hero-meta-item"><div class="label">Room</div><div class="mono" id="heroRoom">-</div></div>
+            </div>
+          </div>
+        </section>
 
         <div class="notice" id="initNotice"></div>
         <div class="actions" id="onboardingActions" style="display:none; margin:8px 0 12px;">
@@ -525,6 +679,11 @@
         </div>
 
         <section id="view-overview" class="view active">
+          <div class="action-bar">
+            <button id="overviewBroadcastNowBtn" type="button">Broadcast Now</button>
+            <button class="secondary" id="overviewGoProfileBtn" type="button">Edit Profile</button>
+            <button class="secondary" id="overviewGoNetworkBtn" type="button">Open Network Diagnostics</button>
+          </div>
           <div class="grid" id="overviewCards"></div>
           <div class="split">
             <div class="card">
@@ -611,11 +770,12 @@
           <div class="grid" id="networkCards"></div>
           <div class="split">
             <div class="card">
-              <h3 class="title-sm">Runtime Components</h3>
-              <div class="mono" id="networkComponents"></div>
+              <h3 class="title-sm">Connection Summary</h3>
+              <div class="summary-list" id="networkSummaryList"></div>
             </div>
             <div class="card">
               <h3 class="title-sm">Quick Actions</h3>
+              <div class="field-hint" style="margin-bottom:10px;">Use these first. Most discovery issues can be confirmed here before opening diagnostics.</div>
               <div class="actions">
                 <button id="startBroadcastBtn">Start Broadcast</button>
                 <button class="secondary" id="stopBroadcastBtn">Stop Broadcast</button>
@@ -632,18 +792,12 @@
               <div id="networkFeedback" class="feedback" style="margin-top:10px;">Ready.</div>
             </div>
           </div>
-          <div class="split">
-            <div class="card" style="margin-top:10px;">
-              <h3 class="title-sm">Config Snapshot</h3>
-              <div class="mono mono-block" id="networkConfigSnapshot">-</div>
-            </div>
-            <div class="card" style="margin-top:10px;">
-              <h3 class="title-sm">Stats Snapshot</h3>
-              <div class="mono mono-block" id="networkStatsSnapshot">-</div>
-            </div>
-          </div>
           <details class="advanced-panel card">
             <summary class="title-sm">Diagnostics</summary>
+            <div class="card" style="margin-top:10px;">
+              <h3 class="title-sm">Runtime Components</h3>
+              <div class="mono" id="networkComponents"></div>
+            </div>
             <div class="grid" id="peerCards" style="margin-top:10px;"></div>
             <div class="card" style="margin-top:10px;">
               <h3 class="title-sm">Peer Inventory</h3>
@@ -682,6 +836,16 @@
               </div>
               <div class="logs" id="logList"></div>
             </div>
+            <div class="split">
+              <div class="card" style="margin-top:10px;">
+                <h3 class="title-sm">Config Snapshot</h3>
+                <div class="mono mono-block" id="networkConfigSnapshot">-</div>
+              </div>
+              <div class="card" style="margin-top:10px;">
+                <h3 class="title-sm">Stats Snapshot</h3>
+                <div class="mono mono-block" id="networkStatsSnapshot">-</div>
+              </div>
+            </div>
           </details>
         </section>
 
@@ -692,8 +856,16 @@
             <div class="field-hint" id="socialStatusSubline">-</div>
             <div class="field-hint" id="socialStateHint">-</div>
           </div>
-          <div class="grid" id="socialPrimaryCards" style="margin-top:10px;"></div>
-          <div class="grid" id="socialIntegrationCards"></div>
+          <div class="split" style="margin-top:10px;">
+            <div class="card">
+              <h3 class="title-sm">What Is Active</h3>
+              <div class="grid" id="socialPrimaryCards"></div>
+            </div>
+            <div class="card">
+              <h3 class="title-sm">Identity Binding</h3>
+              <div class="grid" id="socialIntegrationCards"></div>
+            </div>
+          </div>
           <details class="card" style="margin-top:10px;">
             <summary class="title-sm" style="cursor:pointer;">Advanced Network Details</summary>
             <div class="grid" id="socialAdvancedCards" style="margin-top:10px;"></div>
@@ -757,6 +929,24 @@
       let logLevelFilter = 'all';
       let socialTemplate = '';
       let onlyShowOnline = false;
+      const pageMeta = {
+        overview: {
+          title: 'Overview',
+          body: 'See the live state of this node, whether discovery is healthy, and whether other public agents are visible through the relay.',
+        },
+        profile: {
+          title: 'Profile',
+          body: 'Edit the signed public identity card that other agents can discover. Saved profile data should survive restart and update.',
+        },
+        network: {
+          title: 'Network',
+          body: 'Inspect relay connectivity, peer inventory, broadcast timing, and diagnostics when cross-device discovery is not working.',
+        },
+        social: {
+          title: 'Social',
+          body: 'Review social.md, runtime resolution, and the effective public visibility state that controls discovery.',
+        },
+      };
 
       function ago(ts) {
         if (!ts) return '-';
@@ -937,6 +1127,9 @@
         ['overview', 'profile', 'network', 'social'].forEach((k) => {
           document.getElementById(`view-${k}`).classList.toggle('active', k === tab);
         });
+        const meta = pageMeta[tab] || pageMeta.overview;
+        document.getElementById('pageHeroTitle').textContent = meta.title;
+        document.getElementById('pageHeroBody').textContent = meta.body;
         if (tab === 'profile' && !profileDirty && !profileSaving) {
           refreshProfile().catch(() => {});
         }
@@ -955,12 +1148,17 @@
           ['Presence TTL', `${Math.floor(o.presence_ttl_ms / 1000)}s`],
         ].map(([k,v]) => `<div class="card"><div class="label">${k}</div><div class="value">${v}</div></div>`).join('');
 
+        document.getElementById('brandVersion').textContent = o.app_version ? `version ${o.app_version}` : 'version -';
+        document.getElementById('topVersion').textContent = o.app_version ? o.app_version : 'version -';
+
         document.getElementById('snapshot').textContent = [
+          `app_version: ${o.app_version || '-'}`,
           `agent_id: ${o.agent_id || '-'}`,
           `public_enabled: ${o.public_enabled}`,
           `broadcast_enabled: ${o.broadcast_enabled}`,
           `last_broadcast: ${ago(o.last_broadcast_at)}`,
         ].join('\n');
+        document.getElementById('heroMode').textContent = o.social?.network_mode || '-';
 
         document.getElementById('pillBroadcast').textContent = o.broadcast_enabled ? 'broadcast: running' : 'broadcast: paused';
         document.getElementById('pillBroadcast').className = `pill ${o.broadcast_enabled ? 'ok' : 'warn'}`;
@@ -1060,6 +1258,9 @@
         const d = s.adapter_discovery_stats || {};
         const dx = s.adapter_diagnostics_summary || {};
         const ac = s.adapter_config || c.adapter_config || {};
+        document.getElementById('heroAdapter').textContent = c.adapter || '-';
+        document.getElementById('heroRelay').textContent = dx.signaling_url || '-';
+        document.getElementById('heroRoom').textContent = dx.room || '-';
 
         document.getElementById('pillAdapter').textContent = `adapter: ${c.adapter}`;
         document.getElementById('sideMeta').innerHTML = `adapter: ${c.adapter}<br/>namespace: ${c.namespace || '-'}<br/>port: ${c.port ?? '-'}`;
@@ -1085,6 +1286,15 @@
           ['Last Inbound', ago(msg.last_message_at)],
           ['Last Outbound', ago(msg.last_broadcast_at)],
         ].map(([k,v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join('');
+        document.getElementById('networkSummaryList').innerHTML = [
+          ['Relay health', dx.last_error ? 'degraded' : 'connected'],
+          ['Current relay', dx.signaling_url || '-'],
+          ['Current room', dx.room || '-'],
+          ['Last join', ago(dx.last_join_at)],
+          ['Last poll', ago(dx.last_poll_at)],
+          ['Last publish', ago(dx.last_publish_at)],
+          ['Last error', dx.last_error || 'none'],
+        ].map(([k, v]) => `<div class="summary-item"><div class="label">${k}</div><div class="mono">${v}</div></div>`).join('');
 
         const comp = c.components || {};
         const lim = c.limits || {};
@@ -1112,6 +1322,12 @@
           `discovery_heartbeat_send_errors: ${d.heartbeat_send_errors ?? '-'}`,
           `signaling_messages_sent_total: ${dx.signaling_messages_sent_total ?? '-'}`,
           `signaling_messages_received_total: ${dx.signaling_messages_received_total ?? '-'}`,
+          `last_join_at: ${dx.last_join_at ? new Date(dx.last_join_at).toISOString() : '-'}`,
+          `last_poll_at: ${dx.last_poll_at ? new Date(dx.last_poll_at).toISOString() : '-'}`,
+          `last_publish_at: ${dx.last_publish_at ? new Date(dx.last_publish_at).toISOString() : '-'}`,
+          `last_peer_refresh_at: ${dx.last_peer_refresh_at ? new Date(dx.last_peer_refresh_at).toISOString() : '-'}`,
+          `last_error_at: ${dx.last_error_at ? new Date(dx.last_error_at).toISOString() : '-'}`,
+          `last_error: ${dx.last_error || '-'}`,
           `signaling_endpoints: ${Array.isArray(dx.signaling_endpoints) ? dx.signaling_endpoints.join(', ') : '-'}`,
           `bootstrap_sources: ${Array.isArray(dx.bootstrap_sources) ? dx.bootstrap_sources.join(', ') : '-'}`,
           `seed_peers_count: ${dx.seed_peers_count ?? '-'}`,
@@ -1143,6 +1359,9 @@
           ['Signaling URL', summary.signaling_url || '-'],
           ['Signaling Endpoints', (summary.signaling_endpoints || []).length || 0],
           ['Room', summary.room || '-'],
+          ['Last Join', ago(summary.last_join_at)],
+          ['Last Poll', ago(summary.last_poll_at)],
+          ['Last Publish', ago(summary.last_publish_at)],
           ['Bootstrap Sources', (summary.bootstrap_sources || []).length || 0],
           ['Seed Peers', summary.seed_peers_count ?? 0],
           ['Discovery Events', summary.discovery_events_total ?? 0],
@@ -1154,7 +1373,7 @@
         ].map(([k,v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join('');
 
         if (!peers.items || !peers.items.length) {
-          document.getElementById('peerTableWrap').innerHTML = '<div class="label">No peers discovered yet.</div>';
+          document.getElementById('peerTableWrap').innerHTML = '<div class="empty-state">No peers discovered yet. Confirm both nodes use the same relay URL, room, and public discovery setting.</div>';
           document.getElementById('peerStatsWrap').textContent = toPrettyJson({
             discovery_stats: ds,
             diagnostics_summary: summary,
@@ -1202,7 +1421,7 @@
         ].map(([k,v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join('');
 
         if (!items.length) {
-          document.getElementById('discoveryEventList').innerHTML = '<div class="label">No discovery events yet.</div>';
+          document.getElementById('discoveryEventList').innerHTML = '<div class="empty-state">No discovery events yet. If this stays empty, the node may not be polling or joining the relay successfully.</div>';
         } else {
           document.getElementById('discoveryEventList').innerHTML = items
             .slice()
@@ -1310,14 +1529,14 @@
       function renderLogs() {
         const el = document.getElementById('logList');
         if (!logsCache.length) {
-          el.innerHTML = '<div class="label">No logs yet.</div>';
+          el.innerHTML = '<div class="empty-state">No logs yet.</div>';
           return;
         }
         const filtered = logLevelFilter === 'all'
           ? logsCache
           : logsCache.filter((l) => String(l.level || '').toLowerCase() === logLevelFilter);
         if (!filtered.length) {
-          el.innerHTML = `<div class="label">No ${logLevelFilter} logs.</div>`;
+          el.innerHTML = `<div class="empty-state">No ${logLevelFilter} logs.</div>`;
           return;
         }
         el.innerHTML = filtered.map((l) => `
@@ -1354,6 +1573,27 @@
       });
       document.getElementById('themeDarkBtn').addEventListener('click', () => applyTheme('dark'));
       document.getElementById('themeLightBtn').addEventListener('click', () => applyTheme('light'));
+      document.getElementById('refreshAllBtn').addEventListener('click', async () => {
+        await refreshAll();
+        toast('Refreshed');
+      });
+      document.getElementById('focusModeBtn').addEventListener('click', () => {
+        const shell = document.getElementById('appShell');
+        const next = !shell.classList.contains('focus-mode');
+        shell.classList.toggle('focus-mode', next);
+        document.getElementById('focusModeBtn').textContent = next ? 'Exit focus' : 'Focus mode';
+      });
+      document.getElementById('sidebarToggleBtn').addEventListener('click', () => {
+        const shell = document.getElementById('appShell');
+        const next = !shell.classList.contains('nav-collapsed');
+        shell.classList.toggle('nav-collapsed', next);
+        document.getElementById('sidebarToggleBtn').textContent = next ? 'Expand sidebar' : 'Collapse sidebar';
+      });
+      document.getElementById('overviewBroadcastNowBtn').addEventListener('click', () => {
+        document.getElementById('broadcastNowBtn').click();
+      });
+      document.getElementById('overviewGoProfileBtn').addEventListener('click', () => switchTab('profile'));
+      document.getElementById('overviewGoNetworkBtn').addEventListener('click', () => switchTab('network'));
 
       document.getElementById('profileForm').addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -1442,7 +1682,7 @@
       document.getElementById('quickGlobalPreviewBtn').addEventListener('click', async () => {
         const currentSignaling = window.prompt('Signaling URL (publicly reachable):', 'http://localhost:4510');
         if (!currentSignaling) return;
-        const room = window.prompt('Room:', 'silicaclaw-demo') || 'silicaclaw-demo';
+        const room = window.prompt('Room:', 'silicaclaw-global-preview') || 'silicaclaw-global-preview';
         setFeedback('networkFeedback', 'Enabling cross-network preview...');
         try {
           const result = await api('/api/network/quick-connect-global-preview', {

@@ -5,6 +5,7 @@ import { randomUUID, createHash } from 'crypto';
 const port = Number(process.env.PORT || process.env.WEBRTC_SIGNALING_PORT || 4510);
 const PEER_STALE_MS = Number(process.env.WEBRTC_SIGNALING_PEER_STALE_MS || 120000);
 const SIGNAL_DEDUPE_WINDOW_MS = Number(process.env.WEBRTC_SIGNALING_DEDUPE_WINDOW_MS || 60000);
+const TOUCH_WRITE_INTERVAL_MS = Number(process.env.WEBRTC_SIGNALING_TOUCH_WRITE_INTERVAL_MS || 30000);
 
 /** @type {Map<string, {peers: Map<string, {last_seen_at:number}>, queues: Map<string, any[]>, relay_queues: Map<string, any[]>, signal_fingerprints: Map<string, number>}>} */
 const rooms = new Map();
@@ -90,10 +91,13 @@ function cleanupRoom(roomId) {
 }
 
 function touchPeer(room, peerId) {
+  const ts = now();
+  const previous = room.peers.get(peerId)?.last_seen_at || 0;
+  const shouldWrite = !previous || ts - previous >= TOUCH_WRITE_INTERVAL_MS;
   if (!room.peers.has(peerId)) {
-    room.peers.set(peerId, { last_seen_at: now() });
+    room.peers.set(peerId, { last_seen_at: ts });
   } else {
-    room.peers.get(peerId).last_seen_at = now();
+    room.peers.get(peerId).last_seen_at = shouldWrite ? ts : previous;
   }
   if (!room.queues.has(peerId)) {
     room.queues.set(peerId, []);
@@ -101,6 +105,7 @@ function touchPeer(room, peerId) {
   if (!room.relay_queues.has(peerId)) {
     room.relay_queues.set(peerId, []);
   }
+  return shouldWrite;
 }
 
 function isValidSignalPayload(body) {
@@ -153,7 +158,35 @@ const server = http.createServer(async (req, res) => {
     const roomId = String(url.searchParams.get('room') || 'silicaclaw-room');
     const room = getRoom(roomId);
     cleanupRoom(roomId);
-    return json(res, 200, { ok: true, peers: Array.from(room.peers.keys()) });
+    return json(res, 200, {
+      ok: true,
+      room: roomId,
+      peer_count: room.peers.size,
+      peers: Array.from(room.peers.keys()),
+      peer_details: Array.from(room.peers.entries()).map(([peerId, peer]) => ({
+        peer_id: peerId,
+        last_seen_at: peer.last_seen_at,
+        signal_queue_size: (room.queues.get(peerId) || []).length,
+        relay_queue_size: (room.relay_queues.get(peerId) || []).length,
+      })),
+    });
+  }
+
+  if (req.method === 'GET' && url.pathname === '/room') {
+    const roomId = String(url.searchParams.get('room') || 'silicaclaw-room');
+    const room = getRoom(roomId);
+    cleanupRoom(roomId);
+    return json(res, 200, {
+      ok: true,
+      room: roomId,
+      peer_count: room.peers.size,
+      peers: Array.from(room.peers.entries()).map(([peerId, peer]) => ({
+        peer_id: peerId,
+        last_seen_at: peer.last_seen_at,
+        signal_queue_size: (room.queues.get(peerId) || []).length,
+        relay_queue_size: (room.relay_queues.get(peerId) || []).length,
+      })),
+    });
   }
 
   if (req.method === 'GET' && url.pathname === '/poll') {
@@ -170,7 +203,7 @@ const server = http.createServer(async (req, res) => {
 
     const queue = room.queues.get(peerId) || [];
     room.queues.set(peerId, []);
-    return json(res, 200, { ok: true, messages: queue });
+    return json(res, 200, { ok: true, messages: queue, peers: Array.from(room.peers.keys()) });
   }
 
   if (req.method === 'GET' && url.pathname === '/relay/poll') {
@@ -187,7 +220,7 @@ const server = http.createServer(async (req, res) => {
 
     const queue = room.relay_queues.get(peerId) || [];
     room.relay_queues.set(peerId, []);
-    return json(res, 200, { ok: true, messages: queue });
+    return json(res, 200, { ok: true, messages: queue, peers: Array.from(room.peers.keys()) });
   }
 
   if (req.method === 'POST' && url.pathname === '/join') {

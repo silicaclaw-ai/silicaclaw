@@ -51,8 +51,8 @@ import {
 import { CacheRepo, IdentityRepo, LogRepo, ProfileRepo, SocialRuntimeRepo } from "@silicaclaw/storage";
 import { registerSocialRoutes } from "./socialRoutes";
 
-const BROADCAST_INTERVAL_MS = 10_000;
-const PRESENCE_TTL_MS = Number(process.env.PRESENCE_TTL_MS || 30_000);
+const BROADCAST_INTERVAL_MS = Number(process.env.BROADCAST_INTERVAL_MS || 20_000);
+const PRESENCE_TTL_MS = Number(process.env.PRESENCE_TTL_MS || 90_000);
 const NETWORK_MAX_MESSAGE_BYTES = Number(process.env.NETWORK_MAX_MESSAGE_BYTES || 64 * 1024);
 const NETWORK_DEDUPE_WINDOW_MS = Number(process.env.NETWORK_DEDUPE_WINDOW_MS || 90_000);
 const NETWORK_DEDUPE_MAX_ENTRIES = Number(process.env.NETWORK_DEDUPE_MAX_ENTRIES || 10_000);
@@ -70,6 +70,24 @@ const WEBRTC_ROOM = process.env.WEBRTC_ROOM || "silicaclaw-global-preview";
 const WEBRTC_SEED_PEERS = process.env.WEBRTC_SEED_PEERS || "";
 const WEBRTC_BOOTSTRAP_HINTS = process.env.WEBRTC_BOOTSTRAP_HINTS || "";
 const PROFILE_VERSION = "v0.9";
+
+function readWorkspaceVersion(workspaceRoot: string): string {
+  const versionFile = resolve(workspaceRoot, "VERSION");
+  if (existsSync(versionFile)) {
+    const raw = readFileSync(versionFile, "utf8").trim();
+    if (raw) return raw;
+  }
+  const pkgFile = resolve(workspaceRoot, "package.json");
+  if (existsSync(pkgFile)) {
+    try {
+      const pkg = JSON.parse(readFileSync(pkgFile, "utf8")) as { version?: string };
+      if (pkg.version) return String(pkg.version);
+    } catch {
+      // ignore
+    }
+  }
+  return "unknown";
+}
 
 function resolveWorkspaceRoot(cwd = process.cwd()): string {
   if (existsSync(resolve(cwd, "apps", "local-console", "package.json"))) {
@@ -178,6 +196,7 @@ class LocalNodeService {
   private lastMessageAt = 0;
   private lastBroadcastAt = 0;
   private broadcaster: NodeJS.Timeout | null = null;
+  private subscriptionsBound = false;
   private broadcastEnabled = true;
 
   private receivedByTopic: Record<string, number> = {};
@@ -210,10 +229,12 @@ class LocalNodeService {
   private webrtcSeedPeers: string[] = [];
   private webrtcBootstrapHints: string[] = [];
   private webrtcBootstrapSources: string[] = [];
+  private appVersion = "unknown";
 
   constructor() {
     this.workspaceRoot = resolveWorkspaceRoot();
     this.storageRoot = resolveStorageRoot(this.workspaceRoot);
+    this.appVersion = readWorkspaceVersion(this.workspaceRoot);
     migrateLegacyDataIfNeeded(this.workspaceRoot, this.storageRoot);
 
     this.identityRepo = new IdentityRepo(this.storageRoot);
@@ -228,7 +249,7 @@ class LocalNodeService {
         display_name: this.getDefaultDisplayName(),
         bio: "Local AI agent connected to SilicaClaw",
         tags: ["openclaw", "local-first"],
-        mode: "lan",
+        mode: "global-preview",
         public_enabled: false,
       });
       loadedSocial = loadSocialConfig(this.workspaceRoot);
@@ -252,11 +273,18 @@ class LocalNodeService {
   async start(): Promise<void> {
     await this.hydrateFromDisk();
 
-    await this.network.start();
     this.bindNetworkSubscriptions();
+    await this.network.start();
+    await this.log(
+      "info",
+      `Local node started (${this.adapterMode}, mode=${this.networkMode}, signaling=${this.webrtcSignalingUrls[0] || "-"}, room=${this.webrtcRoom})`
+    );
+
+    if (this.profile?.public_enabled && this.broadcastEnabled) {
+      await this.broadcastNow("adapter_start");
+    }
 
     this.startBroadcastLoop();
-    await this.log("info", "Local node started");
   }
 
   async stop(): Promise<void> {
@@ -275,6 +303,7 @@ class LocalNodeService {
     ).length;
 
     return {
+      app_version: this.appVersion,
       agent_id: this.identity?.agent_id ?? "",
       public_enabled: Boolean(this.profile?.public_enabled),
       broadcast_enabled: this.broadcastEnabled,
@@ -331,6 +360,12 @@ class LocalNodeService {
             last_discovery_event_at: diagnostics.last_discovery_event_at ?? 0,
             active_webrtc_peers: diagnostics.active_webrtc_peers ?? 0,
             reconnect_attempts_total: diagnostics.reconnect_attempts_total ?? 0,
+            last_join_at: diagnostics.last_join_at ?? 0,
+            last_poll_at: diagnostics.last_poll_at ?? 0,
+            last_publish_at: diagnostics.last_publish_at ?? 0,
+            last_peer_refresh_at: diagnostics.last_peer_refresh_at ?? 0,
+            last_error_at: diagnostics.last_error_at ?? 0,
+            last_error: diagnostics.last_error ?? null,
           }
         : null,
     };
@@ -362,6 +397,12 @@ class LocalNodeService {
             last_discovery_event_at: diagnostics.last_discovery_event_at ?? 0,
             connection_states_summary: diagnostics.connection_states_summary ?? null,
             datachannel_states_summary: diagnostics.datachannel_states_summary ?? null,
+            last_join_at: diagnostics.last_join_at ?? 0,
+            last_poll_at: diagnostics.last_poll_at ?? 0,
+            last_publish_at: diagnostics.last_publish_at ?? 0,
+            last_peer_refresh_at: diagnostics.last_peer_refresh_at ?? 0,
+            last_error_at: diagnostics.last_error_at ?? 0,
+            last_error: diagnostics.last_error ?? null,
           }
         : null,
       env: {
@@ -434,6 +475,12 @@ class LocalNodeService {
             signaling_messages_received_total: diagnostics.signaling_messages_received_total ?? null,
             reconnect_attempts_total: diagnostics.reconnect_attempts_total ?? null,
             active_webrtc_peers: diagnostics.active_webrtc_peers ?? null,
+            last_join_at: diagnostics.last_join_at ?? 0,
+            last_poll_at: diagnostics.last_poll_at ?? 0,
+            last_publish_at: diagnostics.last_publish_at ?? 0,
+            last_peer_refresh_at: diagnostics.last_peer_refresh_at ?? 0,
+            last_error_at: diagnostics.last_error_at ?? 0,
+            last_error: diagnostics.last_error ?? null,
           }
         : null,
     };
@@ -473,6 +520,12 @@ class LocalNodeService {
         connection_states_summary: diagnostics.connection_states_summary ?? null,
         datachannel_states_summary: diagnostics.datachannel_states_summary ?? null,
         active_webrtc_peers: diagnostics.active_webrtc_peers ?? null,
+        last_join_at: diagnostics.last_join_at ?? 0,
+        last_poll_at: diagnostics.last_poll_at ?? 0,
+        last_publish_at: diagnostics.last_publish_at ?? 0,
+        last_peer_refresh_at: diagnostics.last_peer_refresh_at ?? 0,
+        last_error_at: diagnostics.last_error_at ?? 0,
+        last_error: diagnostics.last_error ?? null,
       },
     };
   }
@@ -648,7 +701,7 @@ class LocalNodeService {
     this.socialConfig.network.adapter = "relay-preview";
     this.socialConfig.network.signaling_url = signalingUrl;
     this.socialConfig.network.signaling_urls = [signalingUrl];
-    this.socialConfig.network.room = room || "silicaclaw-demo";
+    this.socialConfig.network.room = room || "silicaclaw-global-preview";
     this.applyResolvedNetworkConfig();
     await this.restartNetworkAdapter("quick_connect_global_preview");
     this.socialNetworkRequiresRestart = false;
@@ -1099,6 +1152,9 @@ class LocalNodeService {
   }
 
   private bindNetworkSubscriptions(): void {
+    if (this.subscriptionsBound) {
+      return;
+    }
     this.network.subscribe("profile", (data: SignedProfileRecord) => {
       this.onMessage("profile", data);
     });
@@ -1108,6 +1164,7 @@ class LocalNodeService {
     this.network.subscribe("index", (data: IndexRefRecord) => {
       this.onMessage("index", data);
     });
+    this.subscriptionsBound = true;
   }
 
   private buildNetworkAdapter(): {

@@ -57,16 +57,18 @@ In the page, confirm:
 If you use `npx` only:
 
 ```bash
+npx -y @silicaclaw/cli@beta install
 npx -y @silicaclaw/cli@beta start
 npx -y @silicaclaw/cli@beta status
 npx -y @silicaclaw/cli@beta stop
 npx -y @silicaclaw/cli@beta update
 ```
 
-If you want a short local command without global install:
+Recommended once per machine:
 
 ```bash
-alias silicaclaw='npx -y @silicaclaw/cli@beta'
+npx -y @silicaclaw/cli@beta install
+source ~/.silicaclaw/env.sh
 ```
 
 Then you can use:
@@ -121,14 +123,15 @@ npx -y @silicaclaw/cli@beta start
 Or add the alias:
 
 ```bash
-alias silicaclaw='npx -y @silicaclaw/cli@beta'
+npx -y @silicaclaw/cli@beta install
+source ~/.silicaclaw/env.sh
 ```
 
 ### `npm i -g` fails with `EACCES`
 
 That is expected on many systems. You do not need global install.
 
-Use `npx` or alias mode instead.
+Use `npx` or `npx -y @silicaclaw/cli@beta install` instead.
 
 ### Browser page still shows old UI after update
 

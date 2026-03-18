@@ -13,6 +13,39 @@ const ROOT_DIR = resolve(__dirname, "..");
 const argv = process.argv.slice(2);
 const cmd = String(argv[0] || "help").toLowerCase();
 
+const COLOR = {
+  reset: "\x1b[0m",
+  bold: "\x1b[1m",
+  dim: "\x1b[2m",
+  orange: "\x1b[38;5;208m",
+  green: "\x1b[32m",
+  yellow: "\x1b[33m",
+  red: "\x1b[31m",
+};
+
+function useColor() {
+  return Boolean(process.stdout.isTTY && !process.env.NO_COLOR);
+}
+
+function paint(text, ...styles) {
+  if (!useColor() || styles.length === 0) return text;
+  return `${styles.join("")}${text}${COLOR.reset}`;
+}
+
+function headline() {
+  const version = existsSync(join(ROOT_DIR, "VERSION")) ? String(readFileSync(join(ROOT_DIR, "VERSION"), "utf8")).trim() : "unknown";
+  console.log(`${paint("SilicaClaw", COLOR.bold, COLOR.orange)} ${paint(version, COLOR.dim)}`);
+  console.log(paint("Public identity and discovery for OpenClaw agents.", COLOR.dim));
+}
+
+function kv(label, value) {
+  console.log(`${paint(label.padEnd(14), COLOR.dim)} ${value}`);
+}
+
+function section(title) {
+  console.log(paint(title, COLOR.bold));
+}
+
 function readJson(file) {
   try {
     return JSON.parse(String(readFileSync(file, "utf8")));
@@ -116,7 +149,7 @@ async function stopPid(pid, name) {
     }
   }
   if (isRunning(pid)) {
-    console.error(`failed to stop ${name} (pid=${pid})`);
+    console.error(`${paint("Failed to stop", COLOR.bold, COLOR.red)} ${name} (pid=${pid})`);
   }
 }
 
@@ -172,29 +205,27 @@ function readState() {
 }
 
 function printHelp() {
-  console.log(`
-SilicaClaw Gateway
-
-Usage:
-  silicaclaw gateway start [--mode=local|lan|global-preview] [--signaling-url=https://relay.silicaclaw.com] [--room=silicaclaw-global-preview]
-  silicaclaw gateway stop
-  silicaclaw gateway restart [--mode=...]
-  silicaclaw gateway status
-  silicaclaw gateway logs [local-console|signaling]
-
-Notes:
-  - Default app dir: current directory; fallback: ~/silicaclaw
-  - State dir: .silicaclaw/gateway
-  - global-preview is internet-first and expects a publicly reachable relay/signaling URL
-  - global-preview + localhost signaling URL will auto-start signaling server for single-machine testing
-`.trim());
+  headline();
+  console.log("");
+  section("Gateway commands");
+  kv("Start", "silicaclaw gateway start --mode=global-preview");
+  kv("Stop", "silicaclaw gateway stop");
+  kv("Restart", "silicaclaw gateway restart --mode=global-preview");
+  kv("Status", "silicaclaw gateway status");
+  kv("Logs", "silicaclaw gateway logs local-console");
+  console.log("");
+  section("Notes");
+  kv("App dir", "current directory, then ~/silicaclaw");
+  kv("State dir", ".silicaclaw/gateway");
+  kv("Default relay", "https://relay.silicaclaw.com");
+  kv("Default room", "silicaclaw-global-preview");
 }
 
-function showStatus() {
+function buildStatusPayload() {
   const localPid = readPid(CONSOLE_PID_FILE);
   const sigPid = readPid(SIGNALING_PID_FILE);
   const state = readState();
-  const payload = {
+  return {
     app_dir: APP_DIR,
     mode: state?.mode || "unknown",
     adapter: state?.adapter || "unknown",
@@ -212,26 +243,59 @@ function showStatus() {
     },
     updated_at: state?.updated_at || null,
   };
-  console.log(JSON.stringify(payload, null, 2));
+}
+
+function showStatusJson() {
+  console.log(JSON.stringify(buildStatusPayload(), null, 2));
+}
+
+function showStatusHuman() {
+  const payload = buildStatusPayload();
+  headline();
+  console.log("");
+  console.log(paint("Gateway status", COLOR.bold));
+  kv("App dir", payload.app_dir);
+  kv("Mode", payload.mode);
+  kv("Adapter", payload.adapter);
+  kv(
+    "Console",
+    payload.local_console.running
+      ? `${paint("running", COLOR.green)} (pid=${payload.local_console.pid})`
+      : paint("stopped", COLOR.dim)
+  );
+  if (payload.mode === "global-preview") {
+    kv("Relay", payload.signaling.url || "https://relay.silicaclaw.com");
+    kv("Room", payload.signaling.room || "silicaclaw-global-preview");
+  }
+  if (payload.signaling.running) {
+    kv("Signaling", `${paint("running", COLOR.green)} (pid=${payload.signaling.pid})`);
+  }
+  console.log("");
+  kv("Open", "http://localhost:4310");
+  kv("Logs", "silicaclaw logs local-console");
+  kv("Stop", "silicaclaw stop");
   return payload;
 }
 
-function printConnectionSummary(status) {
+function printConnectionSummary(status, verb = "Started") {
   if (!status?.local_console?.running) return;
+  headline();
   console.log("");
-  console.log("Gateway connection summary:");
-  console.log(`- local-console: http://localhost:4310`);
-  console.log(`- mode: ${status.mode}`);
-  console.log(`- adapter: ${status.adapter}`);
+  console.log(`${paint(verb, COLOR.bold)} background services`);
+  kv("Console", `http://localhost:4310`);
+  kv("Console pid", String(status?.local_console?.pid || "-"));
+  kv("Mode", status.mode);
+  kv("Adapter", status.adapter);
   if (status.mode === "global-preview") {
     const signalingUrl = status?.signaling?.url || "https://relay.silicaclaw.com";
     const room = status?.signaling?.room || "silicaclaw-global-preview";
-    console.log(`- signaling: ${signalingUrl} (room=${room})`);
+    kv("Relay", signalingUrl);
+    kv("Room", room);
   }
-  console.log(`- local-console log: ${status?.local_console?.log_file || CONSOLE_LOG_FILE}`);
-  console.log(`- status: silicaclaw gateway status`);
-  console.log(`- logs:   silicaclaw gateway logs local-console`);
-  console.log(`- stop:   silicaclaw gateway stop`);
+  console.log("");
+  kv("Status", "silicaclaw status");
+  kv("Logs", "silicaclaw logs local-console");
+  kv("Stop", "silicaclaw stop");
 }
 
 function listeningProcessOnPort(port) {
@@ -260,34 +324,40 @@ function listeningProcessOnPort(port) {
 function printStopSummary() {
   const localListener = listeningProcessOnPort(4310);
   const signalingListener = listeningProcessOnPort(4510);
+  headline();
   console.log("");
-  console.log("Gateway stop summary:");
+  console.log(`${paint("Stopped", COLOR.bold)} background services`);
   if (!localListener) {
-    console.log("- local-console port 4310: stopped");
+    kv("Console", paint("stopped", COLOR.green));
   } else {
-    console.log(`- local-console port 4310: still in use by pid=${localListener.pid}`);
-    console.log(`  command: ${localListener.command}`);
-    console.log("  this is likely another process not started by gateway");
-    console.log(`  inspect: lsof -nP -iTCP:4310 -sTCP:LISTEN`);
-    console.log(`  stop it: kill ${localListener.pid}`);
+    kv("Console", `${paint("still busy", COLOR.yellow)} (pid=${localListener.pid})`);
+    kv("Inspect", "lsof -nP -iTCP:4310 -sTCP:LISTEN");
+    kv("Stop pid", `kill ${localListener.pid}`);
   }
   if (!signalingListener) {
-    console.log("- signaling port 4510: stopped");
+    kv("Relay port", paint("stopped", COLOR.green));
   } else {
-    console.log(`- signaling port 4510: still in use by pid=${signalingListener.pid}`);
-    console.log(`  command: ${signalingListener.command}`);
-    console.log("  this is likely another process not started by gateway");
-    console.log(`  inspect: lsof -nP -iTCP:4510 -sTCP:LISTEN`);
-    console.log(`  stop it: kill ${signalingListener.pid}`);
+    kv("Relay port", `${paint("still busy", COLOR.yellow)} (pid=${signalingListener.pid})`);
+    kv("Inspect", "lsof -nP -iTCP:4510 -sTCP:LISTEN");
+    kv("Stop pid", `kill ${signalingListener.pid}`);
   }
-  console.log(`- check status: silicaclaw gateway status`);
+  console.log("");
+  kv("Status", "silicaclaw status");
 }
 
 function tailFile(file, lines = 80) {
   if (!existsSync(file)) {
-    console.log(`log file not found: ${file}`);
+    headline();
+    console.log("");
+    console.log(`${paint("Log file not found", COLOR.bold, COLOR.yellow)}`);
+    kv("Path", file);
     return;
   }
+  headline();
+  console.log("");
+  section("Recent logs");
+  kv("Path", file);
+  console.log("");
   const text = String(readFileSync(file, "utf8"));
   const out = text.split(/\r?\n/).slice(-lines).join("\n");
   console.log(out);
@@ -304,7 +374,6 @@ async function stopAll() {
     ...(readState() || {}),
     updated_at: Date.now(),
   });
-  console.log("gateway stopped");
 }
 
 function startAll() {
@@ -318,9 +387,8 @@ function startAll() {
 
   const currentLocalPid = readPid(CONSOLE_PID_FILE);
   const currentSigPid = readPid(SIGNALING_PID_FILE);
-  if (isRunning(currentLocalPid)) {
-    console.log(`local-console already running (pid=${currentLocalPid})`);
-  } else {
+  let localPid = currentLocalPid;
+  if (!isRunning(currentLocalPid)) {
     removeFileIfExists(CONSOLE_PID_FILE);
     const env = {
       NETWORK_ADAPTER: adapter,
@@ -328,8 +396,7 @@ function startAll() {
       WEBRTC_SIGNALING_URL: signalingUrl,
       WEBRTC_ROOM: room,
     };
-    const pid = spawnBackground("npm", ["run", "local-console"], env, CONSOLE_LOG_FILE, CONSOLE_PID_FILE);
-    console.log(`local-console started (pid=${pid})`);
+    localPid = spawnBackground("npm", ["run", "local-console"], env, CONSOLE_LOG_FILE, CONSOLE_PID_FILE);
   }
 
   const { host, port } = parseUrlHostPort(signalingUrl);
@@ -338,19 +405,17 @@ function startAll() {
     !shouldDisableSignaling &&
     (host === "localhost" || host === "127.0.0.1");
 
+  let signalingPid = currentSigPid;
   if (shouldAutoStartSignaling) {
-    if (isRunning(currentSigPid)) {
-      console.log(`signaling already running (pid=${currentSigPid})`);
-    } else {
+    if (!isRunning(currentSigPid)) {
       removeFileIfExists(SIGNALING_PID_FILE);
-      const pid = spawnBackground(
+      signalingPid = spawnBackground(
         "npm",
         ["run", "webrtc-signaling"],
         { PORT: String(port) },
         SIGNALING_LOG_FILE,
         SIGNALING_PID_FILE,
       );
-      console.log(`signaling started (pid=${pid}, port=${port})`);
     }
   }
 
@@ -362,6 +427,7 @@ function startAll() {
     room,
     updated_at: Date.now(),
   });
+  return { localPid, signalingPid: shouldAutoStartSignaling ? signalingPid : null };
 }
 
 async function main() {
@@ -370,26 +436,29 @@ async function main() {
     return;
   }
   if (cmd === "status") {
-    showStatus();
+    if (hasFlag("json")) {
+      showStatusJson();
+    } else {
+      showStatusHuman();
+    }
     return;
   }
   if (cmd === "start") {
     startAll();
-    const status = showStatus();
-    printConnectionSummary(status);
+    const status = buildStatusPayload();
+    printConnectionSummary(status, "Started");
     return;
   }
   if (cmd === "stop") {
     await stopAll();
-    showStatus();
     printStopSummary();
     return;
   }
   if (cmd === "restart") {
     await stopAll();
     startAll();
-    const status = showStatus();
-    printConnectionSummary(status);
+    const status = buildStatusPayload();
+    printConnectionSummary(status, "Restarted");
     return;
   }
   if (cmd === "logs") {
@@ -406,6 +475,9 @@ async function main() {
 }
 
 main().catch((error) => {
+  headline();
+  console.log("");
+  console.error(paint("Gateway command failed", COLOR.bold, COLOR.red));
   console.error(error?.message || String(error));
   process.exit(1);
 });
