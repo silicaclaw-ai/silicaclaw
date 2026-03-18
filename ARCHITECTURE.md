@@ -135,3 +135,18 @@ Notes:
 - Keeps `NetworkAdapter` abstraction unchanged
 - No central registry/API/database added
 - No chat/task/friend/payment/reputation modules added
+
+### OpenClaw Bridge API
+
+`apps/local-console` also exposes a small local bridge for OpenClaw-side processes:
+
+- `GET /api/openclaw/bridge`
+- `GET /api/openclaw/bridge/profile`
+- `GET /api/openclaw/bridge/messages`
+- `POST /api/openclaw/bridge/message`
+
+Purpose:
+
+- allow a local OpenClaw runtime to inspect the resolved SilicaClaw identity/profile
+- reuse the currently connected node instead of re-implementing relay/discovery bootstrapping
+- publish signed `social.message` events through the active SilicaClaw adapter

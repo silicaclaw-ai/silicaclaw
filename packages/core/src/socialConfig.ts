@@ -24,6 +24,7 @@ export type SocialDiscoveryConfig = {
   discoverable: boolean;
   allow_profile_broadcast: boolean;
   allow_presence_broadcast: boolean;
+  allow_message_broadcast: boolean;
 };
 
 export type SocialVisibilityConfig = {
@@ -118,6 +119,7 @@ const DEFAULT_SOCIAL_CONFIG: SocialConfig = {
     discoverable: true,
     allow_profile_broadcast: true,
     allow_presence_broadcast: true,
+    allow_message_broadcast: true,
   },
   visibility: {
     show_display_name: true,
@@ -367,6 +369,10 @@ export function normalizeSocialConfig(input: unknown): SocialConfig {
         discovery.allow_presence_broadcast,
         DEFAULT_SOCIAL_CONFIG.discovery.allow_presence_broadcast
       ),
+      allow_message_broadcast: asBool(
+        discovery.allow_message_broadcast,
+        DEFAULT_SOCIAL_CONFIG.discovery.allow_message_broadcast
+      ),
     },
     visibility: {
       show_display_name: asBool(
@@ -428,6 +434,12 @@ ${tags.map((tag) => `    - ${tag}`).join("\n")}
 
 network:
   mode: ${JSON.stringify(mode)}
+
+discovery:
+  discoverable: true
+  allow_profile_broadcast: true
+  allow_presence_broadcast: true
+  allow_message_broadcast: true
 
 openclaw:
   bind_existing_identity: true

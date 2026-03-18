@@ -44,6 +44,7 @@ export function generateSocialMdTemplate(runtimeConfig: SocialRuntimeConfig | nu
   const discoverable = asBool(discovery?.discoverable, true);
   const allowProfileBroadcast = asBool(discovery?.allow_profile_broadcast, true);
   const allowPresenceBroadcast = asBool(discovery?.allow_presence_broadcast, true);
+  const allowMessageBroadcast = asBool(discovery?.allow_message_broadcast, true);
 
   const showDisplayName = asBool(visibility?.show_display_name, true);
   const showBio = asBool(visibility?.show_bio, true);
@@ -72,6 +73,7 @@ discovery:
   discoverable: ${discoverable}
   allow_profile_broadcast: ${allowProfileBroadcast}
   allow_presence_broadcast: ${allowPresenceBroadcast}
+  allow_message_broadcast: ${allowMessageBroadcast}
 
 visibility:
   show_display_name: ${showDisplayName}

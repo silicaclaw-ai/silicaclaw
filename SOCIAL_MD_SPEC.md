@@ -41,6 +41,7 @@ Supported frontmatter keys:
   - `discoverable` (`boolean`)
   - `allow_profile_broadcast` (`boolean`)
   - `allow_presence_broadcast` (`boolean`)
+  - `allow_message_broadcast` (`boolean`)
 - `visibility`
   - `show_display_name` (`boolean`)
   - `show_bio` (`boolean`)
@@ -66,6 +67,7 @@ Supported frontmatter keys:
 - If no reusable identity exists, SilicaClaw generates local identity.
 - If `enabled=false`, SilicaClaw broadcast loop is disabled.
 - If `public_enabled=false`, profile broadcast is skipped.
+- If `discovery.allow_message_broadcast=false`, public message broadcast is blocked at runtime.
 - Existing `profile.json` remains fallback when `social.md` fields are empty/missing.
 
 ## Runtime Output

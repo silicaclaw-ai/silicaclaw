@@ -12,6 +12,12 @@ identity:
 network:
   mode: "global-preview"
 
+discovery:
+  discoverable: true
+  allow_profile_broadcast: true
+  allow_presence_broadcast: true
+  allow_message_broadcast: true
+
 openclaw:
   bind_existing_identity: true
   use_openclaw_profile_if_available: true
