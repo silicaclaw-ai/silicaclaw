@@ -18,51 +18,103 @@
     <style>
       :root {
         --bg: #0e1015;
+        --bg-accent: #13151b;
         --bg-elevated: #191c24;
         --bg-hover: #1f2330;
+        --bg-muted: #1f2330;
         --panel: #0e1015;
+        --panel-strong: #191c24;
+        --panel-hover: #1f2330;
         --card: #161920;
-        --line: #1e2028;
-        --line-strong: #2e3040;
+        --card-foreground: #f0f0f2;
+        --card-highlight: rgba(255, 255, 255, 0.04);
+        --card-soft: rgba(22, 25, 32, 0.86);
+        --card-strong: rgba(25, 28, 36, 0.96);
+        --chrome: rgba(14, 16, 21, 0.96);
+        --chrome-strong: rgba(14, 16, 21, 0.98);
         --text: #d4d4d8;
         --text-strong: #f4f4f5;
-        --muted: #636370;
-        --brand: #ff5c5c;
-        --brand-hover: #ff7070;
-        --brand-soft: rgba(255, 92, 92, 0.1);
+        --muted: #838387;
+        --muted-strong: #62626a;
+        --border: #1e2028;
+        --border-strong: #2e3040;
+        --border-hover: #3e4050;
+        --accent: #ff5c5c;
+        --accent-hover: #ff7070;
+        --accent-subtle: rgba(255, 92, 92, 0.1);
+        --accent-glow: rgba(255, 92, 92, 0.2);
         --ok: #22c55e;
         --warn: #f59e0b;
-        --err: #ef4444;
-        --chip: #1f2330;
+        --danger: #ef4444;
+        --info: #3b82f6;
+        --focus-ring: 0 0 0 2px var(--bg), 0 0 0 3px color-mix(in srgb, var(--accent) 60%, transparent);
+        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
+        --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.3);
+        --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.4);
+        --radius-sm: 6px;
+        --radius-md: 10px;
+        --radius-lg: 14px;
+        --radius-xl: 20px;
+        --radius-full: 9999px;
+        --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+        --duration-fast: 100ms;
+        --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
       }
       :root[data-theme-mode="light"] {
         --bg: #f8f9fa;
-        --bg-elevated: #f1f3f5;
+        --bg-accent: #f1f3f5;
+        --bg-elevated: #ffffff;
         --bg-hover: #eceef0;
+        --bg-muted: #eceef0;
         --panel: #f8f9fa;
+        --panel-strong: #f1f3f5;
+        --panel-hover: #e6e8eb;
         --card: #ffffff;
-        --line: #e5e5ea;
-        --line-strong: #d1d1d6;
+        --card-foreground: #1a1a1e;
+        --card-highlight: rgba(0, 0, 0, 0.02);
+        --card-soft: rgba(255, 255, 255, 0.9);
+        --card-strong: rgba(255, 255, 255, 0.98);
+        --chrome: rgba(248, 249, 250, 0.96);
+        --chrome-strong: rgba(248, 249, 250, 0.98);
         --text: #3c3c43;
         --text-strong: #1a1a1e;
-        --muted: #8e8e93;
-        --brand: #dc2626;
-        --brand-hover: #ef4444;
-        --brand-soft: rgba(220, 38, 38, 0.08);
-        --ok: #16a34a;
-        --warn: #d97706;
-        --err: #dc2626;
-        --chip: #f1f3f5;
+        --muted: #6e6e73;
+        --muted-strong: #545458;
+        --border: #e5e5ea;
+        --border-strong: #d1d1d6;
+        --border-hover: #aeaeb2;
+        --accent: #dc2626;
+        --accent-hover: #ef4444;
+        --accent-subtle: rgba(220, 38, 38, 0.08);
+        --accent-glow: rgba(220, 38, 38, 0.1);
+        --ok: #15803d;
+        --warn: #b45309;
+        --danger: #dc2626;
+        --info: #2563eb;
+        --focus-ring: 0 0 0 2px var(--bg), 0 0 0 3px color-mix(in srgb, var(--accent) 50%, transparent);
+        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+        --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+        --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.08);
+
       }
       * { box-sizing: border-box; }
-      html, body { margin: 0; min-height: 100%; }
+      html, body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+      }
       body {
-        font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif;
+        font: 400 13.5px/1.55 var(--font-body);
+        letter-spacing: -0.01em;
         color: var(--text);
         background:
           radial-gradient(900px 420px at 8% -12%, rgba(255, 92, 92, 0.18), transparent 60%),
           linear-gradient(180deg, #0e1015 0%, #0e1015 62%, #0f1219 100%);
         transition: background .2s ease, color .2s ease;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
       }
       :root[data-theme-mode="light"] body {
         background:
@@ -72,42 +124,121 @@
 
       .app {
         display: grid;
-        grid-template-columns: 240px 1fr;
-        min-height: 100vh;
+        grid-template-columns: 258px 1fr;
+        height: 100vh;
+        overflow: hidden;
         transition: grid-template-columns .2s ease;
       }
       .app.nav-collapsed {
-        grid-template-columns: 84px 1fr;
+        grid-template-columns: 78px 1fr;
+      }
+      .app.focus-mode {
+        grid-template-columns: 1fr;
       }
 
       .sidebar {
-        border-right: 1px solid color-mix(in srgb, var(--line) 74%, transparent);
-        background: color-mix(in srgb, var(--panel) 96%, transparent);
-        padding: 18px 14px;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        border-right: 1px solid color-mix(in srgb, var(--border) 74%, transparent);
+        background: var(--bg);
+        padding: 14px 10px 12px;
         position: relative;
+        overflow: hidden;
         transition: padding .2s ease;
       }
-      .app.nav-collapsed .sidebar { padding-inline: 10px; }
+      :root[data-theme-mode="light"] .sidebar {
+        background: var(--panel);
+      }
+      .app.nav-collapsed .sidebar {
+        padding: 12px 8px 10px;
+      }
+      .sidebar-shell {
+        display: flex;
+        flex: 1 1 auto;
+        min-height: 0;
+        flex-direction: column;
+      }
+      .sidebar-shell__header {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 0;
+        padding: 0 8px 18px;
+      }
+      .nav-collapse-toggle {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-elevated);
+        border: 1px solid color-mix(in srgb, var(--border-strong) 68%, transparent);
+        border-radius: 999px;
+        cursor: pointer;
+        color: var(--muted);
+        flex: 0 0 auto;
+        transition:
+          background .16s ease,
+          border-color .16s ease,
+          color .16s ease,
+          transform .16s ease;
+      }
+      .nav-collapse-toggle:hover {
+        background: color-mix(in srgb, var(--bg-hover) 90%, transparent);
+        border-color: color-mix(in srgb, var(--border-strong) 88%, transparent);
+        color: var(--text);
+        transform: translateY(-1px);
+      }
+      .nav-collapse-toggle__icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        color: inherit;
+      }
+      .nav-collapse-toggle__icon svg {
+        width: 16px;
+        height: 16px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 1.5px;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .sidebar-shell__body {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+      }
+      .sidebar-shell__footer {
+        flex: 0 0 auto;
+        padding: 12px 8px 0;
+      }
       .brand {
         display: flex;
         align-items: center;
         gap: 10px;
-        margin-bottom: 18px;
+        margin-bottom: 0;
       }
       .brand-logo {
-        width: 38px;
-        height: 38px;
+        width: 32px;
+        height: 32px;
         border-radius: 10px;
         object-fit: cover;
         display: block;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.24);
-        border: 1px solid color-mix(in srgb, var(--line) 75%, transparent);
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+        border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
       }
       .brand-badge {
-        width: 38px;
-        height: 38px;
+        width: 32px;
+        height: 32px;
         border-radius: 10px;
-        background: linear-gradient(135deg, var(--brand), var(--brand-hover));
+        background: linear-gradient(135deg, var(--accent), var(--accent-hover));
         color: #fff;
         font-weight: 900;
         display: grid;
@@ -116,155 +247,452 @@
       .brand-badge.hidden { display: none; }
       .brand h1 {
         margin: 0;
-        font-size: 17px;
+        font-size: 15px;
+        line-height: 1.1;
+        letter-spacing: -0.03em;
       }
       .brand p {
         margin: 2px 0 0;
         color: var(--muted);
-        font-size: 12px;
-      }
-      .brand-version {
-        margin-top: 4px;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 11px;
-        color: var(--muted);
+        font-size: 10px;
+        line-height: 1.15;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
       }
       .version-dot {
         width: 5px;
         height: 5px;
         border-radius: 999px;
-        background: var(--brand);
+        background: var(--accent);
         opacity: .85;
-      }
-      .sidebar-toggle {
-        width: 100%;
-        margin: 0 0 12px;
-        border: 1px solid var(--line);
-        background: var(--bg-elevated);
-        color: var(--muted);
-        font-size: 12px;
-        text-align: left;
       }
       .app.nav-collapsed .brand h1,
       .app.nav-collapsed .brand p,
-      .app.nav-collapsed .tab-copy,
-      .app.nav-collapsed .sidebar-foot {
+      .app.nav-collapsed .sidebar-foot,
+      .app.nav-collapsed .sidebar-version__label,
+      .app.nav-collapsed .sidebar-nav__label {
         display: none;
       }
+      .app.focus-mode .sidebar {
+        display: none;
+      }
+      .app.focus-mode .integration-strip,
+      .app.focus-mode .page-hero,
+      .app.focus-mode .notice,
+      .app.focus-mode #onboardingActions,
+      .app.focus-mode #publicDiscoveryHint {
+        display: none !important;
+      }
       .app.nav-collapsed .brand {
+        display: none;
+      }
+      .app.nav-collapsed .sidebar-shell__header {
         justify-content: center;
+        align-items: center;
+        gap: 0;
+        padding: 0 2px 16px;
+      }
+      .app.nav-collapsed .nav button {
+        justify-content: center;
+        width: 44px;
+        min-height: 44px;
+        padding: 0;
+        margin: 0 auto;
+        border-radius: 16px;
+        border-color: transparent;
+        box-shadow: none;
+        background: transparent;
+      }
+      .app.nav-collapsed .nav button .tab-labels {
+        display: none;
+      }
+      .app.nav-collapsed .nav button .tab-icon {
+        width: 18px;
+        height: 18px;
+      }
+      .app.nav-collapsed .nav button .tab-icon svg {
+        width: 18px;
+        height: 18px;
+      }
+      .app.nav-collapsed .nav button.active::before {
+        left: 8px;
+        top: 10px;
+        bottom: 10px;
+      }
+      .app.nav-collapsed .sidebar-shell__footer {
+        padding: 8px 0 2px;
+      }
+      .app.nav-collapsed .sidebar-utility {
+        display: none;
+      }
+      .app.nav-collapsed .sidebar-version {
+        width: 44px;
+        min-height: 44px;
+        padding: 0;
+        justify-content: center;
+        border-radius: 16px;
+      }
+      .app.nav-collapsed .sidebar-version__text {
+        display: none;
       }
 
       .nav {
         display: grid;
-        gap: 8px;
+        gap: 4px;
+        min-height: 0;
+        overflow: auto;
+        padding: 0;
+        scrollbar-width: none;
+      }
+      .nav::-webkit-scrollbar { display: none; }
+      .sidebar-nav__label {
+        padding: 0 10px 8px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
       }
       .nav button {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 8px;
+        min-height: 40px;
         text-align: left;
         border: 1px solid transparent;
         background: transparent;
         color: var(--muted);
-        padding: 10px 12px;
-        border-radius: 10px;
+        padding: 0 9px;
+        border-radius: 12px;
         cursor: pointer;
         font: inherit;
+        transition:
+          border-color .16s ease,
+          background .16s ease,
+          color .16s ease,
+          transform .16s ease;
+      }
+      .nav button .tab-icon {
+        width: 16px;
+        height: 16px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        opacity: .72;
+      }
+      .nav button .tab-icon svg {
+        width: 16px;
+        height: 16px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 1.5px;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .nav button .tab-labels {
+        min-width: 0;
       }
       .nav button .tab-title {
         display: block;
-        font-weight: 700;
-        color: var(--text);
+        font-size: 14px;
+        font-weight: 600;
+        color: inherit;
+        white-space: nowrap;
       }
       .nav button .tab-copy {
-        display: block;
-        margin-top: 3px;
-        font-size: 11px;
-        color: var(--muted);
-        line-height: 1.35;
+        display: none;
       }
       .nav button.active {
-        color: #e9f7ff;
-        border-color: color-mix(in srgb, var(--brand) 28%, transparent);
-        background: var(--brand-soft);
+        color: var(--text-strong);
+        border-color: color-mix(in srgb, var(--accent) 18%, transparent);
+        background: color-mix(in srgb, var(--accent-subtle) 88%, var(--bg-elevated) 12%);
+        box-shadow: inset 0 1px 0 color-mix(in srgb, white 10%, transparent);
       }
-      .nav button:hover { color: #d2e7ff; }
+      .nav button.active .tab-icon {
+        opacity: 1;
+        color: var(--accent);
+      }
+      .nav button:hover {
+        color: var(--text);
+        background: color-mix(in srgb, var(--bg-hover) 68%, transparent);
+        border-color: color-mix(in srgb, var(--border) 60%, transparent);
+      }
+      .nav button:hover .tab-icon {
+        opacity: 1;
+      }
 
       .sidebar-foot {
-        margin-top: 20px;
-        border-top: 1px dashed color-mix(in srgb, var(--line-strong) 85%, transparent);
-        padding-top: 14px;
+        margin-top: 12px;
+        flex: 0 0 auto;
+        border-top: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+        padding-top: 12px;
         color: var(--muted);
         font-size: 12px;
       }
-
-      .main {
-        padding: 18px;
+      .sidebar-utility {
+        display: grid;
+        gap: 8px;
+        padding: 12px;
+        border-radius: 16px;
+        border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+        background: var(--bg-elevated);
+        box-shadow: none;
       }
-      .app.focus-mode .sidebar,
-      .app.focus-mode .topbar {
-        display: none;
-      }
-      .app.focus-mode {
-        grid-template-columns: 1fr;
-      }
-      .topbar {
+      .sidebar-utility-row {
         display: flex;
+        align-items: center;
         justify-content: space-between;
         gap: 10px;
-        align-items: center;
-        margin-bottom: 14px;
       }
-      .topbar h2 {
-        margin: 0;
-        font-size: 22px;
-      }
-      .topbar p {
-        margin: 4px 0 0;
+      .sidebar-utility__label {
+        font-size: 11px;
+        font-weight: 700;
         color: var(--muted);
-        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
       }
-
-      .status-row {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-        align-items: center;
-      }
-      .utility-row {
-        display: flex;
-        gap: 8px;
-        margin-left: 6px;
-      }
-      .theme-switch {
-        display: inline-flex;
-        gap: 4px;
-        padding: 3px;
-        border-radius: 999px;
-        border: 1px solid var(--line);
-        background: var(--bg-elevated);
-      }
-      .theme-switch button {
-        border: 1px solid transparent;
-        background: transparent;
-        color: var(--muted);
-        border-radius: 999px;
-        padding: 5px 10px;
+      .sidebar-utility__value {
+        color: var(--text);
         font-size: 12px;
         font-weight: 600;
       }
-      .theme-switch button.active {
+      .sidebar-version {
+        margin-top: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        min-height: 40px;
+        padding: 0 12px;
+        border-radius: 14px;
+        background: var(--bg-elevated);
+        border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+        box-shadow: none;
+      }
+      .sidebar-version__label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .sidebar-version__text {
+        font-size: 12px;
+        color: var(--text);
+        font-weight: 600;
+      }
+      .sidebar-version__status {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        flex-shrink: 0;
+        margin-left: auto;
+        background: var(--danger);
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 14%, transparent);
+      }
+      .sidebar-version__status.online {
+        background: var(--ok);
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 14%, transparent);
+      }
+      .app.nav-collapsed .sidebar-version {
+        justify-content: center;
+        padding: 0;
+      }
+      .app.nav-collapsed .sidebar-version__status {
+        margin-left: 0;
+      }
+
+      .main {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        min-height: 0;
+        height: 100vh;
+        overflow: hidden;
+        padding: 0;
+      }
+      .topbar {
+        flex: 0 0 auto;
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: center;
+        min-height: 52px;
+        padding: 0 24px;
+        border-bottom: 1px solid color-mix(in srgb, var(--border) 74%, transparent);
+        background: var(--chrome);
+        backdrop-filter: blur(12px) saturate(1.6);
+        -webkit-backdrop-filter: blur(12px) saturate(1.6);
+      }
+      .topbar h2 {
+        display: none;
+        margin: 0;
+      }
+      .topbar p {
+        display: none;
+        margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .dashboard-header__breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        overflow: hidden;
+        font-size: 12px;
+        margin-bottom: 2px;
+        letter-spacing: 0.01em;
+      }
+      .dashboard-header__breadcrumb-link,
+      .dashboard-header__breadcrumb-sep {
+        color: var(--muted);
+      }
+      .dashboard-header__breadcrumb-current {
         color: var(--text-strong);
-        background: var(--brand-soft);
-        border-color: color-mix(in srgb, var(--brand) 24%, transparent);
+        font-weight: 650;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .topnav-shell__content {
+        min-width: 0;
+        flex: 1;
+        overflow: hidden;
+      }
+      .main-scroll {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: auto;
+        padding: 12px 18px 18px;
+      }
+      .status-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: nowrap;
+        align-items: center;
+        flex-shrink: 0;
+        min-width: max-content;
+      }
+      .topbar-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .icon-btn {
+        width: 30px;
+        height: 30px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        border: 1px solid color-mix(in srgb, var(--border) 86%, transparent);
+        background: var(--bg-elevated);
+        color: var(--muted);
+        padding: 0;
+      }
+      .icon-btn:hover {
+        color: var(--text-strong);
+        border-color: color-mix(in srgb, var(--accent) 28%, transparent);
+        background: color-mix(in srgb, var(--accent-subtle) 65%, var(--bg-elevated));
+      }
+      .icon-btn.active {
+        color: var(--text-strong);
+        border-color: color-mix(in srgb, var(--accent) 34%, transparent);
+        background: var(--accent-subtle);
+      }
+      .icon-btn svg {
+        width: 15px;
+        height: 15px;
+        stroke: currentColor;
+      }
+      .topbar-theme-mode {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+        padding: 3px;
+        border: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--bg-elevated) 78%, transparent);
+      }
+      .topbar-theme-mode__btn {
+        width: 30px;
+        height: 30px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        border: 1px solid transparent;
+        border-radius: 999px;
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+        transition:
+          color var(--duration-fast) ease,
+          background var(--duration-fast) ease,
+          border-color var(--duration-fast) ease;
+      }
+      .topbar-theme-mode__btn:hover {
+        color: var(--text);
+        background: var(--bg-hover);
+      }
+      .topbar-theme-mode__btn:focus-visible {
+        outline: none;
+        box-shadow: var(--focus-ring);
+      }
+      .topbar-theme-mode__btn--active {
+        color: var(--accent);
+        background: var(--accent-subtle);
+        border-color: color-mix(in srgb, var(--accent) 25%, transparent);
+      }
+      .topbar-theme-mode__btn svg {
+        width: 14px;
+        height: 14px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 1.75px;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .theme-icon {
+        width: 14px;
+        height: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .theme-icon svg {
+        width: 14px;
+        height: 14px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 1.75px;
+        stroke-linecap: round;
+        stroke-linejoin: round;
       }
       .pill {
         border-radius: 999px;
-        border: 1px solid var(--line);
-        background: var(--bg-elevated);
+        border: 1px solid color-mix(in srgb, var(--border) 86%, transparent);
+        background: color-mix(in srgb, var(--bg-elevated) 96%, transparent);
         color: var(--muted);
-        padding: 7px 11px;
+        padding: 6px 10px;
         font-size: 12px;
+        font-weight: 500;
+        min-height: 32px;
+        display: inline-flex;
+        align-items: center;
+        box-shadow: inset 0 1px 0 color-mix(in srgb, white 4%, transparent);
       }
       .pill.ok { color: var(--ok); border-color: rgba(34, 197, 94, 0.45); background: rgba(34, 197, 94, 0.08); }
       .pill.warn { color: var(--warn); border-color: rgba(245, 158, 11, 0.45); background: rgba(245, 158, 11, 0.08); }
@@ -272,8 +700,8 @@
       .notice {
         display: none;
         margin-bottom: 12px;
-        border: 1px solid color-mix(in srgb, var(--brand) 28%, transparent);
-        background: var(--brand-soft);
+        border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+        background: var(--accent-subtle);
         border-radius: 10px;
         padding: 10px 12px;
         font-size: 13px;
@@ -283,13 +711,16 @@
         position: sticky;
         top: 0;
         z-index: 9;
-        margin-bottom: 12px;
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        background: color-mix(in srgb, var(--bg-elevated) 92%, transparent);
-        padding: 9px 12px;
-        font-size: 13px;
+        margin-bottom: 8px;
+        border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+        border-radius: 14px;
+        background:
+          linear-gradient(180deg, color-mix(in srgb, var(--card-soft) 98%, transparent), color-mix(in srgb, var(--bg-elevated) 94%, transparent));
+        padding: 8px 12px;
+        font-size: 12px;
+        line-height: 1.45;
         color: var(--text);
+        box-shadow: inset 0 1px 0 color-mix(in srgb, white 4%, transparent);
       }
       .integration-strip.ok {
         border-color: rgba(34, 197, 94, 0.35);
@@ -301,81 +732,153 @@
         display: grid;
         grid-template-columns: 1.2fr .8fr;
         gap: 10px;
-        margin-bottom: 12px;
+        margin-bottom: 8px;
       }
       .hero-copy {
-        border: 1px solid var(--line);
-        border-radius: 14px;
-        background: color-mix(in srgb, var(--card) 92%, transparent);
-        padding: 14px;
+        border: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
+        border-radius: 16px;
+        background:
+          linear-gradient(180deg, color-mix(in srgb, var(--card-strong) 98%, transparent), color-mix(in srgb, var(--card-soft) 96%, transparent));
+        padding: 11px 14px;
+        box-shadow:
+          inset 0 1px 0 color-mix(in srgb, white 4%, transparent),
+          0 10px 24px color-mix(in srgb, black 9%, transparent);
       }
       .hero-copy h3 {
         margin: 0;
-        font-size: 20px;
+        font-size: 17px;
         color: var(--text-strong);
+        letter-spacing: -0.02em;
       }
       .hero-copy p {
-        margin: 8px 0 0;
+        margin: 5px 0 0;
         color: var(--muted);
-        font-size: 13px;
-        line-height: 1.5;
+        font-size: 12px;
+        line-height: 1.42;
       }
       .hero-meta {
-        border: 1px solid var(--line);
-        border-radius: 14px;
-        background: color-mix(in srgb, var(--bg-elevated) 90%, transparent);
-        padding: 14px;
+        border: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
+        border-radius: 16px;
+        background:
+          linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 97%, transparent), color-mix(in srgb, var(--panel) 98%, transparent));
+        padding: 11px;
+        box-shadow: inset 0 1px 0 color-mix(in srgb, white 4%, transparent);
       }
       .hero-meta-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 8px;
+        gap: 6px;
       }
       .hero-meta-item {
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        background: color-mix(in srgb, var(--panel) 88%, transparent);
-        padding: 10px;
+        border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+        border-radius: 12px;
+        background: color-mix(in srgb, var(--panel) 90%, transparent);
+        padding: 7px 9px;
       }
 
       .view { display: none; }
-      .view.active { display: block; }
+      .view.active {
+        display: grid;
+        gap: 8px;
+      }
+
+      .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        min-width: 0;
+      }
+      .section-header__copy {
+        min-width: 0;
+      }
+      .section-header__eyebrow {
+        margin: 0 0 3px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .section-header__title {
+        margin: 0;
+        color: var(--text-strong);
+        font-size: 16px;
+        letter-spacing: -0.02em;
+      }
+      .section-header__body {
+        margin: 4px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+      .section-surface {
+        border: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
+        border-radius: 16px;
+        background:
+          linear-gradient(180deg, color-mix(in srgb, var(--card-strong) 98%, transparent), color-mix(in srgb, var(--card-soft) 96%, transparent));
+        padding: 12px;
+        box-shadow:
+          inset 0 1px 0 color-mix(in srgb, white 4%, transparent),
+          0 14px 30px color-mix(in srgb, black 10%, transparent);
+      }
+      .section-surface.compact {
+        padding: 10px 12px;
+      }
 
       .grid {
         display: grid;
-        gap: 10px;
+        gap: 8px;
         grid-template-columns: repeat(4, minmax(0, 1fr));
       }
+      #networkCards,
+      #socialPrimaryCards,
+      #socialIntegrationCards,
+      #socialAdvancedCards {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
       .card {
-        border: 1px solid var(--line);
-        border-radius: 14px;
-        background: var(--card);
+        border: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
+        border-radius: 16px;
+        background:
+          linear-gradient(180deg, color-mix(in srgb, var(--card-strong) 98%, transparent), color-mix(in srgb, var(--card-soft) 96%, transparent));
         padding: 12px;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+        box-shadow:
+          inset 0 1px 0 color-mix(in srgb, white 4%, transparent),
+          0 14px 30px color-mix(in srgb, black 10%, transparent);
         transition: border-color .16s ease, transform .16s ease, box-shadow .16s ease;
       }
       .card:hover {
-        border-color: color-mix(in srgb, var(--brand) 14%, var(--line));
-        box-shadow: 0 6px 22px rgba(0, 0, 0, 0.18);
+        border-color: color-mix(in srgb, var(--accent) 14%, var(--border));
+        box-shadow:
+          inset 0 1px 0 color-mix(in srgb, white 4%, transparent),
+          0 18px 36px color-mix(in srgb, black 14%, transparent);
       }
       .label { font-size: 12px; color: var(--muted); }
-      .value { margin-top: 4px; font-size: 24px; font-weight: 800; }
+      .value { margin-top: 4px; font-size: 22px; font-weight: 800; letter-spacing: -0.03em; }
 
       .split {
-        margin-top: 10px;
+        margin-top: 8px;
         display: grid;
-        gap: 10px;
+        gap: 8px;
         grid-template-columns: 1.2fr 1fr;
       }
-      .title-sm { margin: 0 0 10px; font-size: 18px; }
+      .title-sm { margin: 0 0 10px; font-size: 16px; letter-spacing: -0.02em; }
       .mono { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
 
       .table {
         width: 100%;
         border-collapse: collapse;
       }
+      .table thead th {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+      }
       .table th, .table td {
-        border-bottom: 1px solid var(--line);
+        border-bottom: 1px solid var(--border);
         text-align: left;
         padding: 8px 6px;
         font-size: 13px;
@@ -390,22 +893,33 @@
       input, textarea {
         margin-top: 5px;
         width: 100%;
-        border-radius: 10px;
-        border: 1px solid var(--line);
-        background: var(--bg-elevated);
-        color: #eaf0ff;
+        border-radius: 12px;
+        border: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
+        background: linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 98%, transparent), color-mix(in srgb, var(--panel) 96%, transparent));
+        color: var(--text);
         font: inherit;
         padding: 10px;
+        box-shadow: inset 0 1px 0 color-mix(in srgb, white 3%, transparent);
       }
       select {
         margin-top: 5px;
         width: 100%;
-        border-radius: 10px;
-        border: 1px solid var(--line);
-        background: var(--bg-elevated);
+        border-radius: 12px;
+        border: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
+        background: linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 98%, transparent), color-mix(in srgb, var(--panel) 96%, transparent));
         color: var(--text);
         font: inherit;
         padding: 10px;
+        box-shadow: inset 0 1px 0 color-mix(in srgb, white 3%, transparent);
+      }
+      input:focus,
+      textarea:focus,
+      select:focus {
+        outline: none;
+        border-color: color-mix(in srgb, var(--accent) 34%, transparent);
+        box-shadow:
+          inset 0 1px 0 color-mix(in srgb, white 3%, transparent),
+          0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
       }
       textarea { min-height: 90px; resize: vertical; }
 
@@ -414,11 +928,17 @@
         gap: 8px;
         flex-wrap: wrap;
       }
+      .actions button,
+      .action-bar button,
+      .toolbar button {
+        min-height: 38px;
+      }
       .action-bar {
         display: flex;
         gap: 8px;
         flex-wrap: wrap;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
+        padding: 2px 0 0;
       }
       .summary-list {
         display: grid;
@@ -428,39 +948,67 @@
         display: grid;
         gap: 3px;
         padding: 10px;
-        border-radius: 10px;
-        border: 1px solid var(--line);
-        background: color-mix(in srgb, var(--bg-elevated) 88%, transparent);
+        border-radius: 12px;
+        border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+        background: linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 98%, transparent), color-mix(in srgb, var(--panel) 94%, transparent));
+        box-shadow: inset 0 1px 0 color-mix(in srgb, white 4%, transparent);
       }
       .empty-state {
-        border: 1px dashed var(--line-strong);
-        border-radius: 12px;
-        padding: 16px;
+        border: 1px dashed color-mix(in srgb, var(--border-strong) 88%, transparent);
+        border-radius: 14px;
+        padding: 18px;
         color: var(--muted);
-        background: color-mix(in srgb, var(--panel) 88%, transparent);
+        background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 94%, transparent), color-mix(in srgb, var(--bg-elevated) 88%, transparent));
+        line-height: 1.55;
       }
       button {
         border: 1px solid transparent;
-        border-radius: 10px;
-        background: var(--brand);
+        border-radius: 12px;
+        background: var(--accent);
         color: #ffffff;
         font-weight: 700;
         padding: 9px 13px;
         cursor: pointer;
+        box-shadow: 0 10px 20px color-mix(in srgb, var(--accent) 16%, transparent);
+      }
+      button:hover {
+        transform: translateY(-1px);
+        filter: saturate(1.04);
+      }
+      .nav button,
+      .nav-collapse-toggle,
+      .icon-btn,
+      .topbar-theme-mode__btn {
+        box-shadow: none;
+        filter: none;
+      }
+      .nav button,
+      .nav-collapse-toggle,
+      .icon-btn {
+        background: transparent;
+        color: var(--muted);
+      }
+      .nav button:hover,
+      .nav-collapse-toggle:hover,
+      .icon-btn:hover,
+      .topbar-theme-mode__btn:hover {
+        filter: none;
       }
       button.secondary {
-        border-color: var(--line-strong);
-        background: var(--bg-elevated);
+        border-color: var(--border-strong);
+        background: color-mix(in srgb, var(--bg-elevated) 96%, transparent);
         color: var(--text);
+        box-shadow: none;
       }
 
       .feedback {
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        background: var(--bg-elevated);
-        padding: 9px;
+        border: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
+        border-radius: 12px;
+        background: linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 98%, transparent), color-mix(in srgb, var(--panel) 96%, transparent));
+        padding: 10px 11px;
         font-size: 13px;
         color: var(--muted);
+        box-shadow: inset 0 1px 0 color-mix(in srgb, white 4%, transparent);
       }
       .profile-layout {
         display: grid;
@@ -468,10 +1016,11 @@
         grid-template-columns: 1.1fr .9fr;
       }
       .profile-meta {
-        border: 1px solid var(--line);
-        border-radius: 10px;
+        border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+        border-radius: 12px;
         padding: 10px;
-        background: color-mix(in srgb, var(--card) 86%, transparent);
+        background: linear-gradient(180deg, color-mix(in srgb, var(--card-soft) 98%, transparent), color-mix(in srgb, var(--bg-elevated) 90%, transparent));
+        box-shadow: inset 0 1px 0 color-mix(in srgb, white 4%, transparent);
       }
       .profile-meta h4 {
         margin: 0 0 8px;
@@ -496,9 +1045,9 @@
         flex-wrap: wrap;
       }
       .tag-chip {
-        border: 1px solid var(--line-strong);
+        border: 1px solid var(--border-strong);
         border-radius: 999px;
-        background: var(--chip);
+        background: var(--bg-hover);
         color: var(--text);
         padding: 3px 9px;
         font-size: 12px;
@@ -511,14 +1060,15 @@
         margin-top: 4px;
         color: var(--muted);
         font-size: 12px;
+        line-height: 1.45;
       }
       .field-error {
         margin-top: 4px;
-        color: var(--err);
+        color: var(--danger);
         font-size: 12px;
       }
       .input-invalid {
-        border-color: color-mix(in srgb, var(--err) 55%, transparent);
+        border-color: color-mix(in srgb, var(--danger) 55%, transparent);
       }
       .save-busy {
         opacity: 0.7;
@@ -528,41 +1078,50 @@
       .logs {
         max-height: 420px;
         overflow: auto;
-        border: 1px solid var(--line);
-        border-radius: 12px;
-        background: var(--panel);
+        border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+        border-radius: 14px;
+        background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 96%, transparent), color-mix(in srgb, var(--bg-elevated) 90%, transparent));
         padding: 10px;
+        box-shadow: inset 0 1px 0 color-mix(in srgb, white 3%, transparent);
       }
       .log-item {
-        border-bottom: 1px dashed var(--line);
+        border-bottom: 1px dashed var(--border);
         padding: 7px 0;
       }
       .log-item:last-child { border-bottom: 0; }
       .log-info { color: #8dc6ff; }
       .log-warn { color: var(--warn); }
-      .log-error { color: var(--err); }
+      .log-error { color: var(--danger); }
       .toolbar {
         display: flex;
         gap: 10px;
         flex-wrap: wrap;
         align-items: end;
         margin-bottom: 10px;
+        padding-bottom: 2px;
       }
       .toolbar .field {
         min-width: 180px;
       }
       .mono-block {
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        background: color-mix(in srgb, var(--bg-elevated) 85%, transparent);
+        border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+        border-radius: 12px;
+        background: linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 96%, transparent), color-mix(in srgb, var(--panel) 92%, transparent));
         padding: 10px;
         max-height: 240px;
         overflow: auto;
         white-space: pre-wrap;
         word-break: break-word;
+        box-shadow: inset 0 1px 0 color-mix(in srgb, white 3%, transparent);
       }
       .advanced-panel {
-        margin-top: 10px;
+        margin-top: 8px;
+      }
+      .advanced-panel.card > summary,
+      details.card > summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
       }
       .advanced-panel summary {
         cursor: pointer;
@@ -583,7 +1142,7 @@
         right: 16px;
         bottom: 16px;
         background: var(--bg-elevated);
-        border: 1px solid color-mix(in srgb, var(--brand) 32%, transparent);
+        border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
         color: var(--text);
         border-radius: 10px;
         padding: 10px 12px;
@@ -599,90 +1158,230 @@
         transform: translateY(0);
       }
 
+      #view-overview .action-bar {
+        margin-bottom: 0;
+      }
+      #view-overview .grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+      #view-overview .card .field-hint {
+        font-size: 12px;
+      }
+      #view-overview #snapshot {
+        line-height: 1.55;
+      }
+
       @media (max-width: 980px) {
-        .app { grid-template-columns: 1fr; }
-        .sidebar { border-right: 0; border-bottom: 1px solid var(--line); }
+        html, body {
+          height: auto;
+          overflow: auto;
+        }
+        .app {
+          grid-template-columns: 1fr;
+          height: auto;
+          overflow: visible;
+        }
+        .sidebar {
+          border-right: 0;
+          border-bottom: 1px solid var(--border);
+          height: auto;
+          overflow: visible;
+        }
+        .sidebar-shell {
+          display: block;
+        }
         .nav { grid-template-columns: repeat(2, minmax(0,1fr)); }
         .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .split, .row, .profile-layout, .page-hero { grid-template-columns: 1fr; }
+        .main {
+          height: auto;
+          overflow: visible;
+          padding-bottom: 18px;
+        }
+        .main-scroll {
+          overflow: visible;
+          padding-right: 0;
+        }
       }
     </style>
   </head>
   <body>
     <div class="app" id="appShell">
       <aside class="sidebar">
-        <button class="secondary sidebar-toggle" id="sidebarToggleBtn" type="button">Collapse sidebar</button>
-        <div class="brand">
-          <img id="brandLogo" class="brand-logo" src="/assets/silicaclaw-logo.png" alt="SilicaClaw logo" />
-          <div id="brandFallback" class="brand-badge hidden">SC</div>
-          <div>
-            <h1>SilicaClaw</h1>
-            <p>Control UI</p>
-            <div class="brand-version"><span class="version-dot"></span><span id="brandVersion">version -</span></div>
+        <div class="sidebar-shell">
+          <div class="sidebar-shell__header">
+            <div class="brand">
+              <img id="brandLogo" class="brand-logo" src="/assets/silicaclaw-logo.png" alt="SilicaClaw logo" />
+              <div id="brandFallback" class="brand-badge hidden">SC</div>
+              <div>
+                <h1>SilicaClaw</h1>
+                <p>Control UI</p>
+              </div>
+            </div>
+            <button class="nav-collapse-toggle" id="sidebarToggleBtn" type="button" title="Collapse sidebar" aria-label="Collapse sidebar">
+              <span class="nav-collapse-toggle__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                  <path d="M9 3v18"></path>
+                  <path d="M16 10l-3 2 3 2"></path>
+                </svg>
+              </span>
+            </button>
+          </div>
+          <div class="sidebar-shell__body">
+            <div class="sidebar-nav__label">Control</div>
+            <nav class="nav">
+              <button class="tab active" data-tab="overview">
+                <span class="tab-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <line x1="12" x2="12" y1="20" y2="10"></line>
+                    <line x1="18" x2="18" y1="20" y2="4"></line>
+                    <line x1="6" x2="6" y1="20" y2="16"></line>
+                  </svg>
+                </span>
+                <span class="tab-labels"><span class="tab-title">Overview</span><span class="tab-copy">Agent summary and discovered peers</span></span>
+              </button>
+              <button class="tab" data-tab="profile">
+                <span class="tab-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" x2="8" y1="13" y2="13"></line>
+                    <line x1="16" x2="8" y1="17" y2="17"></line>
+                    <line x1="10" x2="8" y1="9" y2="9"></line>
+                  </svg>
+                </span>
+                <span class="tab-labels"><span class="tab-title">Profile</span><span class="tab-copy">Public identity and saved profile</span></span>
+              </button>
+              <button class="tab" data-tab="network">
+                <span class="tab-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="2"></circle>
+                    <path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"></path>
+                  </svg>
+                </span>
+                <span class="tab-labels"><span class="tab-title">Network</span><span class="tab-copy">Relay health, broadcast, diagnostics</span></span>
+              </button>
+              <button class="tab" data-tab="social">
+                <span class="tab-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                  </svg>
+                </span>
+                <span class="tab-labels"><span class="tab-title">Social</span><span class="tab-copy">social.md config and runtime state</span></span>
+              </button>
+            </nav>
+          </div>
+          <div class="sidebar-shell__footer">
+            <div class="sidebar-foot sidebar-utility" id="sideMeta">
+              <div class="sidebar-utility-row"><span class="sidebar-utility__label">Adapter</span><span class="sidebar-utility__value">-</span></div>
+              <div class="sidebar-utility-row"><span class="sidebar-utility__label">Namespace</span><span class="sidebar-utility__value">-</span></div>
+              <div class="sidebar-utility-row"><span class="sidebar-utility__label">Port</span><span class="sidebar-utility__value">-</span></div>
+            </div>
+            <div class="sidebar-version" title="Current version">
+              <span class="sidebar-version__label"><span class="version-dot"></span>Version</span>
+              <span class="sidebar-version__text" id="brandVersion">-</span>
+              <span class="sidebar-version__status" id="brandStatusDot" aria-hidden="true"></span>
+            </div>
           </div>
         </div>
-
-        <nav class="nav">
-          <button class="tab active" data-tab="overview"><span class="tab-title">Overview</span><span class="tab-copy">Agent summary and discovered peers</span></button>
-          <button class="tab" data-tab="profile"><span class="tab-title">Profile</span><span class="tab-copy">Public identity and saved profile</span></button>
-          <button class="tab" data-tab="network"><span class="tab-title">Network</span><span class="tab-copy">Relay health, broadcast, diagnostics</span></button>
-          <button class="tab" data-tab="social"><span class="tab-title">Social</span><span class="tab-copy">social.md config and runtime state</span></button>
-        </nav>
-
-        <div class="sidebar-foot" id="sideMeta">adapter: -<br/>namespace: -</div>
       </aside>
 
       <main class="main">
         <div class="topbar">
-          <div>
+          <div class="topnav-shell__content">
+            <div class="dashboard-header__breadcrumb">
+              <span class="dashboard-header__breadcrumb-link">SilicaClaw</span>
+              <span class="dashboard-header__breadcrumb-sep">/</span>
+              <span class="dashboard-header__breadcrumb-current" id="pageBreadcrumb">Overview</span>
+            </div>
             <h2>Local Console</h2>
-            <p>OpenClaw-inspired local-first agent control surface · <span id="topVersion">version -</span></p>
+            <p>OpenClaw-inspired local-first agent control surface</p>
           </div>
           <div class="status-row">
             <div class="pill" id="pillAdapter">adapter: -</div>
             <div class="pill" id="pillBroadcast">broadcast: -</div>
-            <div class="theme-switch">
-              <button id="themeDarkBtn" type="button">Dark</button>
-              <button id="themeLightBtn" type="button">Light</button>
-            </div>
-            <div class="utility-row">
-              <button class="secondary" id="refreshAllBtn" type="button">Refresh</button>
-              <button class="secondary" id="focusModeBtn" type="button">Focus mode</button>
+            <div class="topbar-actions">
+              <button class="icon-btn" id="focusModeBtn" type="button" title="Toggle focus mode" aria-label="Toggle focus mode">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M4 7V4h3"></path>
+                  <path d="M20 7V4h-3"></path>
+                  <path d="M4 17v3h3"></path>
+                  <path d="M20 17v3h-3"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+              <div class="topbar-theme-mode" id="themeModeGroup" role="group" aria-label="Color mode">
+                <button class="topbar-theme-mode__btn" data-theme-choice="dark" type="button" title="Dark" aria-label="Color mode: Dark">
+                  <span class="theme-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"></path>
+                    </svg>
+                  </span>
+                </button>
+                <button class="topbar-theme-mode__btn" data-theme-choice="light" type="button" title="Light" aria-label="Color mode: Light">
+                  <span class="theme-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="4"></circle>
+                      <path d="M12 2v2"></path>
+                      <path d="M12 20v2"></path>
+                      <path d="M4.93 4.93l1.41 1.41"></path>
+                      <path d="M17.66 17.66l1.41 1.41"></path>
+                      <path d="M2 12h2"></path>
+                      <path d="M20 12h2"></path>
+                      <path d="M4.93 19.07l1.41-1.41"></path>
+                      <path d="M17.66 6.34l1.41-1.41"></path>
+                    </svg>
+                  </span>
+                </button>
+                <button class="topbar-theme-mode__btn" data-theme-choice="system" type="button" title="System" aria-label="Color mode: System">
+                  <span class="theme-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <rect x="3" y="4" width="18" height="12" rx="2"></rect>
+                      <path d="M8 20h8"></path>
+                      <path d="M12 16v4"></path>
+                    </svg>
+                  </span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
-        <div class="integration-strip warn" id="integrationStatusBar">
-          Connected to SilicaClaw: - · Network mode: - · Public discovery: -
-        </div>
-        <section class="page-hero">
-          <div class="hero-copy">
-            <h3 id="pageHeroTitle">Overview</h3>
-            <p id="pageHeroBody">See the live state of this node, whether discovery is working, and whether other public agents are visible.</p>
+        <div class="main-scroll">
+          <div class="integration-strip warn" id="integrationStatusBar">
+            Connected to SilicaClaw: - · Network mode: - · Public discovery: -
           </div>
-          <div class="hero-meta">
-            <div class="hero-meta-grid">
-              <div class="hero-meta-item"><div class="label">Mode</div><div class="mono" id="heroMode">-</div></div>
-              <div class="hero-meta-item"><div class="label">Adapter</div><div class="mono" id="heroAdapter">-</div></div>
-              <div class="hero-meta-item"><div class="label">Relay</div><div class="mono" id="heroRelay">-</div></div>
-              <div class="hero-meta-item"><div class="label">Room</div><div class="mono" id="heroRoom">-</div></div>
+          <section class="page-hero">
+            <div class="hero-copy">
+              <h3 id="pageHeroTitle">Overview</h3>
+              <p id="pageHeroBody">See the live state of this node, whether discovery is working, and whether other public agents are visible.</p>
             </div>
-          </div>
-        </section>
+            <div class="hero-meta">
+              <div class="hero-meta-grid">
+                <div class="hero-meta-item"><div class="label">Mode</div><div class="mono" id="heroMode">-</div></div>
+                <div class="hero-meta-item"><div class="label">Adapter</div><div class="mono" id="heroAdapter">-</div></div>
+                <div class="hero-meta-item"><div class="label">Relay</div><div class="mono" id="heroRelay">-</div></div>
+                <div class="hero-meta-item"><div class="label">Room</div><div class="mono" id="heroRoom">-</div></div>
+              </div>
+            </div>
+          </section>
 
-        <div class="notice" id="initNotice"></div>
-        <div class="actions" id="onboardingActions" style="display:none; margin:8px 0 12px;">
-          <button id="enablePublicDiscoveryBtn">Enable Public Discovery</button>
-          <button class="secondary" id="disablePublicDiscoveryBtn">Disable Public Discovery</button>
-        </div>
-        <div class="field-hint" id="publicDiscoveryHint" style="margin-bottom:12px; display:none;">
-          Public discovery only shares signed profile/presence records. It does not share private files and does not enable chat or remote control.
-        </div>
+          <div class="notice" id="initNotice"></div>
+          <div class="actions" id="onboardingActions" style="display:none; margin:8px 0 12px;">
+            <button id="enablePublicDiscoveryBtn">Enable Public Discovery</button>
+            <button class="secondary" id="disablePublicDiscoveryBtn">Disable Public Discovery</button>
+          </div>
+          <div class="field-hint" id="publicDiscoveryHint" style="margin-bottom:12px; display:none;">
+            Public discovery only shares signed profile/presence records. It does not share private files and does not enable chat or remote control.
+          </div>
 
-        <section id="view-overview" class="view active">
-          <div class="action-bar">
-            <button id="overviewBroadcastNowBtn" type="button">Broadcast Now</button>
-            <button class="secondary" id="overviewGoProfileBtn" type="button">Edit Profile</button>
-            <button class="secondary" id="overviewGoNetworkBtn" type="button">Open Network Diagnostics</button>
+          <section id="view-overview" class="view active">
+          <div class="section-surface compact">
+            <div class="action-bar">
+              <button id="overviewBroadcastNowBtn" type="button">Broadcast Now</button>
+              <button class="secondary" id="overviewGoProfileBtn" type="button">Edit Profile</button>
+              <button class="secondary" id="overviewGoNetworkBtn" type="button">Open Network Diagnostics</button>
+            </div>
           </div>
           <div class="grid" id="overviewCards"></div>
           <div class="split">
@@ -700,9 +1399,16 @@
               <div class="mono" id="snapshot"></div>
             </div>
           </div>
-        </section>
+          </section>
 
-        <section id="view-profile" class="view">
+          <section id="view-profile" class="view">
+          <div class="section-header">
+            <div class="section-header__copy">
+              <div class="section-header__eyebrow">Profile</div>
+              <h3 class="section-header__title">Signed public identity</h3>
+              <p class="section-header__body">Edit the public card other nodes discover, then verify that the saved runtime profile and preview stay aligned after restart.</p>
+            </div>
+          </div>
           <div class="profile-layout">
             <div class="card stack">
               <h3 class="title-sm">Public Profile Editor</h3>
@@ -764,9 +1470,16 @@
               </div>
             </div>
           </div>
-        </section>
+          </section>
 
-        <section id="view-network" class="view">
+          <section id="view-network" class="view">
+          <div class="section-header">
+            <div class="section-header__copy">
+              <div class="section-header__eyebrow">Network</div>
+              <h3 class="section-header__title">Relay and discovery summary</h3>
+              <p class="section-header__body">Use the summary first. Open diagnostics only when relay joins, polls, or peer visibility look unhealthy.</p>
+            </div>
+          </div>
           <div class="grid" id="networkCards"></div>
           <div class="split">
             <div class="card">
@@ -784,10 +1497,10 @@
               <details class="advanced-panel">
                 <summary class="title-sm">Advanced Actions</summary>
                 <div class="actions" style="margin-top:10px;">
-                <button class="secondary" id="refreshCacheBtn">Refresh Cache</button>
-                <button class="secondary" id="clearCacheBtn">Clear Discovered Cache</button>
-                <button class="secondary" id="quickGlobalPreviewBtn">Enable Cross-network Preview</button>
-              </div>
+                  <button class="secondary" id="refreshCacheBtn">Refresh Cache</button>
+                  <button class="secondary" id="clearCacheBtn">Clear Discovered Cache</button>
+                  <button class="secondary" id="quickGlobalPreviewBtn">Enable Cross-network Preview</button>
+                </div>
               </details>
               <div id="networkFeedback" class="feedback" style="margin-top:10px;">Ready.</div>
             </div>
@@ -847,9 +1560,16 @@
               </div>
             </div>
           </details>
-        </section>
+          </section>
 
-        <section id="view-social" class="view">
+          <section id="view-social" class="view">
+          <div class="section-header">
+            <div class="section-header__copy">
+              <div class="section-header__eyebrow">Social</div>
+              <h3 class="section-header__title">Public identity and runtime state</h3>
+              <p class="section-header__body">Keep the signed identity, public visibility, and social.md runtime view aligned so discovery survives restart and update.</p>
+            </div>
+          </div>
           <div class="card">
             <h3 class="title-sm">Integration Status</h3>
             <div class="feedback" id="socialStatusLine">Checking integration status...</div>
@@ -914,7 +1634,8 @@
             </div>
             <div id="socialFeedback" class="feedback" style="margin-top:10px;">Ready.</div>
           </div>
-        </section>
+          </section>
+        </div>
       </main>
     </div>
 
@@ -972,6 +1693,12 @@
         t.classList.add('show');
         setTimeout(() => t.classList.remove('show'), 2000);
       }
+      function resolveThemeMode(mode) {
+        if (mode === 'system') {
+          return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        }
+        return mode === 'light' ? 'light' : 'dark';
+      }
       function flashButton(btn, doneText = 'Done') {
         if (!btn) return;
         const oldText = btn.textContent || '';
@@ -988,11 +1715,16 @@
         el.style.color = level === 'error' ? '#ff6b81' : level === 'warn' ? '#ffb454' : '#9aa7c3';
       }
       function applyTheme(mode) {
-        const next = mode === 'light' ? 'light' : 'dark';
+        const raw = mode === 'system' ? 'system' : (mode === 'light' ? 'light' : 'dark');
+        const next = resolveThemeMode(raw);
         document.documentElement.setAttribute('data-theme-mode', next);
-        localStorage.setItem('silicaclaw_theme_mode', next);
-        document.getElementById('themeDarkBtn').classList.toggle('active', next === 'dark');
-        document.getElementById('themeLightBtn').classList.toggle('active', next === 'light');
+        localStorage.setItem('silicaclaw_theme_mode', raw);
+        document.querySelectorAll('[data-theme-choice]').forEach((btn) => {
+          btn.classList.toggle('active', btn.dataset.themeChoice === raw);
+          btn.classList.toggle('topbar-theme-mode__btn--active', btn.dataset.themeChoice === raw);
+          btn.setAttribute('aria-checked', btn.dataset.themeChoice === raw ? 'true' : 'false');
+          btn.setAttribute('aria-pressed', btn.dataset.themeChoice === raw ? 'true' : 'false');
+        });
       }
       function parseTags(raw) {
         return String(raw || '')
@@ -1128,6 +1860,7 @@
           document.getElementById(`view-${k}`).classList.toggle('active', k === tab);
         });
         const meta = pageMeta[tab] || pageMeta.overview;
+        document.getElementById('pageBreadcrumb').textContent = meta.title;
         document.getElementById('pageHeroTitle').textContent = meta.title;
         document.getElementById('pageHeroBody').textContent = meta.body;
         if (tab === 'profile' && !profileDirty && !profileSaving) {
@@ -1148,8 +1881,7 @@
           ['Presence TTL', `${Math.floor(o.presence_ttl_ms / 1000)}s`],
         ].map(([k,v]) => `<div class="card"><div class="label">${k}</div><div class="value">${v}</div></div>`).join('');
 
-        document.getElementById('brandVersion').textContent = o.app_version ? `version ${o.app_version}` : 'version -';
-        document.getElementById('topVersion').textContent = o.app_version ? o.app_version : 'version -';
+        document.getElementById('brandVersion').textContent = o.app_version ? `v${o.app_version}` : '-';
 
         document.getElementById('snapshot').textContent = [
           `app_version: ${o.app_version || '-'}`,
@@ -1263,7 +1995,11 @@
         document.getElementById('heroRoom').textContent = dx.room || '-';
 
         document.getElementById('pillAdapter').textContent = `adapter: ${c.adapter}`;
-        document.getElementById('sideMeta').innerHTML = `adapter: ${c.adapter}<br/>namespace: ${c.namespace || '-'}<br/>port: ${c.port ?? '-'}`;
+        document.getElementById('sideMeta').innerHTML = [
+          ['Adapter', c.adapter || '-'],
+          ['Namespace', c.namespace || '-'],
+          ['Port', c.port ?? '-'],
+        ].map(([k, v]) => `<div class="sidebar-utility-row"><span class="sidebar-utility__label">${k}</span><span class="sidebar-utility__value">${v}</span></div>`).join('');
 
         document.getElementById('networkCards').innerHTML = [
           ['Adapter', c.adapter],
@@ -1463,6 +2199,7 @@
         const bar = document.getElementById('integrationStatusBar');
         bar.className = `integration-strip ${status.connected_to_silicaclaw && status.public_enabled ? 'ok' : 'warn'}`;
         bar.textContent = `Connected to SilicaClaw: ${status.connected_to_silicaclaw ? 'yes' : 'no'} · Network mode: ${mode} · Public discovery: ${status.public_enabled ? 'enabled' : 'disabled'}`;
+        document.getElementById('brandStatusDot').classList.toggle('online', !!status.connected_to_silicaclaw);
         const reasons = [];
         if (!status.configured && status.configured_reason) reasons.push(`Configured: ${status.configured_reason}`);
         if (!status.running && status.running_reason) reasons.push(`Running: ${status.running_reason}`);
@@ -1571,23 +2308,46 @@
       document.querySelectorAll('.tab').forEach((btn) => {
         btn.addEventListener('click', () => switchTab(btn.dataset.tab));
       });
-      document.getElementById('themeDarkBtn').addEventListener('click', () => applyTheme('dark'));
-      document.getElementById('themeLightBtn').addEventListener('click', () => applyTheme('light'));
-      document.getElementById('refreshAllBtn').addEventListener('click', async () => {
-        await refreshAll();
-        toast('Refreshed');
+      document.getElementById('sidebarToggleBtn').addEventListener('click', () => {
+        const shell = document.getElementById('appShell');
+        const next = !shell.classList.contains('nav-collapsed');
+        shell.classList.toggle('nav-collapsed', next);
+        const btn = document.getElementById('sidebarToggleBtn');
+        const icon = btn.querySelector('.nav-collapse-toggle__icon');
+        btn.classList.toggle('active', next);
+        btn.title = next ? 'Expand sidebar' : 'Collapse sidebar';
+        btn.setAttribute('aria-label', btn.title);
+        if (icon) {
+          icon.innerHTML = next
+            ? `
+              <svg viewBox="0 0 24 24">
+                <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                <path d="M9 3v18"></path>
+                <path d="M14 10l3 2-3 2"></path>
+              </svg>
+            `
+            : `
+              <svg viewBox="0 0 24 24">
+                <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                <path d="M9 3v18"></path>
+                <path d="M16 10l-3 2 3 2"></path>
+              </svg>
+            `;
+        }
       });
       document.getElementById('focusModeBtn').addEventListener('click', () => {
         const shell = document.getElementById('appShell');
         const next = !shell.classList.contains('focus-mode');
         shell.classList.toggle('focus-mode', next);
-        document.getElementById('focusModeBtn').textContent = next ? 'Exit focus' : 'Focus mode';
+        const btn = document.getElementById('focusModeBtn');
+        btn.classList.toggle('active', next);
+        btn.title = next ? 'Exit focus mode' : 'Toggle focus mode';
+        btn.setAttribute('aria-label', btn.title);
       });
-      document.getElementById('sidebarToggleBtn').addEventListener('click', () => {
-        const shell = document.getElementById('appShell');
-        const next = !shell.classList.contains('nav-collapsed');
-        shell.classList.toggle('nav-collapsed', next);
-        document.getElementById('sidebarToggleBtn').textContent = next ? 'Expand sidebar' : 'Collapse sidebar';
+      document.querySelectorAll('[data-theme-choice]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          applyTheme(btn.dataset.themeChoice || 'dark');
+        });
       });
       document.getElementById('overviewBroadcastNowBtn').addEventListener('click', () => {
         document.getElementById('broadcastNowBtn').click();
@@ -1850,6 +2610,20 @@
           fallback.classList.add('hidden');
         });
       })();
+
+      if (window.matchMedia) {
+        const media = window.matchMedia('(prefers-color-scheme: light)');
+        const handleThemeMedia = () => {
+          if ((localStorage.getItem('silicaclaw_theme_mode') || 'dark') === 'system') {
+            applyTheme('system');
+          }
+        };
+        if (typeof media.addEventListener === 'function') {
+          media.addEventListener('change', handleThemeMedia);
+        } else if (typeof media.addListener === 'function') {
+          media.addListener(handleThemeMedia);
+        }
+      }
 
       applyTheme(localStorage.getItem('silicaclaw_theme_mode') || 'dark');
       refreshAll();

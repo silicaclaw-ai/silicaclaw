@@ -72,11 +72,6 @@ const WEBRTC_BOOTSTRAP_HINTS = process.env.WEBRTC_BOOTSTRAP_HINTS || "";
 const PROFILE_VERSION = "v0.9";
 
 function readWorkspaceVersion(workspaceRoot: string): string {
-  const versionFile = resolve(workspaceRoot, "VERSION");
-  if (existsSync(versionFile)) {
-    const raw = readFileSync(versionFile, "utf8").trim();
-    if (raw) return raw;
-  }
   const pkgFile = resolve(workspaceRoot, "package.json");
   if (existsSync(pkgFile)) {
     try {
@@ -85,6 +80,11 @@ function readWorkspaceVersion(workspaceRoot: string): string {
     } catch {
       // ignore
     }
+  }
+  const versionFile = resolve(workspaceRoot, "VERSION");
+  if (existsSync(versionFile)) {
+    const raw = readFileSync(versionFile, "utf8").trim();
+    if (raw) return raw;
   }
   return "unknown";
 }
