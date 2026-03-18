@@ -27,6 +27,8 @@ silicaclaw stop
 silicaclaw update
 ```
 
+The installed `silicaclaw` command uses `~/.silicaclaw/npm-cache` by default, so it does not depend on a clean `~/.npm` cache.
+
 Default network path:
 
 - mode: `global-preview`

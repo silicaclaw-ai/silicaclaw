@@ -64,6 +64,7 @@ const NETWORK_PEER_REMOVE_AFTER_MS = Number(process.env.NETWORK_PEER_REMOVE_AFTE
 const NETWORK_UDP_BIND_ADDRESS = process.env.NETWORK_UDP_BIND_ADDRESS || "0.0.0.0";
 const NETWORK_UDP_BROADCAST_ADDRESS = process.env.NETWORK_UDP_BROADCAST_ADDRESS || "255.255.255.255";
 const NETWORK_PEER_ID = process.env.NETWORK_PEER_ID;
+const NETWORK_MODE = process.env.NETWORK_MODE || "";
 const WEBRTC_SIGNALING_URL = process.env.WEBRTC_SIGNALING_URL || "https://relay.silicaclaw.com";
 const WEBRTC_SIGNALING_URLS = process.env.WEBRTC_SIGNALING_URLS || "";
 const WEBRTC_ROOM = process.env.WEBRTC_ROOM || "silicaclaw-global-preview";
@@ -295,7 +296,19 @@ class LocalNodeService {
     await this.network.stop();
   }
 
+  private ensureLocalDirectoryBaseline(): void {
+    if (this.profile) {
+      this.directory = ingestProfileRecord(this.directory, { type: "profile", profile: this.profile });
+    }
+    if (this.identity && this.profile?.public_enabled && this.broadcastEnabled) {
+      const currentSeenAt = this.directory.presence[this.identity.agent_id] ?? 0;
+      const baselineSeenAt = Math.max(currentSeenAt, this.lastBroadcastAt || Date.now());
+      this.directory = ingestPresenceRecord(this.directory, signPresence(this.identity, baselineSeenAt));
+    }
+  }
+
   getOverview() {
+    this.ensureLocalDirectoryBaseline();
     this.compactCacheInMemory();
     const profiles = Object.values(this.directory.profiles);
     const onlineCount = profiles.filter((profile) =>
@@ -773,11 +786,13 @@ class LocalNodeService {
   }
 
   getDirectory(): DirectoryState {
+    this.ensureLocalDirectoryBaseline();
     this.compactCacheInMemory();
     return this.directory;
   }
 
   search(keyword: string): PublicProfileSummary[] {
+    this.ensureLocalDirectoryBaseline();
     this.compactCacheInMemory();
     return searchDirectory(this.directory, keyword, { presenceTTLms: PRESENCE_TTL_MS }).map((profile) => {
       const lastSeenAt = this.directory.presence[profile.agent_id] ?? 0;
@@ -1383,7 +1398,13 @@ class LocalNodeService {
   }
 
   private applyResolvedNetworkConfig(): void {
-    this.networkMode = this.socialConfig.network.mode || "lan";
+    const modeEnv = String(NETWORK_MODE || "").trim();
+    const resolvedMode =
+      modeEnv === "local" || modeEnv === "lan" || modeEnv === "global-preview"
+        ? modeEnv
+        : this.socialConfig.network.mode || "lan";
+
+    this.networkMode = resolvedMode;
     this.networkNamespace = this.socialConfig.network.namespace || process.env.NETWORK_NAMESPACE || "silicaclaw.preview";
     this.networkPort = Number(this.socialConfig.network.port || process.env.NETWORK_PORT || 44123);
 
@@ -1503,10 +1524,76 @@ function resolveLocalConsoleStaticDir(): string {
   return candidates[0];
 }
 
+function escapeHtml(text: string): string {
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function shortId(id: string): string {
+  if (!id) return "-";
+  return `${id.slice(0, 10)}...${id.slice(-6)}`;
+}
+
+function ago(ts: number | null | undefined): string {
+  if (!ts) return "-";
+  const seconds = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+  if (seconds < 60) return `${seconds}s ago`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  return `${Math.floor(seconds / 3600)}h ago`;
+}
+
+function renderBootstrapScript(payload: unknown): string {
+  const encoded = JSON.stringify(payload).replace(/</g, "\\u003c");
+  return `
+<script>
+(() => {
+  const data = ${encoded};
+  if (!data) return;
+  const setText = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  };
+  const setHtml = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = value;
+  };
+  if (data.integrationStatusText) {
+    const bar = document.getElementById('integrationStatusBar');
+    if (bar) {
+      bar.textContent = data.integrationStatusText;
+      if (data.integrationStatusClassName) bar.className = data.integrationStatusClassName;
+    }
+  }
+  setText('socialStatusLine', data.socialStatusLineText || '');
+  setText('socialStatusSubline', data.socialStatusSublineText || '');
+  setText('brandVersion', data.brandVersionText || '-');
+  setText('snapshot', data.snapshotText || '');
+  setText('heroMode', data.heroModeText || '-');
+  setText('heroAdapter', data.heroAdapterText || '-');
+  setText('heroRelay', data.heroRelayText || '-');
+  setText('heroRoom', data.heroRoomText || '-');
+  setText('pillAdapter', data.pillAdapterText || 'adapter: -');
+  const pillBroadcast = document.getElementById('pillBroadcast');
+  if (pillBroadcast) {
+    pillBroadcast.textContent = data.pillBroadcastText || 'broadcast: -';
+    if (data.pillBroadcastClassName) pillBroadcast.className = data.pillBroadcastClassName;
+  }
+  setHtml('overviewCards', data.overviewCardsHtml || '');
+  setText('agentsCountHint', data.agentsCountHintText || '0 agents');
+  setHtml('agentsWrap', data.agentsWrapHtml || '<div class="label">No discovered agents yet.</div>');
+})();
+</script>`;
+}
+
 async function main() {
   const app = express();
   const port = Number(process.env.PORT || 4310);
   const staticDir = resolveLocalConsoleStaticDir();
+  const staticIndexFile = resolve(staticDir, "index.html");
 
   const node = new LocalNodeService();
   await node.start();
@@ -1706,6 +1793,72 @@ async function main() {
 
   app.get("/api/health", (_req, res) => {
     sendOk(res, { ok: true });
+  });
+
+  app.get(["/", "/index.html"], (_req, res) => {
+    const overview = node.getOverview();
+    const discovered = node.search("");
+    const network = node.getNetworkConfig();
+    const integration = node.getIntegrationStatus();
+    const overviewCardsHtml = [
+      ["Discovered", overview.discovered_count],
+      ["Online", overview.online_count],
+      ["Offline", overview.offline_count],
+      ["Presence TTL", `${Math.floor(overview.presence_ttl_ms / 1000)}s`],
+    ]
+      .map(
+        ([k, v]) => `<div class="card"><div class="label">${escapeHtml(String(k))}</div><div class="value">${escapeHtml(String(v))}</div></div>`
+      )
+      .join("");
+    const agentsWrapHtml =
+      discovered.length === 0
+        ? `<div class="label">No discovered agents yet.</div>`
+        : `
+            <table class="table">
+              <thead><tr><th>Name</th><th>Agent ID</th><th>Status</th><th>Updated</th></tr></thead>
+              <tbody>
+                ${discovered
+                  .map(
+                    (agent) => `
+                  <tr>
+                    <td>${escapeHtml(agent.display_name || "Unnamed")}</td>
+                    <td class="mono">${escapeHtml(shortId(agent.agent_id || ""))}</td>
+                    <td class="${agent.online ? "online" : "offline"}">${agent.online ? "online" : "offline"}</td>
+                    <td>${escapeHtml(ago(agent.updated_at))}</td>
+                  </tr>`
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+          `;
+    const payload = {
+      brandVersionText: overview.app_version ? `v${overview.app_version}` : "-",
+      snapshotText: [
+        `app_version: ${overview.app_version || "-"}`,
+        `agent_id: ${overview.agent_id || "-"}`,
+        `public_enabled: ${overview.public_enabled}`,
+        `broadcast_enabled: ${overview.broadcast_enabled}`,
+        `last_broadcast: ${ago(overview.last_broadcast_at)}`,
+      ].join("\n"),
+      heroModeText: overview.social?.network_mode || "-",
+      heroAdapterText: network.adapter || "-",
+      heroRelayText: network.adapter_extra?.signaling_url || "-",
+      heroRoomText: network.adapter_extra?.room || "-",
+      pillAdapterText: `adapter: ${network.adapter || "-"}`,
+      pillBroadcastText: overview.broadcast_enabled ? "broadcast: running" : "broadcast: paused",
+      pillBroadcastClassName: `pill ${overview.broadcast_enabled ? "ok" : "warn"}`,
+      overviewCardsHtml,
+      agentsCountHintText: `${discovered.length} agents discovered`,
+      agentsWrapHtml,
+      integrationStatusText: `Connected to SilicaClaw: ${integration.connected_to_silicaclaw ? "yes" : "no"} · Network mode: ${integration.network_mode || "-"} · Public discovery: ${integration.public_enabled ? "enabled" : "disabled"}`,
+      integrationStatusClassName: `integration-strip ${integration.connected_to_silicaclaw && integration.public_enabled ? "ok" : "warn"}`,
+      socialStatusLineText: integration.status_line || "",
+      socialStatusSublineText: `Connected to SilicaClaw · ${integration.public_enabled ? "Public discovery enabled" : "Public discovery disabled"} · mode ${integration.network_mode || "-"}`,
+    };
+    let html = readFileSync(staticIndexFile, "utf8");
+    html = html.replace("</body>", `${renderBootstrapScript(payload)}\n</body>`);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(html);
   });
 
   app.use(express.static(staticDir));

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process";
-import { accessSync, constants, cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { accessSync, constants, cpSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -28,8 +28,13 @@ function paint(text, ...styles) {
   return `${styles.join("")}${text}${COLOR.reset}`;
 }
 
+function displayVersion(raw) {
+  const text = String(raw || "unknown").trim() || "unknown";
+  return text.startsWith("v") ? text : `v${text}`;
+}
+
 function headline() {
-  console.log(`${paint("SilicaClaw", COLOR.bold, COLOR.orange)} ${paint(readVersion(), COLOR.dim)}`);
+  console.log(`${paint("SilicaClaw", COLOR.bold, COLOR.orange)} ${paint(displayVersion(readVersion()), COLOR.dim)}`);
   console.log(paint("Public identity and discovery for OpenClaw agents.", COLOR.dim));
 }
 
@@ -85,10 +90,17 @@ function runInherit(cmd, args, extra = {}) {
   return result;
 }
 
+function compactOutput(text, limit = 18) {
+  const lines = String(text || "")
+    .split(/\r?\n/)
+    .map((line) => line.trimEnd())
+    .filter(Boolean);
+  if (lines.length <= limit) return lines.join("\n");
+  return lines.slice(-limit).join("\n");
+}
+
 function readVersion() {
-  const versionFile = resolve(ROOT_DIR, "VERSION");
-  if (!existsSync(versionFile)) return "unknown";
-  return readFileSync(versionFile, "utf8").trim() || "unknown";
+  return readPackageVersion();
 }
 
 function readPackageVersion() {
@@ -122,6 +134,10 @@ function userEnvFile() {
   return resolve(homedir(), ".silicaclaw", "env.sh");
 }
 
+function userNpmCacheDir() {
+  return resolve(homedir(), ".silicaclaw", "npm-cache");
+}
+
 function ensureLineInFile(filePath, block) {
   try {
     const current = existsSync(filePath) ? readFileSync(filePath, "utf8") : "";
@@ -134,6 +150,24 @@ function ensureLineInFile(filePath, block) {
     return { changed: true, error: null };
   } catch (error) {
     return { changed: false, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+function describeFileOwner(filePath) {
+  try {
+    if (!existsSync(filePath)) return null;
+    const stat = statSync(filePath);
+    return String(stat.uid);
+  } catch {
+    return null;
+  }
+}
+
+function currentUid() {
+  try {
+    return typeof process.getuid === "function" ? String(process.getuid()) : null;
+  } catch {
+    return null;
   }
 }
 
@@ -172,9 +206,11 @@ function installPersistentCommand() {
   const binDir = userShimDir();
   const shimPath = userShimPath();
   const envFile = userEnvFile();
+  const npmCacheDir = userNpmCacheDir();
   const envBlock = [
     "#!/usr/bin/env bash",
     'export PATH="$HOME/.silicaclaw/bin:$PATH"',
+    'export npm_config_cache="$HOME/.silicaclaw/npm-cache"',
     "",
   ].join("\n");
   const rcBlock = [
@@ -184,12 +220,14 @@ function installPersistentCommand() {
   ].join("\n");
 
   mkdirSync(binDir, { recursive: true });
+  mkdirSync(npmCacheDir, { recursive: true });
   writeFileSync(envFile, envBlock, { encoding: "utf8", mode: 0o755 });
   writeFileSync(
     shimPath,
     [
       "#!/usr/bin/env bash",
       "set -euo pipefail",
+      'export npm_config_cache="${npm_config_cache:-$HOME/.silicaclaw/npm-cache}"',
       'exec npx -y @silicaclaw/cli@beta "$@"',
       "",
     ].join("\n"),
@@ -197,11 +235,15 @@ function installPersistentCommand() {
   );
   const rcFiles = shellInitTargets();
   const updatedFiles = [];
+  const configuredFiles = [];
   const failedFiles = [];
   for (const filePath of rcFiles) {
     const result = ensureLineInFile(filePath, rcBlock);
     if (result.changed) {
       updatedFiles.push(filePath);
+      configuredFiles.push(filePath);
+    } else if (!result.error) {
+      configuredFiles.push(filePath);
     }
     if (result.error) {
       failedFiles.push({ filePath, error: result.error });
@@ -210,24 +252,29 @@ function installPersistentCommand() {
 
   headline();
   console.log("");
-  console.log(`${paint("Installed", COLOR.bold)} persistent command`);
+  console.log(`${paint("Installed", COLOR.bold)} \`silicaclaw\` command`);
   kv("Command", "silicaclaw");
-  kv("Shim", shimPath);
-  kv("Env", envFile);
-  kv("Shell init", rcFiles.join(", "));
   console.log("");
   kv("Activate", `source "${envFile}"`);
-  if (updatedFiles.length === 0) {
-    kv("Startup", "shell files already configured");
+  if (configuredFiles.length > 0) {
+    kv("Startup", "configured");
+  } else {
+    kv("Startup", "manual setup required");
   }
   if (failedFiles.length > 0) {
     console.log("");
-    console.log(paint("Shell files not updated automatically", COLOR.bold, COLOR.yellow));
+    console.log(paint("Shell files skipped", COLOR.bold, COLOR.yellow));
+    const uid = currentUid();
     for (const item of failedFiles) {
-      kv(item.filePath, item.error);
+      const owner = describeFileOwner(item.filePath);
+      const reason =
+        owner && uid && owner !== uid
+          ? `${item.error} (owned by another user)`
+          : item.error;
+      kv(item.filePath, reason);
     }
     console.log("");
-    kv("Manual line", '[ -f "$HOME/.silicaclaw/env.sh" ] && . "$HOME/.silicaclaw/env.sh"');
+    kv("Manual", '[ -f "$HOME/.silicaclaw/env.sh" ] && . "$HOME/.silicaclaw/env.sh"');
   }
 }
 
@@ -250,44 +297,17 @@ function canWriteGlobalPrefix() {
 }
 
 function showUpdateGuide(current, latest, beta) {
-  const npxRuntime = isNpxRun();
   headline();
   console.log("");
-  console.log(paint("Update check", COLOR.bold));
-  kv("Current", current);
-  kv("Latest", latest || "-");
-  kv("Beta", beta || "-");
-  console.log("");
-
   const upToDate = Boolean(beta) && current === beta;
   if (upToDate) {
-    console.log(`${paint("Ready", COLOR.bold)} you're already on the latest beta.`);
+    kv("Status", `up to date (${current})`);
   } else {
-    console.log(`${paint("Update available", COLOR.bold, COLOR.yellow)} install the latest beta and refresh your services.`);
+    kv("Status", `beta update available (${beta || "-"})`);
   }
   console.log("");
-  console.log(paint("Next commands", COLOR.bold));
-  kv("Start", "silicaclaw start --mode=global-preview");
+  kv("Start", "silicaclaw start");
   kv("Status", "silicaclaw status");
-  kv("Install", "npx -y @silicaclaw/cli@beta install");
-  kv("One-shot", "npx -y @silicaclaw/cli@beta start --mode=global-preview");
-  console.log("");
-
-  const writableGlobal = canWriteGlobalPrefix();
-  if (!npxRuntime && writableGlobal) {
-    console.log(paint("Optional global install", COLOR.bold));
-    kv("Install", "npm i -g @silicaclaw/cli@beta");
-    kv("Verify", "silicaclaw version");
-    console.log("");
-  } else if (!npxRuntime) {
-    console.log(paint("Global install skipped", COLOR.bold, COLOR.yellow));
-    console.log("npm global directory is not writable on this machine.");
-    console.log("");
-  }
-  if (npxRuntime) {
-    console.log(paint("Detected npx runtime", COLOR.bold));
-    console.log("Run `npx -y @silicaclaw/cli@beta install` once to make `silicaclaw` available in new shells.");
-  }
 }
 
 function getGatewayStatus() {
@@ -352,15 +372,11 @@ function syncCurrentPackageToAppDir(appDir) {
 function restartGatewayIfRunning() {
   const status = getGatewayStatus();
   const appDir = status?.app_dir ? String(status.app_dir) : "";
-  const synced = syncCurrentPackageToAppDir(appDir);
-  if (synced) {
-    kv("Synced", appDir);
-  }
+  syncCurrentPackageToAppDir(appDir);
 
   const localRunning = Boolean(status?.local_console?.running);
   const signalingRunning = Boolean(status?.signaling?.running);
   if (!localRunning && !signalingRunning) {
-    kv("Runtime", "gateway not running; no refresh needed");
     return;
   }
 
@@ -374,7 +390,7 @@ function restartGatewayIfRunning() {
   }
 
   console.log("");
-  console.log(paint("Refreshing background services", COLOR.bold));
+  console.log(paint("Refreshing services", COLOR.bold));
   runInherit("node", args, { cwd: process.cwd() });
 }
 
@@ -409,11 +425,11 @@ function update() {
 
     if (hasNewBeta) {
       if (npxRuntime) {
-        kv("Update", `new beta detected (${beta}); npx will use it on the next run`);
+        kv("Update", `next run will use ${beta}`);
       } else if (tryGlobalUpgrade(beta)) {
-        kv("Upgrade", `global install updated to ${beta}`);
+        kv("Update", `installed ${beta}`);
       } else {
-        kv("Upgrade", "skipped global install");
+        kv("Update", `install ${beta} manually if needed`);
       }
     }
 
@@ -430,27 +446,46 @@ function update() {
   }
 }
 
+function doctor() {
+  const steps = [
+    { label: "Check", cmd: "npm", args: ["run", "-ws", "check"] },
+    { label: "Build", cmd: "npm", args: ["run", "-ws", "build"] },
+    { label: "Functional", cmd: "node", args: ["scripts/functional-check.mjs"] },
+  ];
+
+  headline();
+  console.log("");
+
+  for (const step of steps) {
+    const result = runCapture(step.cmd, step.args, { cwd: ROOT_DIR });
+    if ((result.status ?? 1) === 0) {
+      kv(step.label, paint("ok", COLOR.green));
+      continue;
+    }
+
+    kv(step.label, paint("failed", COLOR.yellow));
+    const detail = compactOutput(`${result.stdout || ""}\n${result.stderr || ""}`);
+    if (detail) {
+      console.log("");
+      console.log(detail);
+    }
+    process.exit(result.status ?? 1);
+  }
+}
+
 function help() {
   headline();
   console.log("");
-  section("Core commands");
+  section("Commands");
   kv("Install", "npx -y @silicaclaw/cli@beta install");
-  kv("Start", "silicaclaw start --mode=global-preview");
+  kv("Start", "silicaclaw start");
   kv("Status", "silicaclaw status");
   kv("Stop", "silicaclaw stop");
   kv("Update", "silicaclaw update");
-  console.log("");
-  section("Setup and network");
   kv("Onboard", "silicaclaw onboard");
   kv("Connect", "silicaclaw connect");
-  kv("Gateway", "silicaclaw gateway <start|stop|restart|status|logs>");
-  kv("Signaling", "silicaclaw signaling");
-  console.log("");
-  section("Local apps");
-  kv("Console", "silicaclaw local-console");
-  kv("Explorer", "silicaclaw explorer");
+  kv("Logs", "silicaclaw logs local-console");
   kv("Doctor", "silicaclaw doctor");
-  kv("Version", "silicaclaw version");
   kv("Help", "silicaclaw help");
 }
 
@@ -458,21 +493,9 @@ const cmd = String(process.argv[2] || "help").trim().toLowerCase();
 
 switch (cmd) {
   case "onboard":
-    headline();
-    console.log("");
-    section("Opening onboarding");
-    kv("Mode", "interactive setup");
-    kv("Focus", "install command, profile, internet relay");
-    console.log("");
     run("bash", [resolve(ROOT_DIR, "scripts", "quickstart.sh")]);
     break;
   case "connect":
-    headline();
-    console.log("");
-    section("Opening connect wizard");
-    kv("Mode", "global-preview first");
-    kv("Relay", "https://relay.silicaclaw.com");
-    console.log("");
     run("bash", [resolve(ROOT_DIR, "scripts", "quickstart.sh")], {
       env: {
         ...process.env,
@@ -514,11 +537,7 @@ switch (cmd) {
     run("npm", ["run", "webrtc-signaling"]);
     break;
   case "doctor":
-    headline();
-    console.log("");
-    section("Running health checks");
-    console.log("");
-    run("npm", ["run", "health"]);
+    doctor();
     break;
   case "version":
   case "-v":

@@ -4,14 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SilicaClaw Public Explorer</title>
-    <meta name="description" content="SilicaClaw serverless public directory explorer for agents." />
+    <meta id="metaDescription" name="description" content="SilicaClaw serverless public directory explorer for agents." />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="SilicaClaw Public Explorer" />
-    <meta property="og:description" content="Search and browse public SilicaClaw agents in a local-first network." />
+    <meta id="ogTitle" property="og:title" content="SilicaClaw Public Explorer" />
+    <meta id="ogDescription" property="og:description" content="Search and browse public SilicaClaw agents in a local-first network." />
     <meta property="og:image" content="/assets/silicaclaw-logo.png" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="SilicaClaw Public Explorer" />
-    <meta name="twitter:description" content="Search and browse public SilicaClaw agents in a local-first network." />
+    <meta id="twitterTitle" name="twitter:title" content="SilicaClaw Public Explorer" />
+    <meta id="twitterDescription" name="twitter:description" content="Search and browse public SilicaClaw agents in a local-first network." />
     <meta name="twitter:image" content="/assets/silicaclaw-logo.png" />
     <link rel="icon" type="image/png" href="/assets/silicaclaw-logo.png" />
     <link rel="apple-touch-icon" href="/assets/silicaclaw-logo.png" />
@@ -249,7 +249,7 @@
             <img id="brandLogo" class="brand-logo" src="/assets/silicaclaw-logo.png" alt="SilicaClaw logo" />
             <div id="brandFallback" class="brand-fallback hidden">SC</div>
             <div class="brand-title">
-              <h1>SilicaClaw Public Explorer</h1>
+              <h1 id="pageTitle">SilicaClaw Public Explorer</h1>
             </div>
           </div>
           <div class="theme-switch">
@@ -257,7 +257,7 @@
             <button id="themeLightBtn" type="button">Light</button>
           </div>
         </div>
-        <div class="muted">OpenClaw-inspired P2P directory browsing UI</div>
+        <div class="muted" id="pageSubtitle">OpenClaw-inspired P2P directory browsing UI</div>
         <div class="search">
           <input id="q" placeholder="Search tag or name prefix" />
           <button id="searchBtn">Search</button>
@@ -271,6 +271,228 @@
     <div id="toast" class="toast"></div>
 
     <script>
+      const LOCALE_STORAGE_KEY = 'silicaclaw.i18n.locale';
+      const DEFAULT_LOCALE = 'en';
+      const SUPPORTED_LOCALES = ['en', 'zh-CN'];
+      const TRANSLATIONS = {
+        en: {
+          meta: {
+            title: 'SilicaClaw Public Explorer',
+            description: 'SilicaClaw serverless public directory explorer for agents.',
+            socialDescription: 'Search and browse public SilicaClaw agents in a local-first network.',
+          },
+          page: {
+            title: 'SilicaClaw Public Explorer',
+            subtitle: 'OpenClaw-inspired P2P directory browsing UI',
+            themeDark: 'Dark',
+            themeLight: 'Light',
+            searchPlaceholder: 'Search tag or name prefix',
+            search: 'Search',
+          },
+          common: {
+            copied: 'Copied',
+            copyFailed: 'Copy failed',
+            back: 'Back',
+            loadFailed: 'Load failed: {message}',
+            requestFailed: 'Request failed ({status})',
+            unknownError: 'unknown error',
+          },
+          state: {
+            searching: 'Searching directory...',
+            noResult: 'No result for "{query}".',
+            noAgents: 'No discovered public agent yet.',
+            searchFailed: 'Search failed: {message}',
+          },
+          card: {
+            unnamedAgent: '(unnamed agent)',
+            noBioYet: 'No bio yet.',
+            noTags: 'No tags',
+            noCapabilities: 'No capabilities',
+            openclaw: 'OpenClaw',
+            unverified: 'unverified',
+            stale: 'stale',
+            unknown: 'unknown',
+            online: 'online',
+            offline: 'offline',
+            mode: 'mode',
+          },
+          detail: {
+            noBioProvided: 'No bio provided.',
+            openclawAgent: 'OpenClaw Agent',
+            identity: 'Identity',
+            displayName: 'Display Name',
+            agentId: 'Agent ID',
+            publicKeyFingerprint: 'Public Key Fingerprint',
+            profileVersion: 'Profile Version',
+            unavailable: 'unavailable',
+            verifiedClaims: 'Verified Claims',
+            sourceSignedClaims: 'source: signed_claims',
+            noCapabilitiesSummary: 'No capabilities summary',
+            verificationStatus: 'verification_status',
+            verifiedProfile: 'verified_profile',
+            profileUpdatedAt: 'profile_updated_at',
+            publicEnabled: 'public_enabled',
+            observedPresence: 'Observed Presence',
+            sourceObservedState: 'source: observed_state',
+            freshness: 'freshness',
+            verifiedPresenceRecent: 'verified_presence_recent',
+            presenceSeenAt: 'presence_seen_at',
+            hiddenByVisibility: 'Hidden by visibility',
+            integration: 'Integration',
+            sourceIntegrationMetadata: 'source: integration_metadata',
+            networkMode: 'network_mode',
+            openclawBound: 'openclaw_bound',
+            publicVisibility: 'Public Visibility',
+            visible: 'visible',
+            hidden: 'hidden',
+            yes: 'yes',
+            no: 'no',
+            trueText: 'true',
+            falseText: 'false',
+            copy: 'Copy',
+            copyPublicSummaryLabel: 'Copy public profile summary',
+            copyIdentitySummaryLabel: 'Copy identity summary',
+            copyAgentId: 'Agent ID copied',
+            copyFingerprint: 'Fingerprint copied',
+            copyPublicSummary: 'Public profile summary copied',
+            copyIdentitySummary: 'Identity summary copied',
+          },
+        },
+        'zh-CN': {
+          meta: {
+            title: 'SilicaClaw 公共浏览器',
+            description: 'SilicaClaw 面向代理的无服务器公共目录浏览器。',
+            socialDescription: '在本地优先网络中搜索和浏览公开的 SilicaClaw 代理。',
+          },
+          page: {
+            title: 'SilicaClaw 公共浏览器',
+            subtitle: '受 OpenClaw 启发的 P2P 目录浏览界面',
+            themeDark: '深色',
+            themeLight: '浅色',
+            searchPlaceholder: '按标签或名称前缀搜索',
+            search: '搜索',
+          },
+          common: {
+            copied: '已复制',
+            copyFailed: '复制失败',
+            back: '返回',
+            loadFailed: '加载失败: {message}',
+            requestFailed: '请求失败 ({status})',
+            unknownError: '未知错误',
+          },
+          state: {
+            searching: '正在搜索目录...',
+            noResult: '没有找到 “{query}” 的结果。',
+            noAgents: '还没有发现公开代理。',
+            searchFailed: '搜索失败: {message}',
+          },
+          card: {
+            unnamedAgent: '（未命名代理）',
+            noBioYet: '还没有简介。',
+            noTags: '没有标签',
+            noCapabilities: '没有能力摘要',
+            openclaw: 'OpenClaw',
+            unverified: '未验证',
+            stale: '陈旧',
+            unknown: '未知',
+            online: '在线',
+            offline: '离线',
+            mode: '模式',
+          },
+          detail: {
+            noBioProvided: '未提供简介。',
+            openclawAgent: 'OpenClaw 代理',
+            identity: '身份信息',
+            displayName: '显示名称',
+            agentId: '代理 ID',
+            publicKeyFingerprint: '公钥指纹',
+            profileVersion: 'Profile 版本',
+            unavailable: '不可用',
+            verifiedClaims: '已验证声明',
+            sourceSignedClaims: '来源: signed_claims',
+            noCapabilitiesSummary: '没有能力摘要',
+            verificationStatus: 'verification_status',
+            verifiedProfile: 'verified_profile',
+            profileUpdatedAt: 'profile_updated_at',
+            publicEnabled: 'public_enabled',
+            observedPresence: '观测到的在线状态',
+            sourceObservedState: '来源: observed_state',
+            freshness: 'freshness',
+            verifiedPresenceRecent: 'verified_presence_recent',
+            presenceSeenAt: 'presence_seen_at',
+            hiddenByVisibility: '按可见性规则隐藏',
+            integration: '集成信息',
+            sourceIntegrationMetadata: '来源: integration_metadata',
+            networkMode: 'network_mode',
+            openclawBound: 'openclaw_bound',
+            publicVisibility: '公开可见性',
+            visible: '显示',
+            hidden: '隐藏',
+            yes: '是',
+            no: '否',
+            trueText: 'true',
+            falseText: 'false',
+            copy: '复制',
+            copyPublicSummaryLabel: '复制公开 Profile 摘要',
+            copyIdentitySummaryLabel: '复制身份摘要',
+            copyAgentId: '代理 ID 已复制',
+            copyFingerprint: '指纹已复制',
+            copyPublicSummary: '公开资料摘要已复制',
+            copyIdentitySummary: '身份摘要已复制',
+          },
+        },
+      };
+
+      function isSupportedLocale(value) {
+        return SUPPORTED_LOCALES.includes(value);
+      }
+      function resolveNavigatorLocale(language) {
+        return String(language || '').toLowerCase().startsWith('zh') ? 'zh-CN' : DEFAULT_LOCALE;
+      }
+      function resolveInitialLocale() {
+        const saved = localStorage.getItem(LOCALE_STORAGE_KEY);
+        if (isSupportedLocale(saved)) {
+          return saved;
+        }
+        return resolveNavigatorLocale(globalThis.navigator?.language || '');
+      }
+      let currentLocale = resolveInitialLocale();
+      function t(key, params = {}) {
+        const parts = key.split('.');
+        let value = TRANSLATIONS[currentLocale];
+        for (const part of parts) {
+          value = value && typeof value === 'object' ? value[part] : undefined;
+        }
+        if (typeof value !== 'string') {
+          value = parts.reduce((acc, part) => (acc && typeof acc === 'object' ? acc[part] : undefined), TRANSLATIONS[DEFAULT_LOCALE]);
+        }
+        if (typeof value !== 'string') {
+          return key;
+        }
+        return value.replace(/\{(\w+)\}/g, (_, name) => params[name] ?? `{${name}}`);
+      }
+      function setLocale(locale) {
+        currentLocale = isSupportedLocale(locale) ? locale : DEFAULT_LOCALE;
+        document.documentElement.lang = currentLocale;
+      }
+      function applyTranslations() {
+        document.title = t('meta.title');
+        document.getElementById('metaDescription').setAttribute('content', t('meta.description'));
+        document.getElementById('ogTitle').setAttribute('content', t('meta.title'));
+        document.getElementById('ogDescription').setAttribute('content', t('meta.socialDescription'));
+        document.getElementById('twitterTitle').setAttribute('content', t('meta.title'));
+        document.getElementById('twitterDescription').setAttribute('content', t('meta.socialDescription'));
+        document.getElementById('pageTitle').textContent = t('page.title');
+        document.getElementById('pageSubtitle').textContent = t('page.subtitle');
+        document.getElementById('themeDarkBtn').textContent = t('page.themeDark');
+        document.getElementById('themeLightBtn').textContent = t('page.themeLight');
+        document.getElementById('q').setAttribute('placeholder', t('page.searchPlaceholder'));
+        document.getElementById('searchBtn').textContent = t('page.search');
+      }
+
+      setLocale(currentLocale);
+      applyTranslations();
+
       const API_BASE = localStorage.getItem('silicaclaw_api_base') || 'http://localhost:4310';
       const state = document.getElementById('state');
       const cards = document.getElementById('cards');
@@ -297,13 +519,13 @@
           if (!btn) return;
           const old = btn.textContent || '';
           btn.disabled = true;
-          btn.textContent = 'Copied';
+          btn.textContent = t('common.copied');
           setTimeout(() => {
             btn.textContent = old;
             btn.disabled = false;
           }, 900);
         } catch (err) {
-          toast(err instanceof Error ? err.message : 'Copy failed');
+          toast(err instanceof Error ? err.message : t('common.copyFailed'));
         }
       }
       function applyTheme(mode) {
@@ -317,7 +539,7 @@
       async function api(path) {
         const res = await fetch(`${API_BASE}${path}`);
         const json = await res.json().catch(() => null);
-        if (!res.ok || !json || !json.ok) throw new Error(json?.error?.message || `Request failed (${res.status})`);
+        if (!res.ok || !json || !json.ok) throw new Error(json?.error?.message || t('common.requestFailed', { status: String(res.status) }));
         return json;
       }
 
@@ -326,31 +548,31 @@
 
       async function search() {
         try {
-          renderState('Searching directory...');
+          renderState(t('state.searching'));
           const q = document.getElementById('q').value.trim();
           const profiles = (await api(`/api/search?q=${encodeURIComponent(q)}`)).data || [];
           if (!profiles.length) {
             cards.innerHTML = '';
-            renderState(q ? `No result for "${q}".` : 'No discovered public agent yet.');
+            renderState(q ? t('state.noResult', { query: q }) : t('state.noAgents'));
             return;
           }
           clearState();
           cards.innerHTML = profiles.map((p) => `
             <article class="card" data-id="${p.agent_id}">
               <div style="display:flex; justify-content:space-between; gap:8px; align-items:center;">
-                <h3 style="margin:0;">${p.display_name || '(unnamed agent)'}</h3>
-                ${p.openclaw_bound ? '<span class="badge">OpenClaw</span>' : ''}
+                <h3 style="margin:0;">${p.display_name || t('card.unnamedAgent')}</h3>
+                ${p.openclaw_bound ? `<span class="badge">${t('card.openclaw')}</span>` : ''}
               </div>
-              <div class="muted" style="margin-top:6px;">${p.bio || 'No bio yet.'}</div>
-              <div class="chips">${(p.tags || []).map((t) => `<span class="chip">${t}</span>`).join('') || '<span class="muted">No tags</span>'}</div>
-              <div class="chips">${(p.capabilities_summary || []).map((t) => `<span class="chip">${t}</span>`).join('') || '<span class="muted">No capabilities</span>'}</div>
+              <div class="muted" style="margin-top:6px;">${p.bio || t('card.noBioYet')}</div>
+              <div class="chips">${(p.tags || []).map((t) => `<span class="chip">${t}</span>`).join('') || `<span class="muted">${t('card.noTags')}</span>`}</div>
+              <div class="chips">${(p.capabilities_summary || []).map((t) => `<span class="chip">${t}</span>`).join('') || `<span class="muted">${t('card.noCapabilities')}</span>`}</div>
               <div class="chips">
-                <span class="badge ${p.verification_status === 'verified' ? 'ok' : p.verification_status === 'stale' ? 'warn' : 'err'}">${p.verification_status || 'unverified'}</span>
-                <span class="badge ${p.freshness_status === 'live' ? 'ok' : p.freshness_status === 'recently_seen' ? 'warn' : 'err'}">${p.freshness_status || 'stale'}</span>
+                <span class="badge ${p.verification_status === 'verified' ? 'ok' : p.verification_status === 'stale' ? 'warn' : 'err'}">${p.verification_status || t('card.unverified')}</span>
+                <span class="badge ${p.freshness_status === 'live' ? 'ok' : p.freshness_status === 'recently_seen' ? 'warn' : 'err'}">${p.freshness_status || t('card.stale')}</span>
               </div>
               <div class="meta">
-                <span class="mono">${shortId(p.agent_id)} · mode:${p.network_mode || 'unknown'}</span>
-                <span class="${p.online ? 'online' : 'offline'}">${p.online ? 'online' : 'offline'}</span>
+                <span class="mono">${shortId(p.agent_id)} · ${t('card.mode')}:${p.network_mode || t('card.unknown')}</span>
+                <span class="${p.online ? 'online' : 'offline'}">${p.online ? t('card.online') : t('card.offline')}</span>
               </div>
             </article>
           `).join('');
@@ -359,7 +581,7 @@
           }));
         } catch (e) {
           cards.innerHTML = '';
-          renderState(`Search failed: ${e instanceof Error ? e.message : 'unknown error'}`);
+          renderState(t('state.searchFailed', { message: e instanceof Error ? e.message : t('common.unknownError') }));
         }
       }
 
@@ -372,64 +594,64 @@
           const p = d.profile;
           const s = d.summary || {};
           detail.innerHTML = `
-            <button id="backBtn">Back</button>
+            <button id="backBtn">${t('common.back')}</button>
             <div class="detail-hero">
               <div>
-                <h2 style="margin:0;">${p.display_name || '(unnamed agent)'}</h2>
-                <div class="muted" style="margin-top:6px;">${p.bio || 'No bio provided.'}</div>
+                <h2 style="margin:0;">${p.display_name || t('card.unnamedAgent')}</h2>
+                <div class="muted" style="margin-top:6px;">${p.bio || t('detail.noBioProvided')}</div>
               </div>
               <div>
-                ${s.openclaw_bound ? '<span class="badge">OpenClaw Agent</span>' : ''}
+                ${s.openclaw_bound ? `<span class="badge">${t('detail.openclawAgent')}</span>` : ''}
               </div>
             </div>
-            <h3>Identity</h3>
+            <h3>${t('detail.identity')}</h3>
             <div class="detail-grid">
-              <div class="detail-item"><b>Display Name:</b> ${p.display_name || '(unnamed agent)'}</div>
-              <div class="detail-item"><b>Agent ID:</b> <span class="mono">${p.agent_id}</span></div>
-              <div class="detail-item"><b>Public Key Fingerprint:</b> <span class="mono">${s.public_key_fingerprint || 'unavailable'}</span></div>
-              <div class="detail-item"><b>Profile Version:</b> ${s.profile_version || 'v1'}</div>
+              <div class="detail-item"><b>${t('detail.displayName')}:</b> ${p.display_name || t('card.unnamedAgent')}</div>
+              <div class="detail-item"><b>${t('detail.agentId')}:</b> <span class="mono">${p.agent_id}</span></div>
+              <div class="detail-item"><b>${t('detail.publicKeyFingerprint')}:</b> <span class="mono">${s.public_key_fingerprint || t('detail.unavailable')}</span></div>
+              <div class="detail-item"><b>${t('detail.profileVersion')}:</b> ${s.profile_version || 'v1'}</div>
             </div>
-            <h3>Verified Claims</h3>
-            <div class="muted mono">source: signed_claims</div>
-            <p class="chips">${(s.capabilities_summary || []).map((t) => `<span class="chip">${t}</span>`).join('') || '<span class="muted">No capabilities summary</span>'}</p>
-            <p class="chips">${(s.tags || p.tags || []).map((t) => `<span class="chip">${t}</span>`).join('') || '<span class="muted">No tags</span>'}</p>
+            <h3>${t('detail.verifiedClaims')}</h3>
+            <div class="muted mono">${t('detail.sourceSignedClaims')}</div>
+            <p class="chips">${(s.capabilities_summary || []).map((t) => `<span class="chip">${t}</span>`).join('') || `<span class="muted">${t('detail.noCapabilitiesSummary')}</span>`}</p>
+            <p class="chips">${(s.tags || p.tags || []).map((t) => `<span class="chip">${t}</span>`).join('') || `<span class="muted">${t('card.noTags')}</span>`}</p>
             <div class="detail-grid">
-              <div class="detail-item"><b>verification_status:</b> <span class="badge ${s.verification_status === 'verified' ? 'ok' : s.verification_status === 'stale' ? 'warn' : 'err'}">${s.verification_status || 'unverified'}</span></div>
-              <div class="detail-item"><b>verified_profile:</b> ${s.verified_profile ? 'yes' : 'no'}</div>
-              <div class="detail-item"><b>profile_updated_at:</b> ${s.profile_updated_at ? new Date(s.profile_updated_at).toLocaleString() : '-'}</div>
-              <div class="detail-item"><b>public_enabled:</b> ${s.signed_claims?.public_enabled ? 'true' : 'false'}</div>
+              <div class="detail-item"><b>${t('detail.verificationStatus')}:</b> <span class="badge ${s.verification_status === 'verified' ? 'ok' : s.verification_status === 'stale' ? 'warn' : 'err'}">${s.verification_status || t('card.unverified')}</span></div>
+              <div class="detail-item"><b>${t('detail.verifiedProfile')}:</b> ${s.verified_profile ? t('detail.yes') : t('detail.no')}</div>
+              <div class="detail-item"><b>${t('detail.profileUpdatedAt')}:</b> ${s.profile_updated_at ? new Date(s.profile_updated_at).toLocaleString() : '-'}</div>
+              <div class="detail-item"><b>${t('detail.publicEnabled')}:</b> ${s.signed_claims?.public_enabled ? t('detail.trueText') : t('detail.falseText')}</div>
             </div>
-            <h3>Observed Presence</h3>
-            <div class="muted mono">source: observed_state</div>
+            <h3>${t('detail.observedPresence')}</h3>
+            <div class="muted mono">${t('detail.sourceObservedState')}</div>
             <div class="detail-grid">
-              <div class="detail-item"><b>online:</b> <span class="${d.online ? 'online' : 'offline'}">${d.online ? 'online' : 'offline'}</span></div>
-              <div class="detail-item"><b>freshness:</b> <span class="badge ${s.freshness_status === 'live' ? 'ok' : s.freshness_status === 'recently_seen' ? 'warn' : 'err'}">${s.freshness_status || 'stale'}</span></div>
-              <div class="detail-item"><b>verified_presence_recent:</b> ${s.verified_presence_recent ? 'yes' : 'no'}</div>
-              <div class="detail-item"><b>presence_seen_at:</b> ${
+              <div class="detail-item"><b>${t('card.online')}:</b> <span class="${d.online ? 'online' : 'offline'}">${d.online ? t('card.online') : t('card.offline')}</span></div>
+              <div class="detail-item"><b>${t('detail.freshness')}:</b> <span class="badge ${s.freshness_status === 'live' ? 'ok' : s.freshness_status === 'recently_seen' ? 'warn' : 'err'}">${s.freshness_status || t('card.stale')}</span></div>
+              <div class="detail-item"><b>${t('detail.verifiedPresenceRecent')}:</b> ${s.verified_presence_recent ? t('detail.yes') : t('detail.no')}</div>
+              <div class="detail-item"><b>${t('detail.presenceSeenAt')}:</b> ${
                 s.visibility && s.visibility.show_last_seen === false
-                  ? 'Hidden by visibility'
+                  ? t('detail.hiddenByVisibility')
                   : (s.presence_seen_at ? new Date(s.presence_seen_at).toLocaleString() : '-')
               }</div>
             </div>
-            <h3>Integration</h3>
-            <div class="muted mono">source: integration_metadata</div>
+            <h3>${t('detail.integration')}</h3>
+            <div class="muted mono">${t('detail.sourceIntegrationMetadata')}</div>
             <div class="detail-grid">
-              <div class="detail-item"><b>network_mode:</b> ${s.network_mode || 'unknown'}</div>
-              <div class="detail-item"><b>openclaw_bound:</b> ${s.openclaw_bound ? 'yes' : 'no'}</div>
+              <div class="detail-item"><b>${t('detail.networkMode')}:</b> ${s.network_mode || t('card.unknown')}</div>
+              <div class="detail-item"><b>${t('detail.openclawBound')}:</b> ${s.openclaw_bound ? t('detail.yes') : t('detail.no')}</div>
             </div>
-            <h3>Public Visibility</h3>
+            <h3>${t('detail.publicVisibility')}</h3>
             <div class="detail-grid">
-              <div class="detail-item"><b>visible:</b> ${(s.public_visibility?.visible_fields || []).join(', ') || '-'}</div>
-              <div class="detail-item"><b>hidden:</b> ${(s.public_visibility?.hidden_fields || []).join(', ') || '-'}</div>
+              <div class="detail-item"><b>${t('detail.visible')}:</b> ${(s.public_visibility?.visible_fields || []).join(', ') || '-'}</div>
+              <div class="detail-item"><b>${t('detail.hidden')}:</b> ${(s.public_visibility?.hidden_fields || []).join(', ') || '-'}</div>
             </div>
-            <p><b>Agent ID:</b> <span class="mono">${p.agent_id}</span> <button class="secondary" id="copyAgentIdBtn">Copy</button></p>
-            <p><b>Public Key Fingerprint:</b> <span class="mono">${s.public_key_fingerprint || 'unavailable'}</span> <button class="secondary" id="copyFingerprintBtn">Copy</button></p>
-            <p><button class="secondary" id="copyPublicSummaryBtn">Copy public profile summary</button> <button class="secondary" id="copyIdentitySummaryBtn">Copy identity summary</button></p>
+            <p><b>${t('detail.agentId')}:</b> <span class="mono">${p.agent_id}</span> <button class="secondary" id="copyAgentIdBtn">${t('detail.copy')}</button></p>
+            <p><b>${t('detail.publicKeyFingerprint')}:</b> <span class="mono">${s.public_key_fingerprint || t('detail.unavailable')}</span> <button class="secondary" id="copyFingerprintBtn">${t('detail.copy')}</button></p>
+            <p><button class="secondary" id="copyPublicSummaryBtn">${t('detail.copyPublicSummaryLabel')}</button> <button class="secondary" id="copyIdentitySummaryBtn">${t('detail.copyIdentitySummaryLabel')}</button></p>
           `;
           document.getElementById('backBtn').addEventListener('click', () => { location.hash = ''; });
-          document.getElementById('copyAgentIdBtn').addEventListener('click', async (event) => copyText(p.agent_id, event.currentTarget, 'Agent ID copied'));
-          document.getElementById('copyFingerprintBtn').addEventListener('click', async (event) => copyText(s.public_key_fingerprint || 'unavailable', event.currentTarget, 'Fingerprint copied'));
-          document.getElementById('copyPublicSummaryBtn').addEventListener('click', async (event) => copyText(toPrettyJson(s), event.currentTarget, 'Public profile summary copied'));
+          document.getElementById('copyAgentIdBtn').addEventListener('click', async (event) => copyText(p.agent_id, event.currentTarget, t('detail.copyAgentId')));
+          document.getElementById('copyFingerprintBtn').addEventListener('click', async (event) => copyText(s.public_key_fingerprint || t('detail.unavailable'), event.currentTarget, t('detail.copyFingerprint')));
+          document.getElementById('copyPublicSummaryBtn').addEventListener('click', async (event) => copyText(toPrettyJson(s), event.currentTarget, t('detail.copyPublicSummary')));
           document.getElementById('copyIdentitySummaryBtn').addEventListener('click', async () => {
             const identitySummary = {
               agent_id: p.agent_id,
@@ -437,10 +659,10 @@
               public_key_fingerprint: s.public_key_fingerprint || null,
               profile_version: s.profile_version || "v1",
             };
-            await copyText(toPrettyJson(identitySummary), document.getElementById('copyIdentitySummaryBtn'), 'Identity summary copied');
+            await copyText(toPrettyJson(identitySummary), document.getElementById('copyIdentitySummaryBtn'), t('detail.copyIdentitySummary'));
           });
         } catch (e) {
-          detail.innerHTML = `<div class="state">Load failed: ${e instanceof Error ? e.message : 'unknown error'}</div>`;
+          detail.innerHTML = `<div class="state">${t('common.loadFailed', { message: e instanceof Error ? e.message : t('common.unknownError') })}</div>`;
         }
       }
 

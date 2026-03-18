@@ -1,6 +1,6 @@
 {
   "name": "@silicaclaw/cli",
-  "version": "1.0.0-beta.29",
+  "version": "2026.3.18-4",
   "private": false,
   "publishConfig": {
     "access": "public"
@@ -54,7 +54,7 @@
     "onboard": "node scripts/silicaclaw-cli.mjs onboard",
     "quickstart": "bash scripts/quickstart.sh",
     "gateway": "node scripts/silicaclaw-gateway.mjs",
-    "local-console": "npm run --workspace @silicaclaw/local-console dev",
+    "local-console": "npm run --workspace @silicaclaw/local-console start",
     "public-explorer": "npm run --workspace @silicaclaw/public-explorer dev",
     "logo": "bash scripts/install-logo.sh",
     "webrtc-signaling": "node scripts/webrtc-signaling-server.mjs",

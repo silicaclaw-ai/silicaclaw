@@ -2,6 +2,23 @@
 
 ## v1.0 beta - 2026-03-18
 
+### 2026.3.18-4
+
+- local-console UI polish:
+  - sidebar spacing, collapsed rail behavior, footer version card, and topbar shell now align more closely with OpenClaw
+  - overview hero, action strip, discovered agents list, and node snapshot are denser and more product-like
+  - discovered agents now render public profile cards with avatar, bio, tags, and pagination (10 per page)
+- overview UX improvements:
+  - node snapshot now renders as a summary card instead of raw mono text
+  - pagination labels are localized and online-only filtering resets to page 1
+
+### 2026.3.18-3
+
+- local-console sidebar + gateway stop reliability:
+  - left sidebar bottom version is now rendered as a single stable version label so it no longer disappears
+  - `silicaclaw stop` now also stops leftover SilicaClaw-owned listeners on ports `4310` and `4510`
+  - users no longer need to manually kill the local-console process after `stop`
+
 ### Beta 28
 
 - local-console version visibility:

@@ -4,14 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SilicaClaw Control UI</title>
-    <meta name="description" content="SilicaClaw local-first agent control console." />
+    <meta id="metaDescription" name="description" content="SilicaClaw local-first agent control console." />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="SilicaClaw Local Console" />
-    <meta property="og:description" content="Local-first control surface for SilicaClaw agents." />
+    <meta id="ogTitle" property="og:title" content="SilicaClaw Local Console" />
+    <meta id="ogDescription" property="og:description" content="Local-first control surface for SilicaClaw agents." />
     <meta property="og:image" content="/assets/silicaclaw-logo.png" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="SilicaClaw Local Console" />
-    <meta name="twitter:description" content="Local-first control surface for SilicaClaw agents." />
+    <meta id="twitterTitle" name="twitter:title" content="SilicaClaw Local Console" />
+    <meta id="twitterDescription" name="twitter:description" content="Local-first control surface for SilicaClaw agents." />
     <meta name="twitter:image" content="/assets/silicaclaw-logo.png" />
     <link rel="icon" type="image/png" href="/assets/silicaclaw-logo.png" />
     <link rel="apple-touch-icon" href="/assets/silicaclaw-logo.png" />
@@ -141,23 +141,23 @@
         flex-direction: column;
         min-height: 0;
         border-right: 1px solid color-mix(in srgb, var(--border) 74%, transparent);
-        background: var(--bg);
-        padding: 14px 10px 12px;
+        background: color-mix(in srgb, var(--bg) 96%, var(--bg-elevated) 4%);
         position: relative;
         overflow: hidden;
-        transition: padding .2s ease;
       }
       :root[data-theme-mode="light"] .sidebar {
-        background: var(--panel);
-      }
-      .app.nav-collapsed .sidebar {
-        padding: 12px 8px 10px;
+        background: color-mix(in srgb, var(--panel) 98%, white 2%);
       }
       .sidebar-shell {
         display: flex;
         flex: 1 1 auto;
         min-height: 0;
         flex-direction: column;
+        padding: 14px 10px 12px;
+        background: transparent;
+      }
+      .app.nav-collapsed .sidebar-shell {
+        padding: 12px 8px 10px;
       }
       .sidebar-shell__header {
         flex: 0 0 auto;
@@ -174,12 +174,13 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: var(--bg-elevated);
+        background: color-mix(in srgb, var(--bg-elevated) 88%, transparent);
         border: 1px solid color-mix(in srgb, var(--border-strong) 68%, transparent);
         border-radius: 999px;
         cursor: pointer;
         color: var(--muted);
         flex: 0 0 auto;
+        box-shadow: inset 0 1px 0 color-mix(in srgb, white 8%, transparent);
         transition:
           background .16s ease,
           border-color .16s ease,
@@ -223,7 +224,7 @@
         display: flex;
         align-items: center;
         gap: 10px;
-        margin-bottom: 0;
+        min-width: 0;
       }
       .brand-logo {
         width: 32px;
@@ -245,14 +246,24 @@
         place-items: center;
       }
       .brand-badge.hidden { display: none; }
+      .brand-copy {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+      }
       .brand h1 {
         margin: 0;
         font-size: 15px;
         line-height: 1.1;
         letter-spacing: -0.03em;
+        color: var(--text-strong);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
       .brand p {
-        margin: 2px 0 0;
+        margin: 0;
         color: var(--muted);
         font-size: 10px;
         line-height: 1.15;
@@ -270,8 +281,7 @@
       .app.nav-collapsed .brand h1,
       .app.nav-collapsed .brand p,
       .app.nav-collapsed .sidebar-foot,
-      .app.nav-collapsed .sidebar-version__label,
-      .app.nav-collapsed .sidebar-nav__label {
+      .app.nav-collapsed .nav-section__label {
         display: none;
       }
       .app.focus-mode .sidebar {
@@ -280,7 +290,6 @@
       .app.focus-mode .integration-strip,
       .app.focus-mode .page-hero,
       .app.focus-mode .notice,
-      .app.focus-mode #onboardingActions,
       .app.focus-mode #publicDiscoveryHint {
         display: none !important;
       }
@@ -310,18 +319,36 @@
       .app.nav-collapsed .nav button .tab-icon {
         width: 18px;
         height: 18px;
+        transform: translateX(.5px);
       }
       .app.nav-collapsed .nav button .tab-icon svg {
         width: 18px;
         height: 18px;
       }
       .app.nav-collapsed .nav button.active::before {
+        content: "";
+        position: absolute;
         left: 8px;
         top: 10px;
         bottom: 10px;
+        width: 3px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--accent) 86%, transparent);
+        box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 34%, transparent);
       }
       .app.nav-collapsed .sidebar-shell__footer {
         padding: 8px 0 2px;
+        display: grid;
+        justify-items: center;
+      }
+      .app.nav-collapsed .nav-collapse-toggle {
+        width: 42px;
+        height: 42px;
+        border-color: color-mix(in srgb, var(--border) 82%, transparent);
+        background: color-mix(in srgb, var(--bg-elevated) 92%, transparent);
+        box-shadow:
+          inset 0 1px 0 color-mix(in srgb, white 8%, transparent),
+          0 8px 18px color-mix(in srgb, black 16%, transparent);
       }
       .app.nav-collapsed .sidebar-utility {
         display: none;
@@ -333,26 +360,55 @@
         justify-content: center;
         border-radius: 16px;
       }
-      .app.nav-collapsed .sidebar-version__text {
-        display: none;
+      .app.nav-collapsed .sidebar-version__status {
+        margin-left: 0;
       }
 
       .nav {
         display: grid;
-        gap: 4px;
+        align-content: start;
         min-height: 0;
         overflow: auto;
         padding: 0;
         scrollbar-width: none;
       }
       .nav::-webkit-scrollbar { display: none; }
-      .sidebar-nav__label {
-        padding: 0 10px 8px;
+      .sidebar-nav {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 0;
+      }
+      .sidebar-nav::-webkit-scrollbar {
+        display: none;
+      }
+      .nav-section {
+        display: grid;
+        align-content: start;
+        gap: 6px;
+        margin-bottom: 10px;
+      }
+      .nav-section:last-child {
+        margin-bottom: 0;
+      }
+      .nav-section__label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        width: 100%;
+        min-height: 28px;
+        padding: 0 10px;
         color: var(--muted);
         font-size: 12px;
         font-weight: 700;
         letter-spacing: 0.06em;
         text-transform: uppercase;
+      }
+      .nav-section__items {
+        display: grid;
+        align-content: start;
+        gap: 4px;
       }
       .nav button {
         position: relative;
@@ -365,10 +421,11 @@
         border: 1px solid transparent;
         background: transparent;
         color: var(--muted);
-        padding: 0 9px;
+        padding: 0 10px;
         border-radius: 12px;
         cursor: pointer;
         font: inherit;
+        line-height: 1;
         transition:
           border-color .16s ease,
           background .16s ease,
@@ -383,6 +440,7 @@
         justify-content: center;
         flex-shrink: 0;
         opacity: .72;
+        transform: translateY(-.5px);
       }
       .nav button .tab-icon svg {
         width: 16px;
@@ -401,6 +459,7 @@
         font-size: 14px;
         font-weight: 600;
         color: inherit;
+        line-height: 1.1;
         white-space: nowrap;
       }
       .nav button .tab-copy {
@@ -408,9 +467,11 @@
       }
       .nav button.active {
         color: var(--text-strong);
-        border-color: color-mix(in srgb, var(--accent) 18%, transparent);
-        background: color-mix(in srgb, var(--accent-subtle) 88%, var(--bg-elevated) 12%);
-        box-shadow: inset 0 1px 0 color-mix(in srgb, white 10%, transparent);
+        border-color: color-mix(in srgb, var(--accent) 14%, transparent);
+        background: color-mix(in srgb, var(--accent-subtle) 76%, var(--bg-elevated) 24%);
+        box-shadow:
+          inset 0 1px 0 color-mix(in srgb, white 10%, transparent),
+          0 10px 18px color-mix(in srgb, black 8%, transparent);
       }
       .nav button.active .tab-icon {
         opacity: 1;
@@ -461,52 +522,63 @@
         font-weight: 600;
       }
       .sidebar-version {
-        margin-top: 10px;
+        margin-top: 0;
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 10px;
-        min-height: 40px;
+        min-height: 42px;
         padding: 0 12px;
         border-radius: 14px;
-        background: var(--bg-elevated);
+        background: color-mix(in srgb, var(--bg-elevated) 72%, transparent);
         border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
-        box-shadow: none;
+        box-shadow: inset 0 1px 0 color-mix(in srgb, white 6%, transparent);
+      }
+      .sidebar-version__copy {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
       }
       .sidebar-version__label {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 11px;
-        font-weight: 600;
+        font-size: 10px;
+        line-height: 1;
         color: var(--muted);
+        font-weight: 700;
+        letter-spacing: 0.08em;
         text-transform: uppercase;
-        letter-spacing: 0.06em;
       }
       .sidebar-version__text {
         font-size: 12px;
         color: var(--text);
         font-weight: 600;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
       .sidebar-version__status {
         width: 8px;
         height: 8px;
         border-radius: 999px;
-        flex-shrink: 0;
-        margin-left: auto;
-        background: var(--danger);
-        box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 14%, transparent);
+        background: color-mix(in srgb, var(--muted) 55%, transparent);
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--muted) 12%, transparent);
+        flex: 0 0 auto;
       }
-      .sidebar-version__status.online {
+      .sidebar-version__status.ok {
         background: var(--ok);
         box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 14%, transparent);
+      }
+      .sidebar-version__status.warn {
+        background: var(--warn);
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--warn) 14%, transparent);
       }
       .app.nav-collapsed .sidebar-version {
         justify-content: center;
         padding: 0;
       }
-      .app.nav-collapsed .sidebar-version__status {
-        margin-left: 0;
+      .app.nav-collapsed .sidebar-version__copy {
+        display: none;
       }
 
       .main {
@@ -521,15 +593,20 @@
       .topbar {
         flex: 0 0 auto;
         display: flex;
-        justify-content: space-between;
-        gap: 12px;
         align-items: center;
-        min-height: 52px;
+        min-height: 58px;
         padding: 0 24px;
         border-bottom: 1px solid color-mix(in srgb, var(--border) 74%, transparent);
         background: var(--chrome);
         backdrop-filter: blur(12px) saturate(1.6);
         -webkit-backdrop-filter: blur(12px) saturate(1.6);
+      }
+      .topnav-shell {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        width: 100%;
+        min-height: 52px;
       }
       .topbar h2 {
         display: none;
@@ -550,9 +627,7 @@
         gap: 8px;
         min-width: 0;
         overflow: hidden;
-        font-size: 12px;
-        margin-bottom: 2px;
-        letter-spacing: 0.01em;
+        font-size: 13px;
       }
       .dashboard-header__breadcrumb-link,
       .dashboard-header__breadcrumb-sep {
@@ -571,11 +646,17 @@
         flex: 1;
         overflow: hidden;
       }
+      .topnav-shell__actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-shrink: 0;
+      }
       .main-scroll {
         flex: 1 1 auto;
         min-height: 0;
         overflow: auto;
-        padding: 12px 18px 18px;
+        padding: 10px 18px 18px;
       }
       .status-row {
         display: flex;
@@ -585,14 +666,19 @@
         flex-shrink: 0;
         min-width: max-content;
       }
-      .topbar-actions {
-        display: inline-flex;
+      .topbar-status {
+        display: flex;
         align-items: center;
         gap: 8px;
       }
+      .topbar-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+      }
       .icon-btn {
-        width: 30px;
-        height: 30px;
+        width: 32px;
+        height: 32px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -613,8 +699,8 @@
         background: var(--accent-subtle);
       }
       .icon-btn svg {
-        width: 15px;
-        height: 15px;
+        width: 16px;
+        height: 16px;
         stroke: currentColor;
       }
       .topbar-theme-mode {
@@ -692,6 +778,7 @@
         min-height: 32px;
         display: inline-flex;
         align-items: center;
+        gap: 6px;
         box-shadow: inset 0 1px 0 color-mix(in srgb, white 4%, transparent);
       }
       .pill.ok { color: var(--ok); border-color: rgba(34, 197, 94, 0.45); background: rgba(34, 197, 94, 0.08); }
@@ -699,7 +786,7 @@
 
       .notice {
         display: none;
-        margin-bottom: 12px;
+        margin-bottom: 8px;
         border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
         background: var(--accent-subtle);
         border-radius: 10px;
@@ -711,12 +798,12 @@
         position: sticky;
         top: 0;
         z-index: 9;
-        margin-bottom: 8px;
+        margin-bottom: 4px;
         border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
         border-radius: 14px;
         background:
           linear-gradient(180deg, color-mix(in srgb, var(--card-soft) 98%, transparent), color-mix(in srgb, var(--bg-elevated) 94%, transparent));
-        padding: 8px 12px;
+        padding: 6px 11px;
         font-size: 12px;
         line-height: 1.45;
         color: var(--text);
@@ -730,56 +817,90 @@
       }
       .page-hero {
         display: grid;
-        grid-template-columns: 1.2fr .8fr;
-        gap: 10px;
-        margin-bottom: 8px;
+        grid-template-columns: minmax(0, 1fr) 440px;
+        align-items: stretch;
+        gap: 6px;
+        margin-bottom: 4px;
       }
       .hero-copy {
+        display: flex;
+        align-items: center;
+        gap: 12px;
         border: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
         border-radius: 16px;
         background:
           linear-gradient(180deg, color-mix(in srgb, var(--card-strong) 98%, transparent), color-mix(in srgb, var(--card-soft) 96%, transparent));
-        padding: 11px 14px;
+        padding: 10px 12px;
         box-shadow:
           inset 0 1px 0 color-mix(in srgb, white 4%, transparent),
           0 10px 24px color-mix(in srgb, black 9%, transparent);
       }
       .hero-copy h3 {
         margin: 0;
-        font-size: 17px;
+        flex: 0 0 auto;
+        font-size: 15px;
         color: var(--text-strong);
         letter-spacing: -0.02em;
       }
       .hero-copy p {
-        margin: 5px 0 0;
+        margin: 0;
         color: var(--muted);
         font-size: 12px;
         line-height: 1.42;
+        min-width: 0;
       }
       .hero-meta {
         border: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
         border-radius: 16px;
         background:
           linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 97%, transparent), color-mix(in srgb, var(--panel) 98%, transparent));
-        padding: 11px;
+        padding: 8px;
         box-shadow: inset 0 1px 0 color-mix(in srgb, white 4%, transparent);
       }
       .hero-meta-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 6px;
+        gap: 4px;
       }
       .hero-meta-item {
         border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
         border-radius: 12px;
         background: color-mix(in srgb, var(--panel) 90%, transparent);
-        padding: 7px 9px;
+        padding: 5px 7px;
       }
 
       .view { display: none; }
       .view.active {
         display: grid;
-        gap: 8px;
+        gap: 6px;
+      }
+
+      .overview-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 6px;
+      }
+      .overview-panel-title {
+        min-width: 0;
+      }
+      .overview-panel-title .title-sm {
+        margin: 0;
+      }
+      .overview-panel-controls {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        flex-shrink: 0;
+      }
+      .overview-inline-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--muted);
+        font-size: 12px;
+        white-space: nowrap;
       }
 
       .section-header {
@@ -788,12 +909,13 @@
         justify-content: space-between;
         gap: 12px;
         min-width: 0;
+        margin-bottom: 2px;
       }
       .section-header__copy {
         min-width: 0;
       }
       .section-header__eyebrow {
-        margin: 0 0 3px;
+        margin: 0 0 2px;
         color: var(--muted);
         font-size: 11px;
         font-weight: 700;
@@ -807,7 +929,7 @@
         letter-spacing: -0.02em;
       }
       .section-header__body {
-        margin: 4px 0 0;
+        margin: 3px 0 0;
         color: var(--muted);
         font-size: 12px;
         line-height: 1.45;
@@ -817,13 +939,16 @@
         border-radius: 16px;
         background:
           linear-gradient(180deg, color-mix(in srgb, var(--card-strong) 98%, transparent), color-mix(in srgb, var(--card-soft) 96%, transparent));
-        padding: 12px;
+        padding: 10px;
         box-shadow:
           inset 0 1px 0 color-mix(in srgb, white 4%, transparent),
           0 14px 30px color-mix(in srgb, black 10%, transparent);
       }
       .section-surface.compact {
-        padding: 10px 12px;
+        padding: 8px 10px;
+      }
+      #view-overview .section-surface.compact {
+        margin-bottom: 2px;
       }
 
       .grid {
@@ -842,10 +967,10 @@
         border-radius: 16px;
         background:
           linear-gradient(180deg, color-mix(in srgb, var(--card-strong) 98%, transparent), color-mix(in srgb, var(--card-soft) 96%, transparent));
-        padding: 12px;
+        padding: 10px;
         box-shadow:
           inset 0 1px 0 color-mix(in srgb, white 4%, transparent),
-          0 14px 30px color-mix(in srgb, black 10%, transparent);
+          0 12px 24px color-mix(in srgb, black 9%, transparent);
         transition: border-color .16s ease, transform .16s ease, box-shadow .16s ease;
       }
       .card:hover {
@@ -858,12 +983,12 @@
       .value { margin-top: 4px; font-size: 22px; font-weight: 800; letter-spacing: -0.03em; }
 
       .split {
-        margin-top: 8px;
+        margin-top: 4px;
         display: grid;
-        gap: 8px;
+        gap: 6px;
         grid-template-columns: 1.2fr 1fr;
       }
-      .title-sm { margin: 0 0 10px; font-size: 16px; letter-spacing: -0.02em; }
+      .title-sm { margin: 0 0 6px; font-size: 15px; letter-spacing: -0.02em; }
       .mono { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
 
       .table {
@@ -880,15 +1005,171 @@
       .table th, .table td {
         border-bottom: 1px solid var(--border);
         text-align: left;
-        padding: 8px 6px;
+        padding: 7px 6px;
         font-size: 13px;
+      }
+      .agent-list {
+        display: grid;
+        gap: 8px;
+      }
+      .agent-card {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto auto;
+        gap: 10px;
+        align-items: center;
+        padding: 9px 10px;
+        border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+        border-radius: 14px;
+        background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 94%, transparent), color-mix(in srgb, var(--bg-elevated) 90%, transparent));
+      }
+      .agent-card__avatar {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        object-fit: cover;
+        display: block;
+        border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+        background: color-mix(in srgb, var(--bg-elevated) 92%, transparent);
+      }
+      .agent-card__avatar-fallback {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        display: grid;
+        place-items: center;
+        font-size: 12px;
+        font-weight: 800;
+        color: var(--text-strong);
+        border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+        background: color-mix(in srgb, var(--accent-subtle) 70%, var(--bg-elevated) 30%);
+      }
+      .agent-card__main {
+        min-width: 0;
+        display: grid;
+        gap: 4px;
+      }
+      .agent-card__row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+      }
+      .agent-card__name {
+        min-width: 0;
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text-strong);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .agent-card__id {
+        color: var(--muted);
+        font-size: 11px;
+        white-space: nowrap;
+      }
+      .agent-card__bio {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.4;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .agent-card__tags {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .agent-card__meta {
+        display: grid;
+        gap: 4px;
+        justify-items: end;
+        text-align: right;
+      }
+      .agent-card__updated {
+        color: var(--muted);
+        font-size: 12px;
+        white-space: nowrap;
+      }
+      .agent-list__footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-top: 8px;
+      }
+      .agent-list__page {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .agent-list__pager {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .agent-list__pager button {
+        min-height: 32px;
+        padding: 0 10px;
+      }
+      .snapshot-card {
+        display: grid;
+        gap: 10px;
+      }
+      .snapshot-card__identity {
+        display: grid;
+        gap: 6px;
+      }
+      .snapshot-card__label {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--muted);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .snapshot-card__title {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--text-strong);
+        line-height: 1.2;
+        word-break: break-word;
+      }
+      .snapshot-card__subtle {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+        word-break: break-word;
+      }
+      .snapshot-card__grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+      }
+      .snapshot-card__item {
+        border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+        border-radius: 12px;
+        background: color-mix(in srgb, var(--panel) 90%, transparent);
+        padding: 7px 8px;
+      }
+      .snapshot-card__item .label {
+        font-size: 11px;
+      }
+      .snapshot-card__item .mono,
+      .snapshot-card__item .value-inline {
+        margin-top: 4px;
+        display: block;
+        color: var(--text);
+        font-size: 12px;
+        line-height: 1.35;
+        word-break: break-word;
       }
       .online { color: var(--ok); font-weight: 700; }
       .offline { color: #f48c8f; font-weight: 700; }
       .stale { color: var(--warn); font-weight: 700; }
 
-      .stack { display: grid; gap: 10px; }
-      .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .stack { display: grid; gap: 8px; }
+      .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
       label { color: var(--muted); font-size: 13px; }
       input, textarea {
         margin-top: 5px;
@@ -898,7 +1179,7 @@
         background: linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 98%, transparent), color-mix(in srgb, var(--panel) 96%, transparent));
         color: var(--text);
         font: inherit;
-        padding: 10px;
+        padding: 9px 10px;
         box-shadow: inset 0 1px 0 color-mix(in srgb, white 3%, transparent);
       }
       select {
@@ -921,7 +1202,7 @@
           inset 0 1px 0 color-mix(in srgb, white 3%, transparent),
           0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
       }
-      textarea { min-height: 90px; resize: vertical; }
+      textarea { min-height: 84px; resize: vertical; }
 
       .actions {
         display: flex;
@@ -937,7 +1218,7 @@
         display: flex;
         gap: 8px;
         flex-wrap: wrap;
-        margin-bottom: 8px;
+        margin-bottom: 4px;
         padding: 2px 0 0;
       }
       .summary-list {
@@ -947,7 +1228,7 @@
       .summary-item {
         display: grid;
         gap: 3px;
-        padding: 10px;
+        padding: 9px;
         border-radius: 12px;
         border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
         background: linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 98%, transparent), color-mix(in srgb, var(--panel) 94%, transparent));
@@ -956,10 +1237,11 @@
       .empty-state {
         border: 1px dashed color-mix(in srgb, var(--border-strong) 88%, transparent);
         border-radius: 14px;
-        padding: 18px;
+        padding: 15px 16px;
         color: var(--muted);
         background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 94%, transparent), color-mix(in srgb, var(--bg-elevated) 88%, transparent));
-        line-height: 1.55;
+        line-height: 1.5;
+        font-size: 12.5px;
       }
       button {
         border: 1px solid transparent;
@@ -996,29 +1278,34 @@
       }
       button.secondary {
         border-color: var(--border-strong);
-        background: color-mix(in srgb, var(--bg-elevated) 96%, transparent);
+        background: linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 98%, transparent), color-mix(in srgb, var(--panel) 94%, transparent));
         color: var(--text);
         box-shadow: none;
+      }
+      button.secondary:hover {
+        border-color: color-mix(in srgb, var(--accent) 18%, var(--border-strong));
+        background: color-mix(in srgb, var(--bg-hover) 86%, transparent);
       }
 
       .feedback {
         border: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
         border-radius: 12px;
         background: linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 98%, transparent), color-mix(in srgb, var(--panel) 96%, transparent));
-        padding: 10px 11px;
-        font-size: 13px;
-        color: var(--muted);
+        padding: 9px 10px;
+        font-size: 12.5px;
+        color: var(--text);
         box-shadow: inset 0 1px 0 color-mix(in srgb, white 4%, transparent);
+        line-height: 1.45;
       }
       .profile-layout {
         display: grid;
-        gap: 10px;
+        gap: 8px;
         grid-template-columns: 1.1fr .9fr;
       }
       .profile-meta {
         border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
         border-radius: 12px;
-        padding: 10px;
+        padding: 9px;
         background: linear-gradient(180deg, color-mix(in srgb, var(--card-soft) 98%, transparent), color-mix(in srgb, var(--bg-elevated) 90%, transparent));
         box-shadow: inset 0 1px 0 color-mix(in srgb, white 4%, transparent);
       }
@@ -1039,7 +1326,7 @@
         line-height: 1.45;
       }
       .tag-chips {
-        margin-top: 10px;
+        margin-top: 8px;
         display: flex;
         gap: 6px;
         flex-wrap: wrap;
@@ -1060,7 +1347,7 @@
         margin-top: 4px;
         color: var(--muted);
         font-size: 12px;
-        line-height: 1.45;
+        line-height: 1.4;
       }
       .field-error {
         margin-top: 4px;
@@ -1080,8 +1367,8 @@
         overflow: auto;
         border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
         border-radius: 14px;
-        background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 96%, transparent), color-mix(in srgb, var(--bg-elevated) 90%, transparent));
-        padding: 10px;
+        background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 97%, transparent), color-mix(in srgb, var(--bg-elevated) 92%, transparent));
+        padding: 9px;
         box-shadow: inset 0 1px 0 color-mix(in srgb, white 3%, transparent);
       }
       .log-item {
@@ -1097,7 +1384,7 @@
         gap: 10px;
         flex-wrap: wrap;
         align-items: end;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
         padding-bottom: 2px;
       }
       .toolbar .field {
@@ -1106,8 +1393,8 @@
       .mono-block {
         border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
         border-radius: 12px;
-        background: linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 96%, transparent), color-mix(in srgb, var(--panel) 92%, transparent));
-        padding: 10px;
+        background: linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 97%, transparent), color-mix(in srgb, var(--panel) 93%, transparent));
+        padding: 9px;
         max-height: 240px;
         overflow: auto;
         white-space: pre-wrap;
@@ -1115,7 +1402,11 @@
         box-shadow: inset 0 1px 0 color-mix(in srgb, white 3%, transparent);
       }
       .advanced-panel {
-        margin-top: 8px;
+        margin-top: 6px;
+      }
+      details.card,
+      .advanced-panel.card {
+        background: linear-gradient(180deg, color-mix(in srgb, var(--card-soft) 97%, transparent), color-mix(in srgb, var(--panel) 94%, transparent));
       }
       .advanced-panel.card > summary,
       details.card > summary {
@@ -1130,12 +1421,12 @@
       }
       .advanced-panel summary::-webkit-details-marker { display: none; }
       .advanced-panel summary::after {
-        content: "Show";
+        content: attr(data-i18n-closed-label);
         float: right;
         color: var(--muted);
         font-size: 12px;
       }
-      .advanced-panel[open] summary::after { content: "Hide"; }
+      .advanced-panel[open] summary::after { content: attr(data-i18n-open-label); }
 
       .toast {
         position: fixed;
@@ -1193,6 +1484,10 @@
         .nav { grid-template-columns: repeat(2, minmax(0,1fr)); }
         .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .split, .row, .profile-layout, .page-hero { grid-template-columns: 1fr; }
+        .hero-copy {
+          display: grid;
+          gap: 4px;
+        }
         .main {
           height: auto;
           overflow: visible;
@@ -1213,7 +1508,7 @@
             <div class="brand">
               <img id="brandLogo" class="brand-logo" src="/assets/silicaclaw-logo.png" alt="SilicaClaw logo" />
               <div id="brandFallback" class="brand-badge hidden">SC</div>
-              <div>
+              <div class="brand-copy">
                 <h1>SilicaClaw</h1>
                 <p>Control UI</p>
               </div>
@@ -1229,9 +1524,11 @@
             </button>
           </div>
           <div class="sidebar-shell__body">
-            <div class="sidebar-nav__label">Control</div>
-            <nav class="nav">
-              <button class="tab active" data-tab="overview">
+            <nav class="sidebar-nav nav">
+              <section class="nav-section">
+                <div class="nav-section__label">Control</div>
+                <div class="nav-section__items">
+              <button class="tab nav-item active" data-tab="overview">
                 <span class="tab-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24">
                     <line x1="12" x2="12" y1="20" y2="10"></line>
@@ -1241,7 +1538,7 @@
                 </span>
                 <span class="tab-labels"><span class="tab-title">Overview</span><span class="tab-copy">Agent summary and discovered peers</span></span>
               </button>
-              <button class="tab" data-tab="profile">
+              <button class="tab nav-item" data-tab="profile">
                 <span class="tab-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24">
                     <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
@@ -1253,7 +1550,7 @@
                 </span>
                 <span class="tab-labels"><span class="tab-title">Profile</span><span class="tab-copy">Public identity and saved profile</span></span>
               </button>
-              <button class="tab" data-tab="network">
+              <button class="tab nav-item" data-tab="network">
                 <span class="tab-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24">
                     <circle cx="12" cy="12" r="2"></circle>
@@ -1262,7 +1559,7 @@
                 </span>
                 <span class="tab-labels"><span class="tab-title">Network</span><span class="tab-copy">Relay health, broadcast, diagnostics</span></span>
               </button>
-              <button class="tab" data-tab="social">
+              <button class="tab nav-item" data-tab="social">
                 <span class="tab-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24">
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
@@ -1270,17 +1567,16 @@
                 </span>
                 <span class="tab-labels"><span class="tab-title">Social</span><span class="tab-copy">social.md config and runtime state</span></span>
               </button>
+                </div>
+              </section>
             </nav>
           </div>
           <div class="sidebar-shell__footer">
-            <div class="sidebar-foot sidebar-utility" id="sideMeta">
-              <div class="sidebar-utility-row"><span class="sidebar-utility__label">Adapter</span><span class="sidebar-utility__value">-</span></div>
-              <div class="sidebar-utility-row"><span class="sidebar-utility__label">Namespace</span><span class="sidebar-utility__value">-</span></div>
-              <div class="sidebar-utility-row"><span class="sidebar-utility__label">Port</span><span class="sidebar-utility__value">-</span></div>
-            </div>
             <div class="sidebar-version" title="Current version">
-              <span class="sidebar-version__label"><span class="version-dot"></span>Version</span>
-              <span class="sidebar-version__text" id="brandVersion">-</span>
+              <div class="sidebar-version__copy">
+                <span class="sidebar-version__label">Version</span>
+                <span class="sidebar-version__text" id="brandVersion">-</span>
+              </div>
               <span class="sidebar-version__status" id="brandStatusDot" aria-hidden="true"></span>
             </div>
           </div>
@@ -1289,60 +1585,64 @@
 
       <main class="main">
         <div class="topbar">
-          <div class="topnav-shell__content">
-            <div class="dashboard-header__breadcrumb">
-              <span class="dashboard-header__breadcrumb-link">SilicaClaw</span>
-              <span class="dashboard-header__breadcrumb-sep">/</span>
-              <span class="dashboard-header__breadcrumb-current" id="pageBreadcrumb">Overview</span>
+          <div class="topnav-shell">
+            <div class="topnav-shell__content">
+              <div class="dashboard-header__breadcrumb">
+                <span class="dashboard-header__breadcrumb-link">SilicaClaw</span>
+                <span class="dashboard-header__breadcrumb-sep">/</span>
+                <span class="dashboard-header__breadcrumb-current" id="pageBreadcrumb">Overview</span>
+              </div>
             </div>
-            <h2>Local Console</h2>
-            <p>OpenClaw-inspired local-first agent control surface</p>
-          </div>
-          <div class="status-row">
-            <div class="pill" id="pillAdapter">adapter: -</div>
-            <div class="pill" id="pillBroadcast">broadcast: -</div>
-            <div class="topbar-actions">
-              <button class="icon-btn" id="focusModeBtn" type="button" title="Toggle focus mode" aria-label="Toggle focus mode">
-                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M4 7V4h3"></path>
-                  <path d="M20 7V4h-3"></path>
-                  <path d="M4 17v3h3"></path>
-                  <path d="M20 17v3h-3"></path>
-                  <circle cx="12" cy="12" r="3"></circle>
-                </svg>
-              </button>
-              <div class="topbar-theme-mode" id="themeModeGroup" role="group" aria-label="Color mode">
-                <button class="topbar-theme-mode__btn" data-theme-choice="dark" type="button" title="Dark" aria-label="Color mode: Dark">
-                  <span class="theme-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"></path>
+            <div class="topnav-shell__actions">
+              <div class="topbar-status">
+                <div class="status-row">
+                  <div class="pill" id="pillAdapter">adapter: -</div>
+                  <div class="pill" id="pillBroadcast">broadcast: -</div>
+                </div>
+                <div class="topbar-actions">
+                  <button class="icon-btn" id="focusModeBtn" type="button" title="Toggle focus mode" aria-label="Toggle focus mode">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M4 7V4h3"></path>
+                      <path d="M20 7V4h-3"></path>
+                      <path d="M4 17v3h3"></path>
+                      <path d="M20 17v3h-3"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
                     </svg>
-                  </span>
-                </button>
-                <button class="topbar-theme-mode__btn" data-theme-choice="light" type="button" title="Light" aria-label="Color mode: Light">
-                  <span class="theme-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                      <circle cx="12" cy="12" r="4"></circle>
-                      <path d="M12 2v2"></path>
-                      <path d="M12 20v2"></path>
-                      <path d="M4.93 4.93l1.41 1.41"></path>
-                      <path d="M17.66 17.66l1.41 1.41"></path>
-                      <path d="M2 12h2"></path>
-                      <path d="M20 12h2"></path>
-                      <path d="M4.93 19.07l1.41-1.41"></path>
-                      <path d="M17.66 6.34l1.41-1.41"></path>
-                    </svg>
-                  </span>
-                </button>
-                <button class="topbar-theme-mode__btn" data-theme-choice="system" type="button" title="System" aria-label="Color mode: System">
-                  <span class="theme-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                      <rect x="3" y="4" width="18" height="12" rx="2"></rect>
-                      <path d="M8 20h8"></path>
-                      <path d="M12 16v4"></path>
-                    </svg>
-                  </span>
-                </button>
+                  </button>
+                  <div class="topbar-theme-mode" id="themeModeGroup" role="group" aria-label="Color mode">
+                    <button class="topbar-theme-mode__btn" data-theme-choice="dark" type="button" title="Dark" aria-label="Color mode: Dark">
+                      <span class="theme-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
+                          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"></path>
+                        </svg>
+                      </span>
+                    </button>
+                    <button class="topbar-theme-mode__btn" data-theme-choice="light" type="button" title="Light" aria-label="Color mode: Light">
+                      <span class="theme-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
+                          <circle cx="12" cy="12" r="4"></circle>
+                          <path d="M12 2v2"></path>
+                          <path d="M12 20v2"></path>
+                          <path d="M4.93 4.93l1.41 1.41"></path>
+                          <path d="M17.66 17.66l1.41 1.41"></path>
+                          <path d="M2 12h2"></path>
+                          <path d="M20 12h2"></path>
+                          <path d="M4.93 19.07l1.41-1.41"></path>
+                          <path d="M17.66 6.34l1.41-1.41"></path>
+                        </svg>
+                      </span>
+                    </button>
+                    <button class="topbar-theme-mode__btn" data-theme-choice="system" type="button" title="System" aria-label="Color mode: System">
+                      <span class="theme-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
+                          <rect x="3" y="4" width="18" height="12" rx="2"></rect>
+                          <path d="M8 20h8"></path>
+                          <path d="M12 16v4"></path>
+                        </svg>
+                      </span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1354,7 +1654,7 @@
           <section class="page-hero">
             <div class="hero-copy">
               <h3 id="pageHeroTitle">Overview</h3>
-              <p id="pageHeroBody">See the live state of this node, whether discovery is working, and whether other public agents are visible.</p>
+              <p id="pageHeroBody">See whether this node is online and who else is visible.</p>
             </div>
             <div class="hero-meta">
               <div class="hero-meta-grid">
@@ -1367,12 +1667,8 @@
           </section>
 
           <div class="notice" id="initNotice"></div>
-          <div class="actions" id="onboardingActions" style="display:none; margin:8px 0 12px;">
-            <button id="enablePublicDiscoveryBtn">Enable Public Discovery</button>
-            <button class="secondary" id="disablePublicDiscoveryBtn">Disable Public Discovery</button>
-          </div>
           <div class="field-hint" id="publicDiscoveryHint" style="margin-bottom:12px; display:none;">
-            Public discovery only shares signed profile/presence records. It does not share private files and does not enable chat or remote control.
+            Use <strong>Profile → Public Enabled</strong> as the single public visibility switch.
           </div>
 
           <section id="view-overview" class="view active">
@@ -1380,18 +1676,24 @@
             <div class="action-bar">
               <button id="overviewBroadcastNowBtn" type="button">Broadcast Now</button>
               <button class="secondary" id="overviewGoProfileBtn" type="button">Edit Profile</button>
-              <button class="secondary" id="overviewGoNetworkBtn" type="button">Open Network Diagnostics</button>
+              <button class="secondary" id="overviewGoNetworkBtn" type="button">Open Network</button>
             </div>
           </div>
           <div class="grid" id="overviewCards"></div>
           <div class="split">
             <div class="card">
-              <h3 class="title-sm">Discovered Agents</h3>
-              <div class="field-hint" id="agentsCountHint">0 agents</div>
-              <label class="field-hint" style="display:inline-flex;gap:6px;align-items:center;margin:6px 0 8px;">
-                <input type="checkbox" id="onlyOnlineToggle" />
-                Only show online
-              </label>
+              <div class="overview-panel-header">
+                <div class="overview-panel-title">
+                  <h3 class="title-sm">Discovered Agents</h3>
+                  <div class="field-hint" id="agentsCountHint">0 agents</div>
+                </div>
+                <div class="overview-panel-controls">
+                  <label class="overview-inline-toggle">
+                    <input type="checkbox" id="onlyOnlineToggle" />
+                    <span>Only show online</span>
+                  </label>
+                </div>
+              </div>
               <div id="agentsWrap"></div>
             </div>
             <div class="card">
@@ -1405,8 +1707,8 @@
           <div class="section-header">
             <div class="section-header__copy">
               <div class="section-header__eyebrow">Profile</div>
-              <h3 class="section-header__title">Signed public identity</h3>
-              <p class="section-header__body">Edit the public card other nodes discover, then verify that the saved runtime profile and preview stay aligned after restart.</p>
+              <h3 class="section-header__title">Public profile</h3>
+              <p class="section-header__body">Edit the public card other nodes can see.</p>
             </div>
           </div>
           <div class="profile-layout">
@@ -1439,6 +1741,7 @@
                   <div class="field-error" id="errTags"></div>
                 </div>
                 <label><input type="checkbox" name="public_enabled" /> Public Enabled</label>
+                <div class="field-hint">This is the main public visibility switch used for discovery and relay broadcast.</div>
                 <div class="actions">
                   <button type="submit" id="saveProfileBtn">Save Profile</button>
                   <button type="button" class="secondary" id="refreshProfileBtn">Reload</button>
@@ -1476,8 +1779,8 @@
           <div class="section-header">
             <div class="section-header__copy">
               <div class="section-header__eyebrow">Network</div>
-              <h3 class="section-header__title">Relay and discovery summary</h3>
-              <p class="section-header__body">Use the summary first. Open diagnostics only when relay joins, polls, or peer visibility look unhealthy.</p>
+              <h3 class="section-header__title">Network</h3>
+              <p class="section-header__body">Check relay status, peers, and broadcast health.</p>
             </div>
           </div>
           <div class="grid" id="networkCards"></div>
@@ -1488,7 +1791,7 @@
             </div>
             <div class="card">
               <h3 class="title-sm">Quick Actions</h3>
-              <div class="field-hint" style="margin-bottom:10px;">Use these first. Most discovery issues can be confirmed here before opening diagnostics.</div>
+              <div class="field-hint" style="margin-bottom:10px;">Use these first.</div>
               <div class="actions">
                 <button id="startBroadcastBtn">Start Broadcast</button>
                 <button class="secondary" id="stopBroadcastBtn">Stop Broadcast</button>
@@ -1497,8 +1800,6 @@
               <details class="advanced-panel">
                 <summary class="title-sm">Advanced Actions</summary>
                 <div class="actions" style="margin-top:10px;">
-                  <button class="secondary" id="refreshCacheBtn">Refresh Cache</button>
-                  <button class="secondary" id="clearCacheBtn">Clear Discovered Cache</button>
                   <button class="secondary" id="quickGlobalPreviewBtn">Enable Cross-network Preview</button>
                 </div>
               </details>
@@ -1566,8 +1867,8 @@
           <div class="section-header">
             <div class="section-header__copy">
               <div class="section-header__eyebrow">Social</div>
-              <h3 class="section-header__title">Public identity and runtime state</h3>
-              <p class="section-header__body">Keep the signed identity, public visibility, and social.md runtime view aligned so discovery survives restart and update.</p>
+              <h3 class="section-header__title">Social</h3>
+              <p class="section-header__body">Switch mode and export a clean social.md template.</p>
             </div>
           </div>
           <div class="card">
@@ -1622,12 +1923,11 @@
                 </select>
               </div>
               <div>
-                <button class="secondary" id="socialModeApplyBtn">Apply Runtime Mode</button>
+                <button id="socialModeApplyBtn">Apply Runtime Mode</button>
               </div>
             </div>
+            <div class="field-hint" style="margin-top:10px;">Profile visibility is managed in the Profile page.</div>
             <div class="actions">
-              <button id="socialReloadBtn">Reload Config</button>
-              <button class="secondary" id="socialGenerateBtn">Generate Default social.md</button>
               <button class="secondary" id="socialExportBtn">Export social.md template</button>
               <button class="secondary" id="socialCopyBtn">Copy Template</button>
               <button class="secondary" id="socialDownloadBtn">Download Template</button>
@@ -1642,6 +1942,721 @@
     <div id="toast" class="toast"></div>
 
     <script>
+      const LOCALE_STORAGE_KEY = 'silicaclaw.i18n.locale';
+      const DEFAULT_LOCALE = 'en';
+      const SUPPORTED_LOCALES = ['en', 'zh-CN'];
+      const TRANSLATIONS = {
+        en: {
+          meta: {
+            title: 'SilicaClaw Control UI',
+            description: 'SilicaClaw local-first agent control console.',
+            socialTitle: 'SilicaClaw Local Console',
+            socialDescription: 'Local-first control surface for SilicaClaw agents.',
+          },
+          common: {
+            control: 'Control',
+            version: 'Version',
+            localConsole: 'Local Console',
+            subtitle: 'OpenClaw-inspired local-first agent control surface',
+            copied: 'Copied',
+            done: 'Done',
+            saving: 'Saving...',
+            saved: 'Saved.',
+            ready: 'Ready.',
+            reload: 'Reload',
+            yes: 'yes',
+            no: 'no',
+            on: 'enabled',
+            off: 'disabled',
+            unknownError: 'Unknown error',
+            requestFailed: 'Request failed ({status})',
+          },
+          pageMeta: {
+            overview: {
+              title: 'Overview',
+              body: 'See whether this node is online and who else is visible.',
+            },
+            profile: {
+              title: 'Profile',
+              body: 'Edit the public card other nodes can see.',
+            },
+            network: {
+              title: 'Network',
+              body: 'Check relay status, peers, and broadcast health.',
+            },
+            social: {
+              title: 'Social',
+              body: 'Switch mode and export a clean social.md template.',
+            },
+          },
+          actions: {
+            broadcastNow: 'Broadcast Now',
+            editProfile: 'Edit Profile',
+            openNetwork: 'Open Network',
+            startBroadcast: 'Start Broadcast',
+            stopBroadcast: 'Stop Broadcast',
+            enablePreview: 'Enable Cross-network Preview',
+            refreshLogs: 'Refresh Logs',
+            exportTemplate: 'Export social.md template',
+            copyTemplate: 'Copy Template',
+            downloadTemplate: 'Download Template',
+            applyRuntimeMode: 'Apply Runtime Mode',
+            saveProfile: 'Save Profile',
+            copyPublicProfilePreview: 'Copy public profile preview summary',
+          },
+          labels: {
+            overviewTabCopy: 'Agent summary and discovered peers',
+            profileTabCopy: 'Public identity and saved profile',
+            networkTabCopy: 'Relay health, broadcast, diagnostics',
+            socialTabCopy: 'social.md config and runtime state',
+            collapseSidebar: 'Collapse sidebar',
+            expandSidebar: 'Expand sidebar',
+            toggleFocusMode: 'Toggle focus mode',
+            exitFocusMode: 'Exit focus mode',
+            colorMode: 'Color mode',
+            dark: 'Dark',
+            light: 'Light',
+            system: 'System',
+            mode: 'Mode',
+            adapter: 'Adapter',
+            relay: 'Relay',
+            room: 'Room',
+            namespace: 'Namespace',
+            port: 'Port',
+            show: 'Show',
+            hide: 'Hide',
+            discoveredAgents: 'Discovered Agents',
+            onlyShowOnline: 'Only show online',
+            nodeSnapshot: 'Node Snapshot',
+            profileEyebrow: 'Profile',
+            publicProfile: 'Public profile',
+            publicProfileEditor: 'Public Profile Editor',
+            displayName: 'Display Name',
+            avatarUrl: 'Avatar URL',
+            bio: 'Bio',
+            tagsCommaSeparated: 'Tags (comma separated)',
+            publicEnabled: 'Public Enabled',
+            livePreview: 'Live Preview',
+            publicCard: 'Public Card',
+            publishStatus: 'Publish Status',
+            publicProfilePreview: 'Public Profile Preview',
+            networkEyebrow: 'Network',
+            connectionSummary: 'Connection Summary',
+            quickActions: 'Quick Actions',
+            advancedActions: 'Advanced Actions',
+            diagnostics: 'Diagnostics',
+            runtimeComponents: 'Runtime Components',
+            peerInventory: 'Peer Inventory',
+            peerDiscoveryStats: 'Peer Discovery Stats',
+            recentDiscoveryEvents: 'Recent Discovery Events',
+            discoverySnapshot: 'Discovery Snapshot',
+            logs: 'Logs',
+            category: 'Category',
+            configSnapshot: 'Config Snapshot',
+            statsSnapshot: 'Stats Snapshot',
+            socialEyebrow: 'Social',
+            integrationStatus: 'Integration Status',
+            whatIsActive: 'What Is Active',
+            identityBinding: 'Identity Binding',
+            advancedNetworkDetails: 'Advanced Network Details',
+            sourceRuntimeTemplate: 'Source / Runtime / Template',
+            sourceParsedFrontmatter: 'Source & Parsed Frontmatter',
+            runtimeSummary: 'Runtime Summary',
+            exportTemplatePreview: 'Export Template Preview',
+            actionsTitle: 'Actions',
+            networkModeRuntime: 'Network Mode (runtime)',
+          },
+          hints: {
+            publicDiscoverySwitch: 'Use Profile -> Public Enabled as the single public visibility switch.',
+            discoverabilityRecommendation: 'Recommended 2-32 chars for better discoverability.',
+            avatarOptional: 'Optional. Must be http(s) URL if provided.',
+            tagsLimit: 'Up to 8 tags, each <= 20 chars.',
+            publicEnabledHint: 'This is the main public visibility switch used for discovery and relay broadcast.',
+            signedPublicProfileHint: 'This is the signed public profile view other nodes/explorer can see.',
+            useTheseFirst: 'Use these first.',
+            profileVisibilityManaged: 'Profile visibility is managed in the Profile page.',
+            checkingIntegration: 'Checking integration status...',
+            allIntegrationChecksPassed: 'All integration checks passed.',
+          },
+          placeholders: {
+            agentName: 'Agent name',
+            bioSummary: 'Public summary',
+            tags: 'ai,browser,local-first',
+          },
+          overview: {
+            discovered: 'Discovered',
+            online: 'Online',
+            offline: 'Offline',
+            presenceTtl: 'Presence TTL',
+            agentsZero: '0 agents',
+            noDiscoveredAgents: 'No discovered agents yet.',
+            agentsOnlineFilter: '{shown}/{total} agents (online filter)',
+            agentsDiscovered: '{count} agents discovered',
+            tableName: 'Name',
+            tableAgentId: 'Agent ID',
+            tableStatus: 'Status',
+            tableUpdated: 'Updated',
+            unnamed: '(unnamed)',
+            onboardingNotice: 'Connected · mode={mode} · discoverable={discoverable} · next: update your profile, turn on Public Enabled, and export social.md',
+            pillRunning: 'broadcast: running',
+            pillPaused: 'broadcast: paused',
+            pageStatus: 'Page {page} / {total}',
+            prevPage: 'Prev',
+            nextPage: 'Next',
+          },
+          preview: {
+            unnamedAgent: '(unnamed agent)',
+            noBioYet: 'No bio yet.',
+            noTags: 'No tags',
+            visibleFields: 'Visible fields: {visible} | Hidden fields: {hidden}',
+            visible: '[visible] {field}',
+            hidden: '[hidden]  {field}',
+          },
+          network: {
+            started: 'Started',
+            transportState: 'Transport State',
+            signalingUrl: 'Signaling URL',
+            signalingEndpoints: 'Signaling Endpoints',
+            webrtcRoom: 'WebRTC Room',
+            bootstrapSources: 'Bootstrap Sources',
+            seedPeers: 'Seed Peers',
+            discoveryEvents: 'Discovery Events',
+            recv: 'Recv',
+            sent: 'Sent',
+            peers: 'Peers',
+            onlinePeers: 'Online Peers',
+            activeWebrtcPeers: 'Active WebRTC Peers',
+            reconnectAttempts: 'Reconnect Attempts',
+            lastInbound: 'Last Inbound',
+            lastOutbound: 'Last Outbound',
+            relayHealth: 'Relay health',
+            currentRelay: 'Current relay',
+            currentRoom: 'Current room',
+            lastJoin: 'Last join',
+            lastPoll: 'Last poll',
+            lastPublish: 'Last publish',
+            lastError: 'Last error',
+            degraded: 'degraded',
+            connected: 'connected',
+            none: 'none',
+            total: 'Total',
+            stale: 'Stale',
+            observeCalls: 'Observe Calls',
+            heartbeats: 'Heartbeats',
+            peersAdded: 'Peers Added',
+            peersRemoved: 'Peers Removed',
+            noPeersDiscovered: 'No peers discovered yet. Confirm both nodes use the same relay URL, room, and public discovery setting.',
+            peer: 'Peer',
+            status: 'Status',
+            lastSeen: 'Last Seen',
+            staleSince: 'Stale Since',
+            messages: 'Messages',
+            firstSeen: 'First Seen',
+            meta: 'Meta',
+            eventsTotal: 'Events Total',
+            lastEvent: 'Last Event',
+            noDiscoveryEvents: 'No discovery events yet. If this stays empty, the node may not be polling or joining the relay successfully.',
+            noLogsYet: 'No logs yet.',
+            noLogsForLevel: 'No {level} logs.',
+          },
+          social: {
+            connectedToSilicaClaw: 'Connected to SilicaClaw',
+            notConnectedToSilicaClaw: 'Not connected to SilicaClaw',
+            discoverableInCurrentMode: 'Discoverable in current mode',
+            notDiscoverableInCurrentMode: 'Not discoverable in current mode',
+            usingMode: 'Using {mode}',
+            publicDiscoveryEnabled: 'Public discovery enabled',
+            publicDiscoveryDisabled: 'Public discovery disabled',
+            notConnected: 'Not connected',
+            barStatus: 'Connected to SilicaClaw: {connected} · Network mode: {mode} · Public discovery: {public}',
+            configured: 'Configured',
+            running: 'Running',
+            discoverable: 'Discoverable',
+            publicDiscovery: 'Public discovery',
+            networkMode: 'network mode',
+            connected: 'connected',
+            discoverableReason: 'discoverable reason',
+            displayName: 'display name',
+            agentId: 'agent id',
+            socialFound: 'social.md found',
+            socialSource: 'social.md source',
+            runtimeGenerated: 'runtime generated',
+            reuseOpenClawIdentity: 'reuse OpenClaw identity',
+            mode: 'mode',
+            broadcastStatus: 'broadcast status',
+            namespace: 'namespace',
+            bootstrapHints: 'bootstrap hints',
+            restartRequired: 'restart required',
+            configuredReason: 'Configured: {reason}',
+            runningReason: 'Running: {reason}',
+            discoverableReasonFull: 'Discoverable: {reason}',
+          },
+          feedback: {
+            unsavedChanges: 'You have unsaved changes.',
+            allChangesSaved: 'All changes saved.',
+            fixValidation: 'Please fix validation errors before saving.',
+            savingProfile: 'Saving profile...',
+            profileSaved: 'Profile saved',
+            profileReloaded: 'Profile form reloaded',
+            exportingTemplate: 'Exporting template...',
+            templateExported: 'Template exported from current runtime.',
+            templateCopied: 'Template copied to clipboard.',
+            preparingDownload: 'Preparing download...',
+            runtimeUpdated: 'Runtime mode updated.',
+            copyPreviewFailed: 'Copy preview failed',
+            logsRefreshed: 'Logs refreshed',
+            crossPreviewEnabled: 'Cross-network preview enabled',
+            enableCrossPreviewFailed: 'Enable cross-network preview failed',
+            downloadFailed: 'Download failed',
+            exportFailed: 'Export failed',
+            copyFailed: 'Copy failed',
+            failed: 'Failed',
+            runtimeMode: 'Runtime mode: {mode}',
+            downloaded: 'Downloaded {filename}.',
+            runtimeModeApplying: 'Applying runtime mode: {mode}...',
+            copyingTemplate: 'Copying template...',
+            crossPreviewEnabling: 'Enabling cross-network preview...',
+            promptSignalingUrl: 'Signaling URL (publicly reachable):',
+            promptRoom: 'Room:',
+          },
+          validation: {
+            displayNameShort: 'Display name should be at least 2 chars.',
+            displayNameLong: 'Display name too long.',
+            avatarProtocol: 'Avatar URL must start with http:// or https://',
+            tooManyTags: 'Too many tags (max 8).',
+            tagTooLong: 'Each tag must be <= 20 chars.',
+            leaveConfirm: 'You have unsaved profile changes. Leave anyway?',
+          },
+        },
+        'zh-CN': {
+          meta: {
+            title: 'SilicaClaw 控制台',
+            description: 'SilicaClaw 本地优先代理控制台。',
+            socialTitle: 'SilicaClaw 本地控制台',
+            socialDescription: '面向 SilicaClaw 代理的本地优先控制界面。',
+          },
+          common: {
+            control: '控制',
+            version: '版本',
+            localConsole: '本地控制台',
+            subtitle: '受 OpenClaw 启发的本地优先代理控制界面',
+            copied: '已复制',
+            done: '完成',
+            saving: '保存中...',
+            saved: '已保存。',
+            ready: '就绪。',
+            reload: '重新加载',
+            yes: '是',
+            no: '否',
+            on: '已启用',
+            off: '已禁用',
+            unknownError: '未知错误',
+            requestFailed: '请求失败 ({status})',
+          },
+          pageMeta: {
+            overview: {
+              title: '概览',
+              body: '查看当前节点是否在线，以及还能看到哪些节点。',
+            },
+            profile: {
+              title: '资料',
+              body: '编辑其他节点可见的公开名片。',
+            },
+            network: {
+              title: '网络',
+              body: '检查 relay 状态、对等节点和广播健康度。',
+            },
+            social: {
+              title: '社交',
+              body: '切换模式并导出干净的 social.md 模板。',
+            },
+          },
+          actions: {
+            broadcastNow: '立即广播',
+            editProfile: '编辑资料',
+            openNetwork: '打开网络页',
+            startBroadcast: '启动广播',
+            stopBroadcast: '停止广播',
+            enablePreview: '启用跨网络预览',
+            refreshLogs: '刷新日志',
+            exportTemplate: '导出 social.md 模板',
+            copyTemplate: '复制模板',
+            downloadTemplate: '下载模板',
+            applyRuntimeMode: '应用运行时模式',
+            saveProfile: '保存资料',
+            copyPublicProfilePreview: '复制公开资料预览摘要',
+          },
+          labels: {
+            overviewTabCopy: '代理摘要与已发现节点',
+            profileTabCopy: '公开身份与已保存资料',
+            networkTabCopy: 'Relay 健康度、广播与诊断',
+            socialTabCopy: 'social.md 配置与运行时状态',
+            collapseSidebar: '折叠侧边栏',
+            expandSidebar: '展开侧边栏',
+            toggleFocusMode: '切换专注模式',
+            exitFocusMode: '退出专注模式',
+            colorMode: '颜色模式',
+            dark: '深色',
+            light: '浅色',
+            system: '跟随系统',
+            mode: '模式',
+            adapter: '适配器',
+            relay: 'Relay',
+            room: '房间',
+            namespace: '命名空间',
+            port: '端口',
+            show: '显示',
+            hide: '隐藏',
+            discoveredAgents: '已发现代理',
+            onlyShowOnline: '只显示在线',
+            nodeSnapshot: '节点快照',
+            profileEyebrow: '资料',
+            publicProfile: '公开资料',
+            publicProfileEditor: '公开资料编辑器',
+            displayName: '显示名称',
+            avatarUrl: '头像 URL',
+            bio: '简介',
+            tagsCommaSeparated: '标签（逗号分隔）',
+            publicEnabled: '公开启用',
+            livePreview: '实时预览',
+            publicCard: '公开卡片',
+            publishStatus: '发布状态',
+            publicProfilePreview: '公开资料预览',
+            networkEyebrow: '网络',
+            connectionSummary: '连接摘要',
+            quickActions: '快捷操作',
+            advancedActions: '高级操作',
+            diagnostics: '诊断',
+            runtimeComponents: '运行时组件',
+            peerInventory: '节点清单',
+            peerDiscoveryStats: '节点发现统计',
+            recentDiscoveryEvents: '最近发现事件',
+            discoverySnapshot: '发现快照',
+            logs: '日志',
+            category: '类别',
+            configSnapshot: '配置快照',
+            statsSnapshot: '统计快照',
+            socialEyebrow: '社交',
+            integrationStatus: '集成状态',
+            whatIsActive: '当前激活项',
+            identityBinding: '身份绑定',
+            advancedNetworkDetails: '高级网络详情',
+            sourceRuntimeTemplate: '来源 / 运行时 / 模板',
+            sourceParsedFrontmatter: '源文件与解析后的 Frontmatter',
+            runtimeSummary: '运行时摘要',
+            exportTemplatePreview: '导出模板预览',
+            actionsTitle: '操作',
+            networkModeRuntime: '网络模式（运行时）',
+          },
+          hints: {
+            publicDiscoverySwitch: '使用资料 -> Public Enabled 作为唯一的公开可见性开关。',
+            discoverabilityRecommendation: '建议 2-32 个字符，以提升可发现性。',
+            avatarOptional: '可选。如提供，必须是 http(s) URL。',
+            tagsLimit: '最多 8 个标签，每个不超过 20 个字符。',
+            publicEnabledHint: '这是发现与 relay 广播使用的主公开可见性开关。',
+            signedPublicProfileHint: '这是其他节点或 explorer 可以看到的已签名公开资料视图。',
+            useTheseFirst: '优先使用这些操作。',
+            profileVisibilityManaged: '资料可见性在资料页面管理。',
+            checkingIntegration: '正在检查集成状态...',
+            allIntegrationChecksPassed: '所有集成检查均已通过。',
+          },
+          placeholders: {
+            agentName: '代理名称',
+            bioSummary: '公开摘要',
+            tags: 'ai,browser,local-first',
+          },
+          overview: {
+            discovered: '已发现',
+            online: '在线',
+            offline: '离线',
+            presenceTtl: 'Presence TTL',
+            agentsZero: '0 个代理',
+            noDiscoveredAgents: '还没有发现代理。',
+            agentsOnlineFilter: '{shown}/{total} 个代理（在线筛选）',
+            agentsDiscovered: '已发现 {count} 个代理',
+            tableName: '名称',
+            tableAgentId: '代理 ID',
+            tableStatus: '状态',
+            tableUpdated: '更新时间',
+            unnamed: '（未命名）',
+            onboardingNotice: '已连接 · mode={mode} · discoverable={discoverable} · 下一步：更新资料、开启 Public Enabled，并导出 social.md',
+            pillRunning: 'broadcast: 运行中',
+            pillPaused: 'broadcast: 已暂停',
+            pageStatus: '第 {page} / {total} 页',
+            prevPage: '上一页',
+            nextPage: '下一页',
+          },
+          preview: {
+            unnamedAgent: '（未命名代理）',
+            noBioYet: '还没有简介。',
+            noTags: '没有标签',
+            visibleFields: '显示字段: {visible} | 隐藏字段: {hidden}',
+            visible: '[显示] {field}',
+            hidden: '[隐藏]  {field}',
+          },
+          network: {
+            started: '已启动',
+            transportState: '传输状态',
+            signalingUrl: 'Signaling URL',
+            signalingEndpoints: 'Signaling 端点',
+            webrtcRoom: 'WebRTC 房间',
+            bootstrapSources: 'Bootstrap 来源',
+            seedPeers: '种子节点',
+            discoveryEvents: '发现事件',
+            recv: '接收',
+            sent: '发送',
+            peers: '节点',
+            onlinePeers: '在线节点',
+            activeWebrtcPeers: '活跃 WebRTC 节点',
+            reconnectAttempts: '重连尝试次数',
+            lastInbound: '最近入站',
+            lastOutbound: '最近出站',
+            relayHealth: 'Relay 健康度',
+            currentRelay: '当前 Relay',
+            currentRoom: '当前房间',
+            lastJoin: '最近加入',
+            lastPoll: '最近轮询',
+            lastPublish: '最近发布',
+            lastError: '最近错误',
+            degraded: '降级',
+            connected: '已连接',
+            none: '无',
+            total: '总数',
+            stale: '陈旧',
+            observeCalls: '观察调用',
+            heartbeats: '心跳',
+            peersAdded: '新增节点',
+            peersRemoved: '移除节点',
+            noPeersDiscovered: '尚未发现节点。请确认两端使用相同的 relay URL、room 与公开发现设置。',
+            peer: '节点',
+            status: '状态',
+            lastSeen: '最近出现',
+            staleSince: '陈旧开始于',
+            messages: '消息数',
+            firstSeen: '首次出现',
+            meta: '元数据',
+            eventsTotal: '事件总数',
+            lastEvent: '最近事件',
+            noDiscoveryEvents: '还没有发现事件。如果这里持续为空，节点可能没有成功轮询或加入 relay。',
+            noLogsYet: '还没有日志。',
+            noLogsForLevel: '没有 {level} 级别日志。',
+          },
+          social: {
+            connectedToSilicaClaw: '已连接到 SilicaClaw',
+            notConnectedToSilicaClaw: '未连接到 SilicaClaw',
+            discoverableInCurrentMode: '当前模式下可发现',
+            notDiscoverableInCurrentMode: '当前模式下不可发现',
+            usingMode: '使用 {mode}',
+            publicDiscoveryEnabled: '公开发现已启用',
+            publicDiscoveryDisabled: '公开发现已禁用',
+            notConnected: '未连接',
+            barStatus: 'Connected to SilicaClaw: {connected} · Network mode: {mode} · Public discovery: {public}',
+            configured: '已配置',
+            running: '运行中',
+            discoverable: '可发现',
+            publicDiscovery: '公开发现',
+            networkMode: '网络模式',
+            connected: '已连接',
+            discoverableReason: '可发现原因',
+            displayName: '显示名称',
+            agentId: '代理 ID',
+            socialFound: '已找到 social.md',
+            socialSource: 'social.md 来源',
+            runtimeGenerated: '运行时生成',
+            reuseOpenClawIdentity: '复用 OpenClaw 身份',
+            mode: '模式',
+            broadcastStatus: '广播状态',
+            namespace: '命名空间',
+            bootstrapHints: 'Bootstrap 提示',
+            restartRequired: '需要重启',
+            configuredReason: 'Configured: {reason}',
+            runningReason: 'Running: {reason}',
+            discoverableReasonFull: 'Discoverable: {reason}',
+          },
+          feedback: {
+            unsavedChanges: '你有尚未保存的更改。',
+            allChangesSaved: '所有更改都已保存。',
+            fixValidation: '请先修复校验错误再保存。',
+            savingProfile: '正在保存资料...',
+            profileSaved: '资料已保存',
+            profileReloaded: '资料表单已重新加载',
+            exportingTemplate: '正在导出模板...',
+            templateExported: '已按当前运行时导出模板。',
+            templateCopied: '模板已复制到剪贴板。',
+            preparingDownload: '正在准备下载...',
+            runtimeUpdated: '运行时模式已更新。',
+            copyPreviewFailed: '复制预览失败',
+            logsRefreshed: '日志已刷新',
+            crossPreviewEnabled: '跨网络预览已启用',
+            enableCrossPreviewFailed: '启用跨网络预览失败',
+            downloadFailed: '下载失败',
+            exportFailed: '导出失败',
+            copyFailed: '复制失败',
+            failed: '失败',
+            runtimeMode: '运行时模式: {mode}',
+            downloaded: '已下载 {filename}。',
+            runtimeModeApplying: '正在应用运行时模式: {mode}...',
+            copyingTemplate: '正在复制模板...',
+            crossPreviewEnabling: '正在启用跨网络预览...',
+            promptSignalingUrl: 'Signaling URL（需公网可达）:',
+            promptRoom: '房间:',
+          },
+          validation: {
+            displayNameShort: '显示名称至少需要 2 个字符。',
+            displayNameLong: '显示名称过长。',
+            avatarProtocol: '头像 URL 必须以 http:// 或 https:// 开头',
+            tooManyTags: '标签过多（最多 8 个）。',
+            tagTooLong: '每个标签必须不超过 20 个字符。',
+            leaveConfirm: '你有未保存的资料更改，仍要离开吗？',
+          },
+        },
+      };
+      function isSupportedLocale(value) {
+        return SUPPORTED_LOCALES.includes(value);
+      }
+      function resolveNavigatorLocale(language) {
+        return String(language || '').toLowerCase().startsWith('zh') ? 'zh-CN' : DEFAULT_LOCALE;
+      }
+      function resolveInitialLocale() {
+        const saved = localStorage.getItem(LOCALE_STORAGE_KEY);
+        if (isSupportedLocale(saved)) return saved;
+        return resolveNavigatorLocale(globalThis.navigator?.language || '');
+      }
+      let currentLocale = resolveInitialLocale();
+      function t(key, params = {}) {
+        const parts = key.split('.');
+        const resolve = (bundle) => parts.reduce((acc, part) => (acc && typeof acc === 'object' ? acc[part] : undefined), bundle);
+        let value = resolve(TRANSLATIONS[currentLocale]);
+        if (typeof value !== 'string') value = resolve(TRANSLATIONS[DEFAULT_LOCALE]);
+        if (typeof value !== 'string') return key;
+        return value.replace(/\{(\w+)\}/g, (_, name) => params[name] ?? `{${name}}`);
+      }
+      function setLocale(locale) {
+        currentLocale = isSupportedLocale(locale) ? locale : DEFAULT_LOCALE;
+        document.documentElement.lang = currentLocale;
+      }
+      function applyStaticTranslations() {
+        const setText = (selector, text, index = 0) => {
+          const nodes = document.querySelectorAll(selector);
+          if (nodes[index]) nodes[index].textContent = text;
+        };
+        document.title = t('meta.title');
+        document.getElementById('metaDescription').setAttribute('content', t('meta.description'));
+        document.getElementById('ogTitle').setAttribute('content', t('meta.socialTitle'));
+        document.getElementById('ogDescription').setAttribute('content', t('meta.socialDescription'));
+        document.getElementById('twitterTitle').setAttribute('content', t('meta.socialTitle'));
+        document.getElementById('twitterDescription').setAttribute('content', t('meta.socialDescription'));
+        setText('.brand p', 'Control UI');
+        document.querySelectorAll('.advanced-panel summary').forEach((summary) => {
+          summary.setAttribute('data-i18n-closed-label', t('labels.show'));
+          summary.setAttribute('data-i18n-open-label', t('labels.hide'));
+        });
+        setText('.sidebar-nav__label', t('common.control'));
+        setText('[data-tab="overview"] .tab-title', t('pageMeta.overview.title'));
+        setText('[data-tab="overview"] .tab-copy', t('labels.overviewTabCopy'));
+        setText('[data-tab="profile"] .tab-title', t('pageMeta.profile.title'));
+        setText('[data-tab="profile"] .tab-copy', t('labels.profileTabCopy'));
+        setText('[data-tab="network"] .tab-title', t('pageMeta.network.title'));
+        setText('[data-tab="network"] .tab-copy', t('labels.networkTabCopy'));
+        setText('[data-tab="social"] .tab-title', t('pageMeta.social.title'));
+        setText('[data-tab="social"] .tab-copy', t('labels.socialTabCopy'));
+        document.getElementById('sidebarToggleBtn').title = t('labels.collapseSidebar');
+        document.getElementById('sidebarToggleBtn').setAttribute('aria-label', t('labels.collapseSidebar'));
+        document.querySelector('.sidebar-version').title = t('common.version');
+        setText('.sidebar-version__label', t('common.version'));
+        setText('.dashboard-header__breadcrumb-current', t('pageMeta.overview.title'));
+        document.getElementById('pageBreadcrumb').textContent = t('pageMeta.overview.title');
+        document.getElementById('pageHeroTitle').textContent = t('pageMeta.overview.title');
+        document.getElementById('pageHeroBody').textContent = t('pageMeta.overview.body');
+        document.getElementById('focusModeBtn').title = t('labels.toggleFocusMode');
+        document.getElementById('focusModeBtn').setAttribute('aria-label', t('labels.toggleFocusMode'));
+        document.getElementById('themeModeGroup').setAttribute('aria-label', t('labels.colorMode'));
+        document.querySelector('[data-theme-choice="dark"]').title = t('labels.dark');
+        document.querySelector('[data-theme-choice="dark"]').setAttribute('aria-label', `${t('labels.colorMode')}: ${t('labels.dark')}`);
+        document.querySelector('[data-theme-choice="light"]').title = t('labels.light');
+        document.querySelector('[data-theme-choice="light"]').setAttribute('aria-label', `${t('labels.colorMode')}: ${t('labels.light')}`);
+        document.querySelector('[data-theme-choice="system"]').title = t('labels.system');
+        document.querySelector('[data-theme-choice="system"]').setAttribute('aria-label', `${t('labels.colorMode')}: ${t('labels.system')}`);
+        setText('#view-overview .title-sm', t('labels.discoveredAgents'), 0);
+        document.getElementById('agentsCountHint').textContent = t('overview.agentsZero');
+        setText('#view-overview label.field-hint', t('labels.onlyShowOnline'));
+        setText('#view-overview .title-sm', t('labels.nodeSnapshot'), 1);
+        setText('#view-profile .section-header__eyebrow', t('labels.profileEyebrow'));
+        setText('#view-profile .section-header__title', t('labels.publicProfile'));
+        setText('#view-profile .title-sm', t('labels.publicProfileEditor'), 0);
+        setText('#view-profile label', t('labels.displayName'), 0);
+        setText('#view-profile .row > div:nth-child(2) label', t('labels.avatarUrl'));
+        setText('#view-profile div > label + textarea', t('labels.bio'));
+        setText('#view-profile div > label + input[name="tags"]', t('labels.tagsCommaSeparated'));
+        document.querySelector('#view-profile input[name="display_name"]').setAttribute('placeholder', t('placeholders.agentName'));
+        document.querySelector('#view-profile input[name="avatar_url"]').setAttribute('placeholder', 'https://...');
+        document.querySelector('#view-profile textarea[name="bio"]').setAttribute('placeholder', t('placeholders.bioSummary'));
+        document.querySelector('#view-profile input[name="tags"]').setAttribute('placeholder', t('placeholders.tags'));
+        document.querySelector('#view-profile input[name="display_name"]').nextElementSibling.textContent = t('hints.discoverabilityRecommendation');
+        document.querySelector('#view-profile input[name="avatar_url"]').nextElementSibling.textContent = t('hints.avatarOptional');
+        document.querySelector('#view-profile input[name="tags"]').nextElementSibling.textContent = t('hints.tagsLimit');
+        document.querySelector('#view-profile input[name="public_enabled"]').parentElement.childNodes[1].textContent = ` ${t('labels.publicEnabled')}`;
+        setText('#view-profile .field-hint', t('hints.publicEnabledHint'), 3);
+        setText('#view-profile .title-sm', t('labels.livePreview'), 1);
+        setText('#view-profile .profile-meta h4', t('labels.publicCard'), 0);
+        setText('#view-profile .profile-meta h4', t('labels.publishStatus'), 1);
+        setText('#view-profile .profile-meta h4', t('labels.publicProfilePreview'), 2);
+        setText('#view-profile .profile-meta .field-hint', t('hints.signedPublicProfileHint'));
+        setText('#view-network .section-header__eyebrow', t('labels.networkEyebrow'));
+        setText('#view-network .section-header__title', t('pageMeta.network.title'));
+        setText('#view-network .split .card .title-sm', t('labels.connectionSummary'), 0);
+        setText('#view-network .split .card .title-sm', t('labels.quickActions'), 1);
+        setText('#view-network .split .card .field-hint', t('hints.useTheseFirst'));
+        setText('#view-network details.advanced-panel summary', t('labels.advancedActions'), 0);
+        setText('#view-network > details.advanced-panel.card > summary', t('labels.diagnostics'));
+        setText('#view-network .card .title-sm', t('labels.runtimeComponents'), 3);
+        setText('#view-network .card .title-sm', t('labels.peerInventory'), 4);
+        setText('#view-network .card .title-sm', t('labels.peerDiscoveryStats'), 5);
+        setText('#view-network .card .title-sm', t('labels.recentDiscoveryEvents'), 6);
+        setText('#view-network .card .title-sm', t('labels.discoverySnapshot'), 7);
+        setText('#view-network label[for="logLevelFilter"]', t('labels.category'));
+        setText('#view-network .card .title-sm', t('labels.configSnapshot'), 9);
+        setText('#view-network .card .title-sm', t('labels.statsSnapshot'), 10);
+        setText('#view-social .section-header__eyebrow', t('labels.socialEyebrow'));
+        setText('#view-social .section-header__title', t('pageMeta.social.title'));
+        setText('#view-social .card .title-sm', t('labels.integrationStatus'), 0);
+        document.querySelector('#socialStatusLine').textContent = t('hints.checkingIntegration');
+        setText('#view-social .split .card .title-sm', t('labels.whatIsActive'), 0);
+        setText('#view-social .split .card .title-sm', t('labels.identityBinding'), 1);
+        setText('#view-social details.card summary', t('labels.advancedNetworkDetails'));
+        setText('#view-social details.advanced-panel summary', t('labels.sourceRuntimeTemplate'));
+        setText('#view-social .card .title-sm', t('labels.sourceParsedFrontmatter'), 3);
+        setText('#view-social .card .title-sm', t('labels.runtimeSummary'), 4);
+        setText('#view-social .card .title-sm', t('labels.exportTemplatePreview'), 5);
+        setText('#view-social .card .title-sm', t('labels.actionsTitle'), 6);
+        setText('label[for="socialModeSelect"]', t('labels.networkModeRuntime'));
+        setText('#view-social > .card:last-of-type .field-hint', t('hints.profileVisibilityManaged'));
+        setText('.hero-meta-item .label', t('labels.mode'), 0);
+        setText('.hero-meta-item .label', t('labels.adapter'), 1);
+        setText('.hero-meta-item .label', t('labels.relay'), 2);
+        setText('.hero-meta-item .label', t('labels.room'), 3);
+        document.getElementById('publicDiscoveryHint').innerHTML = t('hints.publicDiscoverySwitch');
+        document.getElementById('overviewBroadcastNowBtn').textContent = t('actions.broadcastNow');
+        document.getElementById('overviewGoProfileBtn').textContent = t('actions.editProfile');
+        document.getElementById('overviewGoNetworkBtn').textContent = t('actions.openNetwork');
+        document.getElementById('startBroadcastBtn').textContent = t('actions.startBroadcast');
+        document.getElementById('stopBroadcastBtn').textContent = t('actions.stopBroadcast');
+        document.getElementById('quickGlobalPreviewBtn').textContent = t('actions.enablePreview');
+        document.getElementById('refreshLogsBtn').textContent = t('actions.refreshLogs');
+        document.getElementById('socialExportBtn').textContent = t('actions.exportTemplate');
+        document.getElementById('socialCopyBtn').textContent = t('actions.copyTemplate');
+        document.getElementById('socialDownloadBtn').textContent = t('actions.downloadTemplate');
+        document.getElementById('socialModeApplyBtn').textContent = t('actions.applyRuntimeMode');
+        document.getElementById('copyPublicProfilePreviewBtn').textContent = t('actions.copyPublicProfilePreview');
+        document.getElementById('saveProfileBtn').textContent = t('actions.saveProfile');
+        document.getElementById('refreshProfileBtn').textContent = t('common.reload');
+        document.getElementById('profileFeedback').textContent = t('common.ready');
+        document.getElementById('networkFeedback').textContent = t('common.ready');
+        document.getElementById('socialFeedback').textContent = t('common.ready');
+      }
+      setLocale(currentLocale);
+      applyStaticTranslations();
+
       let activeTab = 'overview';
       let profileBaseline = '';
       let profileDirty = false;
@@ -1650,24 +2665,9 @@
       let logLevelFilter = 'all';
       let socialTemplate = '';
       let onlyShowOnline = false;
-      const pageMeta = {
-        overview: {
-          title: 'Overview',
-          body: 'See the live state of this node, whether discovery is healthy, and whether other public agents are visible through the relay.',
-        },
-        profile: {
-          title: 'Profile',
-          body: 'Edit the signed public identity card that other agents can discover. Saved profile data should survive restart and update.',
-        },
-        network: {
-          title: 'Network',
-          body: 'Inspect relay connectivity, peer inventory, broadcast timing, and diagnostics when cross-device discovery is not working.',
-        },
-        social: {
-          title: 'Social',
-          body: 'Review social.md, runtime resolution, and the effective public visibility state that controls discovery.',
-        },
-      };
+      let agentsPage = 1;
+      const AGENTS_PAGE_SIZE = 10;
+      const pageMeta = TRANSLATIONS[currentLocale].pageMeta || TRANSLATIONS[DEFAULT_LOCALE].pageMeta;
 
       function ago(ts) {
         if (!ts) return '-';
@@ -1680,11 +2680,61 @@
         if (!id) return '-';
         return `${id.slice(0, 10)}...${id.slice(-6)}`;
       }
+      function escapeHtml(value) {
+        return String(value ?? '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
       function toPrettyJson(obj) {
         try {
           return JSON.stringify(obj, null, 2);
         } catch {
           return String(obj);
+        }
+      }
+      function readUiCache(key) {
+        try {
+          const raw = localStorage.getItem(key);
+          return raw ? JSON.parse(raw) : null;
+        } catch {
+          return null;
+        }
+      }
+      function writeUiCache(key, value) {
+        try {
+          localStorage.setItem(key, JSON.stringify(value));
+        } catch {
+          // ignore cache write failures
+        }
+      }
+      function hydrateCachedShell() {
+        const overview = readUiCache('silicaclaw_ui_overview');
+        if (overview) {
+          if (overview.overviewCardsHtml) document.getElementById('overviewCards').innerHTML = overview.overviewCardsHtml;
+          if (overview.brandVersionText) document.getElementById('brandVersion').textContent = overview.brandVersionText;
+          if (overview.snapshotText) document.getElementById('snapshot').innerHTML = overview.snapshotText;
+          if (overview.heroModeText) document.getElementById('heroMode').textContent = overview.heroModeText;
+          if (overview.pillBroadcastText) document.getElementById('pillBroadcast').textContent = overview.pillBroadcastText;
+          if (overview.pillBroadcastClassName) document.getElementById('pillBroadcast').className = overview.pillBroadcastClassName;
+          if (overview.agentsCountHintText) document.getElementById('agentsCountHint').textContent = overview.agentsCountHintText;
+          if (overview.agentsWrapHtml) document.getElementById('agentsWrap').innerHTML = overview.agentsWrapHtml;
+        }
+        const network = readUiCache('silicaclaw_ui_network');
+        if (network) {
+          if (network.heroAdapterText) document.getElementById('heroAdapter').textContent = network.heroAdapterText;
+          if (network.heroRelayText) document.getElementById('heroRelay').textContent = network.heroRelayText;
+          if (network.heroRoomText) document.getElementById('heroRoom').textContent = network.heroRoomText;
+          if (network.pillAdapterText) document.getElementById('pillAdapter').textContent = network.pillAdapterText;
+        }
+        const social = readUiCache('silicaclaw_ui_social');
+        if (social) {
+          if (social.integrationStatusText) document.getElementById('integrationStatusBar').textContent = social.integrationStatusText;
+          if (social.integrationStatusClassName) document.getElementById('integrationStatusBar').className = social.integrationStatusClassName;
+          if (social.socialStatusLineText) document.getElementById('socialStatusLine').textContent = social.socialStatusLineText;
+          if (social.socialStatusSublineText) document.getElementById('socialStatusSubline').textContent = social.socialStatusSublineText;
         }
       }
       function toast(msg) {
@@ -1759,7 +2809,7 @@
         if (fromUserInput && !profileSaving) {
           setFeedback(
             'profileFeedback',
-            profileDirty ? 'You have unsaved changes.' : 'All changes saved.',
+            profileDirty ? t('feedback.unsavedChanges') : t('feedback.allChangesSaved'),
             profileDirty ? 'warn' : 'info'
           );
         }
@@ -1786,27 +2836,27 @@
         let ok = true;
         let err = '';
         if (displayName.length > 0 && displayName.length < 2) {
-          err = 'Display name should be at least 2 chars.';
+          err = t('validation.displayNameShort');
           ok = false;
         } else if (displayName.length > 48) {
-          err = 'Display name too long.';
+          err = t('validation.displayNameLong');
           ok = false;
         }
         setInputError(displayNameEl, 'errDisplayName', err);
 
         err = '';
         if (avatarUrl && !/^https?:\/\//i.test(avatarUrl)) {
-          err = 'Avatar URL must start with http:// or https://';
+          err = t('validation.avatarProtocol');
           ok = false;
         }
         setInputError(avatarEl, 'errAvatarUrl', err);
 
         err = '';
         if (tags.length > 8) {
-          err = 'Too many tags (max 8).';
+          err = t('validation.tooManyTags');
           ok = false;
         } else if (tags.some((t) => t.length > 20)) {
-          err = 'Each tag must be <= 20 chars.';
+          err = t('validation.tagTooLong');
           ok = false;
         }
         setInputError(tagsEl, 'errTags', err);
@@ -1818,14 +2868,14 @@
         const tags = parseTags(field(form, 'tags')?.value || '');
         const enabled = !!field(form, 'public_enabled')?.checked;
 
-        document.getElementById('previewName').textContent = displayName || '(unnamed agent)';
-        document.getElementById('previewBio').textContent = bio || 'No bio yet.';
+        document.getElementById('previewName').textContent = displayName || t('preview.unnamedAgent');
+        document.getElementById('previewBio').textContent = bio || t('preview.noBioYet');
         document.getElementById('previewPublish').textContent = `public_enabled: ${enabled}`;
         document.getElementById('bioCount').textContent = String(bio.length);
 
         const tagBox = document.getElementById('previewTags');
         if (!tags.length) {
-          tagBox.innerHTML = '<span class=\"tag-chip muted\">No tags</span>';
+          tagBox.innerHTML = `<span class="tag-chip muted">${t('preview.noTags')}</span>`;
           return;
         }
         tagBox.innerHTML = tags.map((tag) => `<span class=\"tag-chip\">${tag}</span>`).join('');
@@ -1835,21 +2885,21 @@
         const btn = document.getElementById('saveProfileBtn');
         btn.disabled = busy;
         btn.classList.toggle('save-busy', busy);
-        btn.textContent = busy ? 'Saving...' : 'Save Profile';
+        btn.textContent = busy ? t('common.saving') : t('actions.saveProfile');
       }
 
       async function api(path, options = {}) {
         const res = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...options });
         const json = await res.json().catch(() => null);
         if (!res.ok || !json || !json.ok) {
-          throw new Error(json?.error?.message || `Request failed (${res.status})`);
+          throw new Error(json?.error?.message || t('common.requestFailed', { status: String(res.status) }));
         }
         return json;
       }
 
       function switchTab(tab) {
         if (activeTab === 'profile' && tab !== 'profile' && profileDirty && !profileSaving) {
-          const ok = window.confirm('You have unsaved profile changes. Leave anyway?');
+          const ok = window.confirm(t('validation.leaveConfirm'));
           if (!ok) {
             return;
           }
@@ -1869,83 +2919,202 @@
       }
 
       async function refreshOverview() {
-        const [overview, discovered] = await Promise.all([api('/api/overview'), api('/api/search?q=')]);
-        const o = overview.data;
-        const all = discovered.data || [];
+        const [overviewRes, discoveredRes, peerRes] = await Promise.allSettled([
+          api('/api/overview'),
+          api('/api/search?q='),
+          api('/api/peers'),
+        ]);
+        if (overviewRes.status !== 'fulfilled') {
+          throw overviewRes.reason;
+        }
+        const o = overviewRes.value.data;
+        const allProfiles = discoveredRes.status === 'fulfilled' ? (discoveredRes.value.data || []) : [];
+        const peers = peerRes.status === 'fulfilled' ? (peerRes.value.data || {}) : {};
+        const peerItems = peers.items || [];
+        const mergedById = new Map();
+
+        for (const agent of allProfiles) {
+          mergedById.set(agent.agent_id, agent);
+        }
+
+        for (const peer of peerItems) {
+          const existing = mergedById.get(peer.peer_id);
+          if (existing) {
+            if (peer.status && !existing.online) {
+              existing.online = peer.status === 'online';
+            }
+            if (peer.last_seen_at && (!existing.updated_at || peer.last_seen_at > existing.updated_at)) {
+              existing.updated_at = peer.last_seen_at;
+            }
+            continue;
+          }
+          mergedById.set(peer.peer_id, {
+            agent_id: peer.peer_id,
+            display_name: shortId(peer.peer_id),
+            online: peer.status === 'online',
+            updated_at: peer.last_seen_at || peer.first_seen_at || 0,
+          });
+        }
+
+        const all = Array.from(mergedById.values());
         const d = onlyShowOnline ? all.filter((agent) => agent.online) : all;
+        const totalAgentPages = Math.max(1, Math.ceil(d.length / AGENTS_PAGE_SIZE));
+        agentsPage = Math.min(Math.max(1, agentsPage), totalAgentPages);
+        const pagedAgents = d.slice((agentsPage - 1) * AGENTS_PAGE_SIZE, agentsPage * AGENTS_PAGE_SIZE);
+        const discoveredCount = Math.max(Number(o.discovered_count || 0), Number(peers.total || 0), all.length);
+        const onlineCount = Math.max(Number(o.online_count || 0), Number(peers.online || 0), all.filter((agent) => agent.online).length);
+        const offlineCount = Math.max(0, discoveredCount - onlineCount);
 
-        document.getElementById('overviewCards').innerHTML = [
-          ['Discovered', o.discovered_count],
-          ['Online', o.online_count],
-          ['Offline', o.offline_count],
-          ['Presence TTL', `${Math.floor(o.presence_ttl_ms / 1000)}s`],
+        const overviewCardsHtml = [
+          [t('overview.discovered'), discoveredCount],
+          [t('overview.online'), onlineCount],
+          [t('overview.offline'), offlineCount],
+          [t('overview.presenceTtl'), `${Math.floor(o.presence_ttl_ms / 1000)}s`],
         ].map(([k,v]) => `<div class="card"><div class="label">${k}</div><div class="value">${v}</div></div>`).join('');
+        document.getElementById('overviewCards').innerHTML = overviewCardsHtml;
 
-        document.getElementById('brandVersion').textContent = o.app_version ? `v${o.app_version}` : '-';
+        const brandVersionText = o.app_version ? `v${o.app_version}` : '-';
+        document.getElementById('brandVersion').textContent = brandVersionText;
 
-        document.getElementById('snapshot').textContent = [
-          `app_version: ${o.app_version || '-'}`,
-          `agent_id: ${o.agent_id || '-'}`,
-          `public_enabled: ${o.public_enabled}`,
-          `broadcast_enabled: ${o.broadcast_enabled}`,
-          `last_broadcast: ${ago(o.last_broadcast_at)}`,
-        ].join('\n');
-        document.getElementById('heroMode').textContent = o.social?.network_mode || '-';
+        const snapshotHtml = `
+          <div class="snapshot-card">
+            <div class="snapshot-card__identity">
+              <div class="snapshot-card__label">Current Node</div>
+              <div class="snapshot-card__title">${escapeHtml(o.display_name || t('overview.unnamed'))}</div>
+              <div class="snapshot-card__subtle mono">${escapeHtml(o.agent_id || '-')}</div>
+            </div>
+            <div class="snapshot-card__grid">
+              <div class="snapshot-card__item">
+                <div class="label">Version</div>
+                <span class="value-inline">${escapeHtml(o.app_version || '-')}</span>
+              </div>
+              <div class="snapshot-card__item">
+                <div class="label">Public</div>
+                <span class="value-inline">${o.public_enabled ? t('common.on') : t('common.off')}</span>
+              </div>
+              <div class="snapshot-card__item">
+                <div class="label">Broadcast</div>
+                <span class="value-inline">${o.broadcast_enabled ? t('common.on') : t('common.off')}</span>
+              </div>
+              <div class="snapshot-card__item">
+                <div class="label">Last Broadcast</div>
+                <span class="value-inline">${escapeHtml(ago(o.last_broadcast_at))}</span>
+              </div>
+            </div>
+          </div>
+        `;
+        document.getElementById('snapshot').innerHTML = snapshotHtml;
+        const heroModeText = o.social?.network_mode || '-';
+        document.getElementById('heroMode').textContent = heroModeText;
 
-        document.getElementById('pillBroadcast').textContent = o.broadcast_enabled ? 'broadcast: running' : 'broadcast: paused';
-        document.getElementById('pillBroadcast').className = `pill ${o.broadcast_enabled ? 'ok' : 'warn'}`;
+        const pillBroadcastText = o.broadcast_enabled ? t('overview.pillRunning') : t('overview.pillPaused');
+        const pillBroadcastClassName = `pill ${o.broadcast_enabled ? 'ok' : 'warn'}`;
+        document.getElementById('pillBroadcast').textContent = pillBroadcastText;
+        document.getElementById('pillBroadcast').className = pillBroadcastClassName;
 
         const init = o.init_state || {};
         const onboarding = o.onboarding || {};
         const notice = document.getElementById('initNotice');
-        const onboardingActions = document.getElementById('onboardingActions');
-        const enableBtn = document.getElementById('enablePublicDiscoveryBtn');
-        const disableBtn = document.getElementById('disablePublicDiscoveryBtn');
         const discoveryHint = document.getElementById('publicDiscoveryHint');
         const showOnboarding = onboarding.first_run || init.identity_auto_created || init.profile_auto_created || init.social_auto_created;
         if (onboarding.first_run || init.identity_auto_created || init.profile_auto_created || init.social_auto_created) {
           notice.classList.add('show');
-          notice.textContent = `OpenClaw already connected to SilicaClaw · mode=${onboarding.mode || '-'} · discoverable=${onboarding.discoverable ? 'yes' : 'no'} · next: update display name and export social.md`;
+          notice.textContent = t('overview.onboardingNotice', {
+            mode: onboarding.mode || '-',
+            discoverable: onboarding.discoverable ? t('common.yes') : t('common.no'),
+          });
         } else {
           notice.classList.remove('show');
         }
         if (onboarding.can_enable_public_discovery || onboarding.public_enabled) {
-          onboardingActions.style.display = 'flex';
           discoveryHint.style.display = 'block';
-          if (onboarding.public_enabled) {
-            enableBtn.style.display = 'none';
-            disableBtn.style.display = 'inline-block';
-          } else {
-            enableBtn.style.display = 'inline-block';
-            disableBtn.style.display = 'none';
-          }
         } else {
-          onboardingActions.style.display = 'none';
           discoveryHint.style.display = 'none';
         }
 
         if (!d.length) {
-          document.getElementById('agentsCountHint').textContent = '0 agents';
-          document.getElementById('agentsWrap').innerHTML = '<div class="label">No discovered agents yet.</div>';
+          const agentsCountHintText = t('overview.agentsZero');
+          const agentsWrapHtml = `<div class="label">${t('overview.noDiscoveredAgents')}</div>`;
+          document.getElementById('agentsCountHint').textContent = agentsCountHintText;
+          document.getElementById('agentsWrap').innerHTML = agentsWrapHtml;
+          writeUiCache('silicaclaw_ui_overview', {
+            overviewCardsHtml,
+            brandVersionText,
+            snapshotText: snapshotHtml,
+            heroModeText,
+            pillBroadcastText,
+            pillBroadcastClassName,
+            agentsCountHintText,
+            agentsWrapHtml,
+          });
         } else {
-          document.getElementById('agentsCountHint').textContent = onlyShowOnline
-            ? `${d.length}/${all.length} agents (online filter)`
-            : `${d.length} agents discovered`;
-          document.getElementById('agentsWrap').innerHTML = `
-            <table class="table">
-              <thead><tr><th>Name</th><th>Agent ID</th><th>Status</th><th>Updated</th></tr></thead>
-              <tbody>
-                ${d.map((a) => `
-                  <tr>
-                    <td>${a.display_name || '(unnamed)'}</td>
-                    <td class="mono">${shortId(a.agent_id)}</td>
-                    <td class="${a.online ? 'online' : 'offline'}">${a.online ? 'online' : 'offline'}</td>
-                    <td>${ago(a.updated_at)}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
+          const agentsCountHintText = onlyShowOnline
+            ? t('overview.agentsOnlineFilter', { shown: String(d.length), total: String(all.length) })
+            : t('overview.agentsDiscovered', { count: String(d.length) });
+          const renderAvatar = (agent) => {
+            const avatar = String(agent.avatar_url || '').trim();
+            if (avatar) {
+              return `<img class="agent-card__avatar" src="${avatar}" alt="${escapeHtml(agent.display_name || 'agent')}" loading="lazy" />`;
+            }
+            const label = String(agent.display_name || agent.agent_id || '?').trim();
+            const initial = escapeHtml((label[0] || '?').toUpperCase());
+            return `<div class="agent-card__avatar-fallback">${initial}</div>`;
+          };
+          const renderTags = (agent) => {
+            const tags = Array.isArray(agent.tags) ? agent.tags.slice(0, 4) : [];
+            if (!tags.length) return '';
+            return `<div class="agent-card__tags">${tags.map((tag) => `<span class="tag-chip">${escapeHtml(String(tag))}</span>`).join('')}</div>`;
+          };
+          const agentsWrapHtml = `
+            <div class="agent-list">
+              ${pagedAgents.map((a) => `
+                <div class="agent-card">
+                  ${renderAvatar(a)}
+                  <div class="agent-card__main">
+                    <div class="agent-card__row">
+                      <div class="agent-card__name">${escapeHtml(a.display_name || t('overview.unnamed'))}</div>
+                      <div class="agent-card__id mono">${shortId(a.agent_id)}</div>
+                    </div>
+                    <div class="agent-card__bio">${escapeHtml(a.bio || t('preview.noBioYet'))}</div>
+                    ${renderTags(a)}
+                  </div>
+                  <div class="${a.online ? 'online' : 'offline'}">${a.online ? t('overview.online') : t('overview.offline')}</div>
+                  <div class="agent-card__meta">
+                    <div class="agent-card__updated">${ago(a.updated_at)}</div>
+                  </div>
+                </div>
+              `).join('')}
+              <div class="agent-list__footer">
+                <div class="agent-list__page">${t('overview.pageStatus', { page: String(agentsPage), total: String(totalAgentPages) })}</div>
+                <div class="agent-list__pager">
+                  <button class="secondary" type="button" id="agentsPrevPageBtn" ${agentsPage <= 1 ? 'disabled' : ''}>${t('overview.prevPage')}</button>
+                  <button class="secondary" type="button" id="agentsNextPageBtn" ${agentsPage >= totalAgentPages ? 'disabled' : ''}>${t('overview.nextPage')}</button>
+                </div>
+              </div>
+            </div>
           `;
+          document.getElementById('agentsCountHint').textContent = agentsCountHintText;
+          document.getElementById('agentsWrap').innerHTML = agentsWrapHtml;
+          document.getElementById('agentsPrevPageBtn')?.addEventListener('click', async () => {
+            if (agentsPage <= 1) return;
+            agentsPage -= 1;
+            await refreshOverview();
+          });
+          document.getElementById('agentsNextPageBtn')?.addEventListener('click', async () => {
+            if (agentsPage >= totalAgentPages) return;
+            agentsPage += 1;
+            await refreshOverview();
+          });
+          writeUiCache('silicaclaw_ui_overview', {
+            overviewCardsHtml,
+            brandVersionText,
+            snapshotText: snapshotHtml,
+            heroModeText,
+            pillBroadcastText,
+            pillBroadcastClassName,
+            agentsCountHintText,
+            agentsWrapHtml,
+          });
         }
       }
 
@@ -1970,10 +3139,10 @@
         const hiddenFields = summary?.public_visibility?.hidden_fields || [];
         const visible = visibleFields.join(', ') || '-';
         const hidden = hiddenFields.join(', ') || '-';
-        document.getElementById('publicVisibilityHint').textContent = `Visible fields: ${visible} | Hidden fields: ${hidden}`;
+        document.getElementById('publicVisibilityHint').textContent = t('preview.visibleFields', { visible, hidden });
         const rows = [
-          ...visibleFields.map((field) => `[visible] ${field}`),
-          ...hiddenFields.map((field) => `[hidden]  ${field}`),
+          ...visibleFields.map((field) => t('preview.visible', { field })),
+          ...hiddenFields.map((field) => t('preview.hidden', { field })),
         ];
         document.getElementById('publicVisibilityList').textContent = rows.length ? rows.join('\n') : '-';
       }
@@ -1986,7 +3155,7 @@
         const msg = s.message_counters || {};
         const p = s.peer_counters || {};
         const a = s.adapter_stats || {};
-        const t = s.adapter_transport_stats || {};
+        const transportStats = s.adapter_transport_stats || {};
         const d = s.adapter_discovery_stats || {};
         const dx = s.adapter_diagnostics_summary || {};
         const ac = s.adapter_config || c.adapter_config || {};
@@ -1995,41 +3164,41 @@
         document.getElementById('heroRoom').textContent = dx.room || '-';
 
         document.getElementById('pillAdapter').textContent = `adapter: ${c.adapter}`;
-        document.getElementById('sideMeta').innerHTML = [
-          ['Adapter', c.adapter || '-'],
-          ['Namespace', c.namespace || '-'],
-          ['Port', c.port ?? '-'],
-        ].map(([k, v]) => `<div class="sidebar-utility-row"><span class="sidebar-utility__label">${k}</span><span class="sidebar-utility__value">${v}</span></div>`).join('');
-
+        writeUiCache('silicaclaw_ui_network', {
+          heroAdapterText: c.adapter || '-',
+          heroRelayText: dx.signaling_url || '-',
+          heroRoomText: dx.room || '-',
+          pillAdapterText: `adapter: ${c.adapter}`,
+        });
         document.getElementById('networkCards').innerHTML = [
-          ['Adapter', c.adapter],
-          ['Namespace', c.namespace || '-'],
-          ['Port', c.port ?? '-'],
-          ['Started', ac.started === true ? 'yes' : ac.started === false ? 'no' : '-'],
-          ['Transport State', ac.transport?.state || '-'],
-          ['Signaling URL', dx.signaling_url || '-'],
-          ['Signaling Endpoints', (dx.signaling_endpoints || []).length || 0],
-          ['WebRTC Room', dx.room || '-'],
-          ['Bootstrap Sources', (dx.bootstrap_sources || []).length || 0],
-          ['Seed Peers', dx.seed_peers_count ?? 0],
-          ['Discovery Events', dx.discovery_events_total ?? 0],
-          ['Recv', msg.received_total ?? 0],
-          ['Sent', msg.broadcast_total ?? 0],
-          ['Peers', p.total ?? 0],
-          ['Online Peers', p.online ?? 0],
-          ['Active WebRTC Peers', dx.active_webrtc_peers ?? '-'],
-          ['Reconnect Attempts', dx.reconnect_attempts_total ?? '-'],
-          ['Last Inbound', ago(msg.last_message_at)],
-          ['Last Outbound', ago(msg.last_broadcast_at)],
+          [t('labels.adapter'), c.adapter],
+          [t('labels.namespace'), c.namespace || '-'],
+          [t('labels.port'), c.port ?? '-'],
+          [t('network.started'), ac.started === true ? t('common.yes') : ac.started === false ? t('common.no') : '-'],
+          [t('network.transportState'), ac.transport?.state || '-'],
+          [t('network.signalingUrl'), dx.signaling_url || '-'],
+          [t('network.signalingEndpoints'), (dx.signaling_endpoints || []).length || 0],
+          [t('network.webrtcRoom'), dx.room || '-'],
+          [t('network.bootstrapSources'), (dx.bootstrap_sources || []).length || 0],
+          [t('network.seedPeers'), dx.seed_peers_count ?? 0],
+          [t('network.discoveryEvents'), dx.discovery_events_total ?? 0],
+          [t('network.recv'), msg.received_total ?? 0],
+          [t('network.sent'), msg.broadcast_total ?? 0],
+          [t('network.peers'), p.total ?? 0],
+          [t('network.onlinePeers'), p.online ?? 0],
+          [t('network.activeWebrtcPeers'), dx.active_webrtc_peers ?? '-'],
+          [t('network.reconnectAttempts'), dx.reconnect_attempts_total ?? '-'],
+          [t('network.lastInbound'), ago(msg.last_message_at)],
+          [t('network.lastOutbound'), ago(msg.last_broadcast_at)],
         ].map(([k,v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join('');
         document.getElementById('networkSummaryList').innerHTML = [
-          ['Relay health', dx.last_error ? 'degraded' : 'connected'],
-          ['Current relay', dx.signaling_url || '-'],
-          ['Current room', dx.room || '-'],
-          ['Last join', ago(dx.last_join_at)],
-          ['Last poll', ago(dx.last_poll_at)],
-          ['Last publish', ago(dx.last_publish_at)],
-          ['Last error', dx.last_error || 'none'],
+          [t('network.relayHealth'), dx.last_error ? t('network.degraded') : t('network.connected')],
+          [t('network.currentRelay'), dx.signaling_url || '-'],
+          [t('network.currentRoom'), dx.room || '-'],
+          [t('network.lastJoin'), ago(dx.last_join_at)],
+          [t('network.lastPoll'), ago(dx.last_poll_at)],
+          [t('network.lastPublish'), ago(dx.last_publish_at)],
+          [t('network.lastError'), dx.last_error || t('network.none')],
         ].map(([k, v]) => `<div class="summary-item"><div class="label">${k}</div><div class="mono">${v}</div></div>`).join('');
 
         const comp = c.components || {};
@@ -2054,7 +3223,7 @@
           `dropped_namespace_mismatch: ${a.dropped_namespace_mismatch ?? '-'}`,
           `received_validated: ${a.received_validated ?? '-'}`,
           `send_errors: ${a.send_errors ?? '-'}`,
-          `transport_send_errors: ${t.send_errors ?? '-'}`,
+          `transport_send_errors: ${transportStats.send_errors ?? '-'}`,
           `discovery_heartbeat_send_errors: ${d.heartbeat_send_errors ?? '-'}`,
           `signaling_messages_sent_total: ${dx.signaling_messages_sent_total ?? '-'}`,
           `signaling_messages_received_total: ${dx.signaling_messages_received_total ?? '-'}`,
@@ -2088,28 +3257,28 @@
         const summary = peers.diagnostics_summary || {};
 
         document.getElementById('peerCards').innerHTML = [
-          ['Total', peers.total || 0],
-          ['Online', peers.online || 0],
-          ['Stale', peers.stale || 0],
-          ['Namespace', peers.namespace || '-'],
-          ['Signaling URL', summary.signaling_url || '-'],
-          ['Signaling Endpoints', (summary.signaling_endpoints || []).length || 0],
-          ['Room', summary.room || '-'],
-          ['Last Join', ago(summary.last_join_at)],
-          ['Last Poll', ago(summary.last_poll_at)],
-          ['Last Publish', ago(summary.last_publish_at)],
-          ['Bootstrap Sources', (summary.bootstrap_sources || []).length || 0],
-          ['Seed Peers', summary.seed_peers_count ?? 0],
-          ['Discovery Events', summary.discovery_events_total ?? 0],
-          ['Active WebRTC Peers', summary.active_webrtc_peers ?? '-'],
-          ['Observe Calls', ds.observe_calls || 0],
-          ['Heartbeats', ds.heartbeat_sent || 0],
-          ['Peers Added', ds.peers_added || 0],
-          ['Peers Removed', ds.peers_removed || 0],
+          [t('network.total'), peers.total || 0],
+          [t('overview.online'), peers.online || 0],
+          [t('network.stale'), peers.stale || 0],
+          [t('labels.namespace'), peers.namespace || '-'],
+          [t('network.signalingUrl'), summary.signaling_url || '-'],
+          [t('network.signalingEndpoints'), (summary.signaling_endpoints || []).length || 0],
+          [t('labels.room'), summary.room || '-'],
+          [t('network.lastJoin'), ago(summary.last_join_at)],
+          [t('network.lastPoll'), ago(summary.last_poll_at)],
+          [t('network.lastPublish'), ago(summary.last_publish_at)],
+          [t('network.bootstrapSources'), (summary.bootstrap_sources || []).length || 0],
+          [t('network.seedPeers'), summary.seed_peers_count ?? 0],
+          [t('network.discoveryEvents'), summary.discovery_events_total ?? 0],
+          [t('network.activeWebrtcPeers'), summary.active_webrtc_peers ?? '-'],
+          [t('network.observeCalls'), ds.observe_calls || 0],
+          [t('network.heartbeats'), ds.heartbeat_sent || 0],
+          [t('network.peersAdded'), ds.peers_added || 0],
+          [t('network.peersRemoved'), ds.peers_removed || 0],
         ].map(([k,v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join('');
 
         if (!peers.items || !peers.items.length) {
-          document.getElementById('peerTableWrap').innerHTML = '<div class="empty-state">No peers discovered yet. Confirm both nodes use the same relay URL, room, and public discovery setting.</div>';
+          document.getElementById('peerTableWrap').innerHTML = `<div class="empty-state">${t('network.noPeersDiscovered')}</div>`;
           document.getElementById('peerStatsWrap').textContent = toPrettyJson({
             discovery_stats: ds,
             diagnostics_summary: summary,
@@ -2119,7 +3288,7 @@
 
         document.getElementById('peerTableWrap').innerHTML = `
           <table class="table">
-            <thead><tr><th>Peer</th><th>Status</th><th>Last Seen</th><th>Stale Since</th><th>Messages</th><th>First Seen</th><th>Meta</th></tr></thead>
+            <thead><tr><th>${t('network.peer')}</th><th>${t('network.status')}</th><th>${t('network.lastSeen')}</th><th>${t('network.staleSince')}</th><th>${t('network.messages')}</th><th>${t('network.firstSeen')}</th><th>${t('network.meta')}</th></tr></thead>
             <tbody>
               ${peers.items.map((peer) => `
                 <tr>
@@ -2148,16 +3317,16 @@
         const items = Array.isArray(payload.items) ? payload.items : [];
 
         document.getElementById('discoveryCards').innerHTML = [
-          ['Adapter', payload.adapter || '-'],
-          ['Namespace', payload.namespace || '-'],
-          ['Events Total', payload.total ?? 0],
-          ['Last Event', ago(payload.last_event_at)],
-          ['Signaling Endpoints', (payload.signaling_endpoints || []).length || 0],
-          ['Seed Peers', payload.seed_peers_count ?? 0],
+          [t('labels.adapter'), payload.adapter || '-'],
+          [t('labels.namespace'), payload.namespace || '-'],
+          [t('network.eventsTotal'), payload.total ?? 0],
+          [t('network.lastEvent'), ago(payload.last_event_at)],
+          [t('network.signalingEndpoints'), (payload.signaling_endpoints || []).length || 0],
+          [t('network.seedPeers'), payload.seed_peers_count ?? 0],
         ].map(([k,v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join('');
 
         if (!items.length) {
-          document.getElementById('discoveryEventList').innerHTML = '<div class="empty-state">No discovery events yet. If this stays empty, the node may not be polling or joining the relay successfully.</div>';
+          document.getElementById('discoveryEventList').innerHTML = `<div class="empty-state">${t('network.noDiscoveryEvents')}</div>`;
         } else {
           document.getElementById('discoveryEventList').innerHTML = items
             .slice()
@@ -2176,73 +3345,109 @@
       }
 
       async function refreshSocial() {
-        const [socialRes, summaryRes, statusRes] = await Promise.all([
+        const [socialRes, summaryRes, statusRes, networkCfgRes] = await Promise.all([
           api('/api/social/config'),
           api('/api/social/integration-summary'),
           api('/api/integration/status'),
+          api('/api/network/config'),
         ]);
         const social = socialRes.data || {};
         const summary = summaryRes.data || {};
         const status = statusRes.data || {};
+        const networkCfg = networkCfgRes.data || {};
         const runtime = social.runtime || {};
         const config = social.social_config || {};
         const network = config.network || {};
         const runtimeNetwork = runtime.resolved_network || {};
+        const effectiveAdapterExtra = networkCfg.adapter_extra || {};
+        const effectiveMode = networkCfg.mode || status.network_mode || summary.current_network_mode || runtimeNetwork.mode || network.mode || '-';
+        const effectiveAdapter = networkCfg.adapter || runtimeNetwork.adapter || summary.current_adapter || '-';
+        const effectiveNamespace = networkCfg.namespace || runtimeNetwork.namespace || summary.current_namespace || '-';
+        const effectiveRoom = effectiveAdapterExtra.room || runtimeNetwork.room || network.room || '-';
+        const effectiveRelay = effectiveAdapterExtra.signaling_url || runtimeNetwork.signaling_url || network.signaling_url || '-';
+        const effectiveSignalingEndpoints = effectiveAdapterExtra.signaling_endpoints || runtimeNetwork.signaling_urls || network.signaling_urls || [];
+        const effectiveBootstrapSources = effectiveAdapterExtra.bootstrap_sources || runtimeNetwork.bootstrap_sources || [];
+        const effectiveSeedPeersCount = typeof effectiveAdapterExtra.seed_peers_count === 'number'
+          ? effectiveAdapterExtra.seed_peers_count
+          : Array.isArray(runtimeNetwork.seed_peers)
+            ? runtimeNetwork.seed_peers.length
+            : 0;
         const discoverable = status.discoverable === true;
-        const mode = status.network_mode || summary.current_network_mode || network.mode || runtimeNetwork.mode || '-';
-        const summaryLine = status.status_line || summary.summary_line || `${summary.connected ? 'Connected to SilicaClaw' : 'Not connected to SilicaClaw'} · ${discoverable ? 'Discoverable in current mode' : 'Not discoverable in current mode'} · Using ${mode}`;
-        const publicDiscoveryText = status.public_enabled ? 'Public discovery enabled' : 'Public discovery disabled';
+        const mode = effectiveMode;
+        const summaryLine = status.status_line || summary.summary_line || `${summary.connected ? t('social.connectedToSilicaClaw') : t('social.notConnectedToSilicaClaw')} · ${discoverable ? t('social.discoverableInCurrentMode') : t('social.notDiscoverableInCurrentMode')} · ${t('social.usingMode', { mode })}`;
+        const publicDiscoveryText = status.public_enabled ? t('social.publicDiscoveryEnabled') : t('social.publicDiscoveryDisabled');
 
-        const namespaceText = `${status.connected_to_silicaclaw ? 'Connected to SilicaClaw' : 'Not connected'} · ${publicDiscoveryText} · mode ${mode}`;
+        const namespaceText = `${status.connected_to_silicaclaw ? t('social.connectedToSilicaClaw') : t('social.notConnected')} · ${publicDiscoveryText} · ${t('social.mode')} ${mode}`;
         document.getElementById('socialStatusLine').textContent = summaryLine;
         document.getElementById('socialStatusSubline').textContent = namespaceText;
         const bar = document.getElementById('integrationStatusBar');
         bar.className = `integration-strip ${status.connected_to_silicaclaw && status.public_enabled ? 'ok' : 'warn'}`;
-        bar.textContent = `Connected to SilicaClaw: ${status.connected_to_silicaclaw ? 'yes' : 'no'} · Network mode: ${mode} · Public discovery: ${status.public_enabled ? 'enabled' : 'disabled'}`;
-        document.getElementById('brandStatusDot').classList.toggle('online', !!status.connected_to_silicaclaw);
+        bar.textContent = t('social.barStatus', {
+          connected: status.connected_to_silicaclaw ? t('common.yes') : t('common.no'),
+          mode,
+          public: status.public_enabled ? t('common.on') : t('common.off'),
+        });
+        const brandStatusDot = document.getElementById('brandStatusDot');
+        brandStatusDot.className = `sidebar-version__status ${status.connected_to_silicaclaw ? 'ok' : 'warn'}`;
+        writeUiCache('silicaclaw_ui_social', {
+          integrationStatusText: bar.textContent,
+          integrationStatusClassName: bar.className,
+          socialStatusLineText: summaryLine,
+          socialStatusSublineText: namespaceText,
+        });
         const reasons = [];
-        if (!status.configured && status.configured_reason) reasons.push(`Configured: ${status.configured_reason}`);
-        if (!status.running && status.running_reason) reasons.push(`Running: ${status.running_reason}`);
-        if (!status.discoverable && status.discoverable_reason) reasons.push(`Discoverable: ${status.discoverable_reason}`);
-        document.getElementById('socialStateHint').textContent = reasons.length ? reasons.join(' · ') : 'All integration checks passed.';
+        if (!status.configured && status.configured_reason) reasons.push(t('social.configuredReason', { reason: status.configured_reason }));
+        if (!status.running && status.running_reason) reasons.push(t('social.runningReason', { reason: status.running_reason }));
+        if (!status.discoverable && status.discoverable_reason) reasons.push(t('social.discoverableReasonFull', { reason: status.discoverable_reason }));
+        document.getElementById('socialStateHint').textContent = reasons.length ? reasons.join(' · ') : t('hints.allIntegrationChecksPassed');
         const modeSelect = document.getElementById('socialModeSelect');
         if (modeSelect && mode !== '-') {
           modeSelect.value = mode;
         }
 
         document.getElementById('socialPrimaryCards').innerHTML = [
-          ['Configured', status.configured ? 'yes' : 'no'],
-          ['Running', status.running ? 'yes' : 'no'],
-          ['Discoverable', discoverable ? 'yes' : 'no'],
-          ['Public discovery', status.public_enabled ? 'enabled' : 'disabled'],
-          ['network mode', mode],
-          ['connected', status.connected_to_silicaclaw ? 'yes' : 'no'],
-          ['discoverable reason', status.discoverable_reason || '-'],
+          [t('social.configured'), status.configured ? t('common.yes') : t('common.no')],
+          [t('social.running'), status.running ? t('common.yes') : t('common.no')],
+          [t('social.discoverable'), discoverable ? t('common.yes') : t('common.no')],
+          [t('social.publicDiscovery'), status.public_enabled ? t('common.on') : t('common.off')],
+          [t('social.networkMode'), mode],
+          [t('social.connected'), status.connected_to_silicaclaw ? t('common.yes') : t('common.no')],
+          [t('social.discoverableReason'), status.discoverable_reason || '-'],
         ].map(([k,v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join('');
 
         document.getElementById('socialIntegrationCards').innerHTML = [
-          ['display name', status.display_name || '(unnamed)'],
-          ['agent id', shortId(status.agent_id || '')],
-          ['social.md found', summary.social_md_found ? 'yes' : 'no'],
-          ['social.md source', summary.social_md_source_path || '-'],
-          ['runtime generated', summary.runtime_generated ? 'yes' : 'no'],
-          ['reuse OpenClaw identity', summary.reused_openclaw_identity ? 'yes' : 'no'],
-          ['mode', mode],
-          ['broadcast status', summary.current_broadcast_status || '-'],
+          [t('social.displayName'), status.display_name || t('overview.unnamed')],
+          [t('social.agentId'), shortId(status.agent_id || '')],
+          [t('social.socialFound'), summary.social_md_found ? t('common.yes') : t('common.no')],
+          [t('social.socialSource'), summary.social_md_source_path || '-'],
+          [t('social.runtimeGenerated'), summary.runtime_generated ? t('common.yes') : t('common.no')],
+          [t('social.reuseOpenClawIdentity'), summary.reused_openclaw_identity ? t('common.yes') : t('common.no')],
+          [t('social.mode'), mode],
+          [t('social.broadcastStatus'), summary.current_broadcast_status || '-'],
         ].map(([k,v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join('');
 
         document.getElementById('socialAdvancedCards').innerHTML = [
-          ['adapter', runtimeNetwork.adapter || summary.current_adapter || '-'],
-          ['namespace', runtimeNetwork.namespace || summary.current_namespace || '-'],
-          ['room', runtimeNetwork.room || network.room || '-'],
-          ['signaling endpoints', (runtimeNetwork.signaling_urls || []).length || 0],
-          ['bootstrap sources', (runtimeNetwork.bootstrap_sources || []).length || 0],
-          ['seed peers', (runtimeNetwork.seed_peers || []).length || 0],
-          ['bootstrap hints', (runtimeNetwork.bootstrap_hints || []).length || 0],
-          ['restart required', social.network_requires_restart ? 'yes' : 'no'],
+          [t('labels.adapter'), effectiveAdapter],
+          [t('social.namespace'), effectiveNamespace],
+          [t('labels.room'), effectiveRoom],
+          [t('network.signalingEndpoints'), effectiveSignalingEndpoints.length || 0],
+          [t('network.bootstrapSources'), effectiveBootstrapSources.length || 0],
+          [t('network.seedPeers'), effectiveSeedPeersCount],
+          [t('social.bootstrapHints'), (runtimeNetwork.bootstrap_hints || []).length || 0],
+          [t('social.restartRequired'), social.network_requires_restart ? t('common.yes') : t('common.no')],
         ].map(([k,v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join('');
         document.getElementById('socialAdvancedWrap').textContent = toPrettyJson({
           runtime_network: runtimeNetwork,
+          effective_network: {
+            mode: effectiveMode,
+            adapter: effectiveAdapter,
+            namespace: effectiveNamespace,
+            relay: effectiveRelay,
+            room: effectiveRoom,
+            signaling_endpoints: effectiveSignalingEndpoints,
+            bootstrap_sources: effectiveBootstrapSources,
+            seed_peers_count: effectiveSeedPeersCount,
+          },
         });
 
         document.getElementById('socialSourceWrap').textContent = toPrettyJson({
@@ -2266,14 +3471,14 @@
       function renderLogs() {
         const el = document.getElementById('logList');
         if (!logsCache.length) {
-          el.innerHTML = '<div class="empty-state">No logs yet.</div>';
+          el.innerHTML = `<div class="empty-state">${t('network.noLogsYet')}</div>`;
           return;
         }
         const filtered = logLevelFilter === 'all'
           ? logsCache
           : logsCache.filter((l) => String(l.level || '').toLowerCase() === logLevelFilter);
         if (!filtered.length) {
-          el.innerHTML = `<div class="empty-state">No ${logLevelFilter} logs.</div>`;
+          el.innerHTML = `<div class="empty-state">${t('network.noLogsForLevel', { level: logLevelFilter })}</div>`;
           return;
         }
         el.innerHTML = filtered.map((l) => `
@@ -2290,18 +3495,18 @@
       }
 
       async function refreshAll() {
-        try {
-          const tasks = [refreshOverview(), refreshNetwork(), refreshSocial(), refreshPublicProfilePreview()];
-          if (activeTab === 'network') {
-            tasks.push(refreshPeers(), refreshDiscovery(), refreshLogs());
-          }
-          const shouldRefreshProfile = !(activeTab === 'profile' && profileDirty);
-          if (shouldRefreshProfile) {
-            tasks.push(refreshProfile());
-          }
-          await Promise.all(tasks);
-        } catch (e) {
-          setFeedback('networkFeedback', e instanceof Error ? e.message : 'Unknown error', 'error');
+        const tasks = [refreshOverview(), refreshNetwork(), refreshSocial(), refreshPublicProfilePreview()];
+        if (activeTab === 'network') {
+          tasks.push(refreshPeers(), refreshDiscovery(), refreshLogs());
+        }
+        const shouldRefreshProfile = !(activeTab === 'profile' && profileDirty);
+        if (shouldRefreshProfile) {
+          tasks.push(refreshProfile());
+        }
+        const results = await Promise.allSettled(tasks);
+        const firstError = results.find((result) => result.status === 'rejected');
+        if (firstError && firstError.status === 'rejected') {
+          setFeedback('networkFeedback', firstError.reason instanceof Error ? firstError.reason.message : t('common.unknownError'), 'error');
         }
       }
 
@@ -2315,7 +3520,7 @@
         const btn = document.getElementById('sidebarToggleBtn');
         const icon = btn.querySelector('.nav-collapse-toggle__icon');
         btn.classList.toggle('active', next);
-        btn.title = next ? 'Expand sidebar' : 'Collapse sidebar';
+        btn.title = next ? t('labels.expandSidebar') : t('labels.collapseSidebar');
         btn.setAttribute('aria-label', btn.title);
         if (icon) {
           icon.innerHTML = next
@@ -2341,7 +3546,7 @@
         shell.classList.toggle('focus-mode', next);
         const btn = document.getElementById('focusModeBtn');
         btn.classList.toggle('active', next);
-        btn.title = next ? 'Exit focus mode' : 'Toggle focus mode';
+        btn.title = next ? t('labels.exitFocusMode') : t('labels.toggleFocusMode');
         btn.setAttribute('aria-label', btn.title);
       });
       document.querySelectorAll('[data-theme-choice]').forEach((btn) => {
@@ -2360,12 +3565,12 @@
         const f = event.currentTarget;
         const result = validateProfileForm(f);
         if (!result.ok) {
-          setFeedback('profileFeedback', 'Please fix validation errors before saving.', 'warn');
+          setFeedback('profileFeedback', t('feedback.fixValidation'), 'warn');
           return;
         }
 
         const tags = result.tags;
-        setFeedback('profileFeedback', 'Saving profile...');
+        setFeedback('profileFeedback', t('feedback.savingProfile'));
         setSaveBusy(true);
         try {
           const r = await api('/api/profile', { method: 'PUT', body: JSON.stringify({
@@ -2375,12 +3580,12 @@
             avatar_url: field(f, 'avatar_url').value,
             public_enabled: !!field(f, 'public_enabled').checked,
           })});
-          setFeedback('profileFeedback', r.meta?.message || 'Saved.');
-          toast('Profile saved');
+          setFeedback('profileFeedback', r.meta?.message || t('common.saved'));
+          toast(t('feedback.profileSaved'));
           field(f, 'tags').value = normalizeTagsInput(field(f, 'tags').value);
           await refreshAll();
         } catch (e) {
-          setFeedback('profileFeedback', e instanceof Error ? e.message : 'Failed', 'error');
+          setFeedback('profileFeedback', e instanceof Error ? e.message : t('feedback.failed'), 'error');
         } finally {
           setSaveBusy(false);
         }
@@ -2388,7 +3593,7 @@
 
       document.getElementById('refreshProfileBtn').addEventListener('click', async () => {
         await refreshProfile();
-        toast('Profile form reloaded');
+        toast(t('feedback.profileReloaded'));
       });
       const profileFormEl = document.getElementById('profileForm');
       ['input', 'change'].forEach((evt) => {
@@ -2423,27 +3628,21 @@
         setFeedback('networkFeedback', text);
         try {
           const r = await api(path, { method: 'POST' });
-          setFeedback('networkFeedback', r.meta?.message || 'Done', level);
-          toast(r.meta?.message || 'Done');
+          setFeedback('networkFeedback', r.meta?.message || t('common.done'), level);
+          toast(r.meta?.message || t('common.done'));
           await refreshAll();
         } catch (e) {
-          setFeedback('networkFeedback', e instanceof Error ? e.message : 'Failed', 'error');
+          setFeedback('networkFeedback', e instanceof Error ? e.message : t('feedback.failed'), 'error');
         }
       }
-      document.getElementById('startBroadcastBtn').addEventListener('click', () => runAction('/api/broadcast/start', 'Starting...'));
-      document.getElementById('stopBroadcastBtn').addEventListener('click', () => runAction('/api/broadcast/stop', 'Stopping...', 'warn'));
-      document.getElementById('broadcastNowBtn').addEventListener('click', () => runAction('/api/broadcast/now', 'Broadcasting now...'));
-      document.getElementById('refreshCacheBtn').addEventListener('click', () => runAction('/api/cache/refresh', 'Refreshing cache...'));
-      document.getElementById('clearCacheBtn').addEventListener('click', async () => {
-        const ok = window.confirm('Clear discovered cache now?\n\nThis removes discovered peer profiles/presence/index references and keeps your self profile.');
-        if (!ok) return;
-        await runAction('/api/cache/clear', 'Clearing discovered cache...', 'warn');
-      });
+      document.getElementById('startBroadcastBtn').addEventListener('click', () => runAction('/api/broadcast/start', t('actions.startBroadcast')));
+      document.getElementById('stopBroadcastBtn').addEventListener('click', () => runAction('/api/broadcast/stop', t('actions.stopBroadcast'), 'warn'));
+      document.getElementById('broadcastNowBtn').addEventListener('click', () => runAction('/api/broadcast/now', t('actions.broadcastNow')));
       document.getElementById('quickGlobalPreviewBtn').addEventListener('click', async () => {
-        const currentSignaling = window.prompt('Signaling URL (publicly reachable):', 'http://localhost:4510');
+        const currentSignaling = window.prompt(t('feedback.promptSignalingUrl'), 'http://localhost:4510');
         if (!currentSignaling) return;
-        const room = window.prompt('Room:', 'silicaclaw-global-preview') || 'silicaclaw-global-preview';
-        setFeedback('networkFeedback', 'Enabling cross-network preview...');
+        const room = window.prompt(t('feedback.promptRoom'), 'silicaclaw-global-preview') || 'silicaclaw-global-preview';
+        setFeedback('networkFeedback', t('feedback.crossPreviewEnabling'));
         try {
           const result = await api('/api/network/quick-connect-global-preview', {
             method: 'POST',
@@ -2452,117 +3651,64 @@
               room: room.trim(),
             }),
           });
-          setFeedback('networkFeedback', result.meta?.message || 'Cross-network preview enabled');
-          toast('Cross-network preview enabled');
+          setFeedback('networkFeedback', result.meta?.message || t('feedback.crossPreviewEnabled'));
+          toast(t('feedback.crossPreviewEnabled'));
           await refreshAll();
         } catch (e) {
-          setFeedback('networkFeedback', e instanceof Error ? e.message : 'Enable cross-network preview failed', 'error');
+          setFeedback('networkFeedback', e instanceof Error ? e.message : t('feedback.enableCrossPreviewFailed'), 'error');
         }
       });
       document.getElementById('onlyOnlineToggle').addEventListener('change', async (event) => {
         onlyShowOnline = Boolean(event.target?.checked);
+        agentsPage = 1;
         await refreshOverview();
       });
       document.getElementById('refreshLogsBtn').addEventListener('click', async () => {
         await refreshLogs();
-        toast('Logs refreshed');
-      });
-      document.getElementById('enablePublicDiscoveryBtn').addEventListener('click', async () => {
-        const ok = window.confirm(
-          'Enable public discovery now?\n\n' +
-          '- Only profile/presence are shared.\n' +
-          '- Private files are not shared.\n' +
-          '- Chat and remote control are not enabled.\n\n' +
-          'This updates runtime state and does not overwrite social.md.'
-        );
-        if (!ok) return;
-        setFeedback('networkFeedback', 'Enabling public discovery...');
-        try {
-          const res = await api('/api/public-discovery/enable', { method: 'POST' });
-          setFeedback('networkFeedback', res.meta?.message || 'Public discovery enabled.');
-          toast('Public discovery enabled');
-          await refreshAll();
-        } catch (e) {
-          setFeedback('networkFeedback', e instanceof Error ? e.message : 'Enable public discovery failed', 'error');
-        }
-      });
-      document.getElementById('disablePublicDiscoveryBtn').addEventListener('click', async () => {
-        const ok = window.confirm('Disable public discovery now? This updates runtime state and does not overwrite social.md.');
-        if (!ok) return;
-        setFeedback('networkFeedback', 'Disabling public discovery...');
-        try {
-          const res = await api('/api/public-discovery/disable', { method: 'POST' });
-          setFeedback('networkFeedback', res.meta?.message || 'Public discovery disabled.');
-          toast('Public discovery disabled');
-          await refreshAll();
-        } catch (e) {
-          setFeedback('networkFeedback', e instanceof Error ? e.message : 'Disable public discovery failed', 'error');
-        }
-      });
-      document.getElementById('socialReloadBtn').addEventListener('click', async () => {
-        setFeedback('socialFeedback', 'Reloading social config...');
-        try {
-          const res = await api('/api/social/reload', { method: 'POST' });
-          setFeedback('socialFeedback', res.meta?.message || 'Reloaded');
-          toast('Social config reloaded');
-          await refreshAll();
-        } catch (e) {
-          setFeedback('socialFeedback', e instanceof Error ? e.message : 'Reload failed', 'error');
-        }
-      });
-      document.getElementById('socialGenerateBtn').addEventListener('click', async () => {
-        setFeedback('socialFeedback', 'Generating default social.md...');
-        try {
-          const res = await api('/api/social/generate-default', { method: 'POST' });
-          setFeedback('socialFeedback', res.meta?.message || 'Done');
-          toast(res.meta?.message || 'Default social.md ready');
-          await refreshAll();
-        } catch (e) {
-          setFeedback('socialFeedback', e instanceof Error ? e.message : 'Generate failed', 'error');
-        }
+        toast(t('feedback.logsRefreshed'));
       });
       document.getElementById('socialExportBtn').addEventListener('click', async () => {
-        setFeedback('socialFeedback', 'Exporting template...');
+        setFeedback('socialFeedback', t('feedback.exportingTemplate'));
         try {
           await exportSocialTemplate();
-          setFeedback('socialFeedback', 'Template exported from current runtime.');
-          toast('Template exported');
+          setFeedback('socialFeedback', t('feedback.templateExported'));
+          toast(t('feedback.templateExported'));
         } catch (e) {
-          setFeedback('socialFeedback', e instanceof Error ? e.message : 'Export failed', 'error');
+          setFeedback('socialFeedback', e instanceof Error ? e.message : t('feedback.exportFailed'), 'error');
         }
       });
       document.getElementById('socialModeApplyBtn').addEventListener('click', async () => {
         const mode = document.getElementById('socialModeSelect').value;
-        setFeedback('socialFeedback', `Applying runtime mode: ${mode}...`);
+        setFeedback('socialFeedback', t('feedback.runtimeModeApplying', { mode }));
         try {
           const res = await api('/api/social/runtime-mode', {
             method: 'POST',
             body: JSON.stringify({ mode }),
           });
-          setFeedback('socialFeedback', res.meta?.message || 'Runtime mode updated.');
-          toast(`Runtime mode: ${mode}`);
+          setFeedback('socialFeedback', res.meta?.message || t('feedback.runtimeUpdated'));
+          toast(t('feedback.runtimeMode', { mode }));
           await refreshAll();
         } catch (e) {
-          setFeedback('socialFeedback', e instanceof Error ? e.message : 'Runtime mode update failed', 'error');
+          setFeedback('socialFeedback', e instanceof Error ? e.message : t('feedback.failed'), 'error');
         }
       });
       document.getElementById('socialCopyBtn').addEventListener('click', async () => {
-        setFeedback('socialFeedback', 'Copying template...');
+        setFeedback('socialFeedback', t('feedback.copyingTemplate'));
         const btn = document.getElementById('socialCopyBtn');
         try {
           if (!socialTemplate) {
             await exportSocialTemplate();
           }
           await navigator.clipboard.writeText(socialTemplate);
-          setFeedback('socialFeedback', 'Template copied to clipboard.');
-          toast('Copied');
-          flashButton(btn, 'Copied');
+          setFeedback('socialFeedback', t('feedback.templateCopied'));
+          toast(t('common.copied'));
+          flashButton(btn, t('common.copied'));
         } catch (e) {
-          setFeedback('socialFeedback', e instanceof Error ? e.message : 'Copy failed', 'error');
+          setFeedback('socialFeedback', e instanceof Error ? e.message : t('feedback.copyFailed'), 'error');
         }
       });
       document.getElementById('socialDownloadBtn').addEventListener('click', async () => {
-        setFeedback('socialFeedback', 'Preparing download...');
+        setFeedback('socialFeedback', t('feedback.preparingDownload'));
         try {
           const payload = await exportSocialTemplate();
           const filename = String(payload.filename || 'social.md');
@@ -2575,10 +3721,10 @@
           anchor.click();
           anchor.remove();
           URL.revokeObjectURL(url);
-          setFeedback('socialFeedback', `Downloaded ${filename}.`);
-          toast('Downloaded');
+          setFeedback('socialFeedback', t('feedback.downloaded', { filename }));
+          toast(t('feedback.downloaded', { filename }));
         } catch (e) {
-          setFeedback('socialFeedback', e instanceof Error ? e.message : 'Download failed', 'error');
+          setFeedback('socialFeedback', e instanceof Error ? e.message : t('feedback.downloadFailed'), 'error');
         }
       });
       document.getElementById('copyPublicProfilePreviewBtn').addEventListener('click', async () => {
@@ -2586,10 +3732,10 @@
         try {
           const summary = (await api('/api/public-profile/preview')).data || null;
           await navigator.clipboard.writeText(toPrettyJson(summary));
-          toast('Public profile preview copied');
-          flashButton(btn, 'Copied');
+          toast(t('actions.copyPublicProfilePreview'));
+          flashButton(btn, t('common.copied'));
         } catch (e) {
-          setFeedback('profileFeedback', e instanceof Error ? e.message : 'Copy preview failed', 'error');
+          setFeedback('profileFeedback', e instanceof Error ? e.message : t('feedback.copyPreviewFailed'), 'error');
         }
       });
       document.getElementById('logLevelFilter').addEventListener('change', (event) => {
@@ -2626,6 +3772,7 @@
       }
 
       applyTheme(localStorage.getItem('silicaclaw_theme_mode') || 'dark');
+      hydrateCachedShell();
       refreshAll();
       exportSocialTemplate().catch(() => {});
       setInterval(refreshAll, 4000);
