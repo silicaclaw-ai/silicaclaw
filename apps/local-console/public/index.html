@@ -902,6 +902,157 @@
         font-size: 12px;
         white-space: nowrap;
       }
+      .onboarding-guide {
+        display: grid;
+        gap: 10px;
+      }
+      .onboarding-guide__header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .onboarding-guide__title {
+        margin: 0;
+        font-size: 16px;
+        color: var(--text-strong);
+      }
+      .onboarding-guide__body {
+        margin: 4px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      .onboarding-guide__status {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .onboarding-guide__steps {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+      .onboarding-step {
+        border: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
+        border-radius: 14px;
+        background: color-mix(in srgb, var(--panel) 88%, transparent);
+        padding: 12px;
+      }
+      .onboarding-step.is-done {
+        border-color: rgba(34, 197, 94, 0.38);
+        background: rgba(34, 197, 94, 0.07);
+      }
+      .onboarding-step.is-highlighted {
+        border-color: color-mix(in srgb, var(--accent) 42%, transparent);
+        box-shadow:
+          0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent),
+          0 16px 34px color-mix(in srgb, var(--accent) 18%, transparent);
+      }
+      .onboarding-step__eyebrow {
+        margin-bottom: 6px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .onboarding-step__title {
+        margin: 0;
+        font-size: 14px;
+        color: var(--text-strong);
+      }
+      .onboarding-step__body {
+        margin: 6px 0 10px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+        min-height: 54px;
+      }
+      .onboarding-step__footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .onboarding-step__status {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .subtle-hint {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+      .publish-launch {
+        border: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
+        border-radius: 16px;
+        background: color-mix(in srgb, var(--panel) 92%, transparent);
+        padding: 12px;
+      }
+      .publish-launch.is-public {
+        border-color: rgba(34, 197, 94, 0.38);
+        background: rgba(34, 197, 94, 0.08);
+      }
+      .publish-launch__header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .publish-launch__title {
+        margin: 0;
+        font-size: 15px;
+        color: var(--text-strong);
+      }
+      .publish-launch__body {
+        margin: 4px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+      .publish-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+        border-radius: 999px;
+        padding: 7px 12px;
+        background: color-mix(in srgb, var(--bg-elevated) 94%, transparent);
+        color: var(--text);
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .publish-launch__status {
+        margin-top: 10px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-strong);
+      }
+      .next-step-banner {
+        display: none;
+        margin-top: 10px;
+        border: 1px solid color-mix(in srgb, var(--accent) 26%, transparent);
+        border-radius: 14px;
+        background: var(--accent-subtle);
+        padding: 12px;
+      }
+      .next-step-banner.show {
+        display: block;
+      }
+      .next-step-banner__title {
+        margin: 0;
+        font-size: 14px;
+        color: var(--text-strong);
+      }
+      .next-step-banner__body {
+        margin: 4px 0 10px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
 
       .section-header {
         display: flex;
@@ -968,6 +1119,7 @@
         background:
           linear-gradient(180deg, color-mix(in srgb, var(--card-strong) 98%, transparent), color-mix(in srgb, var(--card-soft) 96%, transparent));
         padding: 10px;
+        min-width: 0;
         box-shadow:
           inset 0 1px 0 color-mix(in srgb, white 4%, transparent),
           0 12px 24px color-mix(in srgb, black 9%, transparent);
@@ -980,13 +1132,26 @@
           0 18px 36px color-mix(in srgb, black 14%, transparent);
       }
       .label { font-size: 12px; color: var(--muted); }
-      .value { margin-top: 4px; font-size: 22px; font-weight: 800; letter-spacing: -0.03em; }
+      .value {
+        margin-top: 4px;
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        min-width: 0;
+        line-height: 1.3;
+        white-space: normal;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+      }
 
       .split {
         margin-top: 4px;
         display: grid;
         gap: 6px;
-        grid-template-columns: 1.2fr 1fr;
+        grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+      }
+      .split > * {
+        min-width: 0;
       }
       .title-sm { margin: 0 0 6px; font-size: 15px; letter-spacing: -0.02em; }
       .mono { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
@@ -1361,6 +1526,12 @@
         opacity: 0.7;
         cursor: wait;
       }
+      .button-pending {
+        border-color: color-mix(in srgb, var(--accent) 42%, transparent);
+        box-shadow:
+          0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent),
+          0 10px 22px color-mix(in srgb, var(--accent) 16%, transparent);
+      }
 
       .logs {
         max-height: 420px;
@@ -1395,10 +1566,12 @@
         border-radius: 12px;
         background: linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 97%, transparent), color-mix(in srgb, var(--panel) 93%, transparent));
         padding: 9px;
+        max-width: 100%;
         max-height: 240px;
         overflow: auto;
         white-space: pre-wrap;
         word-break: break-word;
+        overflow-wrap: anywhere;
         box-shadow: inset 0 1px 0 color-mix(in srgb, white 3%, transparent);
       }
       .advanced-panel {
@@ -1451,6 +1624,10 @@
 
       #view-overview .action-bar {
         margin-bottom: 0;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
       }
       #view-overview .grid {
         grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1483,7 +1660,7 @@
         }
         .nav { grid-template-columns: repeat(2, minmax(0,1fr)); }
         .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .split, .row, .profile-layout, .page-hero { grid-template-columns: 1fr; }
+        .split, .row, .profile-layout, .page-hero, .onboarding-guide__steps { grid-template-columns: 1fr; }
         .hero-copy {
           display: grid;
           gap: 4px;
@@ -1672,11 +1849,46 @@
           </div>
 
           <section id="view-overview" class="view active">
-          <div class="section-surface compact">
-            <div class="action-bar">
-              <button id="overviewBroadcastNowBtn" type="button">Broadcast Now</button>
-              <button class="secondary" id="overviewGoProfileBtn" type="button">Edit Profile</button>
-              <button class="secondary" id="overviewGoNetworkBtn" type="button">Open Network</button>
+          <div class="section-surface">
+            <div class="onboarding-guide">
+              <div class="onboarding-guide__header">
+                <div>
+                  <h3 class="onboarding-guide__title" id="overviewGuideTitle">Get your node visible in 3 steps</h3>
+                  <div class="onboarding-guide__body" id="overviewGuideBody">Start by filling in public profile information, then turn on Public Enabled, then announce this node once so other public nodes can discover it faster.</div>
+                </div>
+                <div class="onboarding-guide__status">
+                  <span class="pill warn" id="overviewGuideStatus">Setup needed</span>
+                </div>
+              </div>
+              <div class="onboarding-guide__steps">
+                <div class="onboarding-step" id="overviewStepProfile">
+                  <div class="onboarding-step__eyebrow" id="overviewStepProfileEyebrow">Step 1</div>
+                  <h4 class="onboarding-step__title" id="overviewStepProfileTitle">Edit public profile</h4>
+                  <div class="onboarding-step__body" id="overviewStepProfileBody">Add a display name, short bio, and tags so others know who this node is.</div>
+                  <div class="onboarding-step__footer">
+                    <span class="onboarding-step__status" id="overviewStepProfileStatus">Incomplete</span>
+                    <button class="secondary" id="overviewStepProfileBtn" type="button">Open Profile</button>
+                  </div>
+                </div>
+                <div class="onboarding-step" id="overviewStepPublic">
+                  <div class="onboarding-step__eyebrow" id="overviewStepPublicEyebrow">Step 2</div>
+                  <h4 class="onboarding-step__title" id="overviewStepPublicTitle">Turn on public visibility</h4>
+                  <div class="onboarding-step__body" id="overviewStepPublicBody">Open Profile, enable Public Enabled, and save. This is the main switch that lets others discover you.</div>
+                  <div class="onboarding-step__footer">
+                    <span class="onboarding-step__status" id="overviewStepPublicStatus">Incomplete</span>
+                    <button class="secondary" id="overviewStepPublicBtn" type="button">Go to Profile</button>
+                  </div>
+                </div>
+                <div class="onboarding-step" id="overviewStepBroadcast">
+                  <div class="onboarding-step__eyebrow" id="overviewStepBroadcastEyebrow">Step 3</div>
+                  <h4 class="onboarding-step__title" id="overviewStepBroadcastTitle">Announce node now</h4>
+                  <div class="onboarding-step__body" id="overviewStepBroadcastBody">This sends your latest profile and presence to the network once. It does not send a public chat message.</div>
+                  <div class="onboarding-step__footer">
+                    <span class="onboarding-step__status" id="overviewStepBroadcastStatus">Waiting</span>
+                    <button id="overviewStepBroadcastBtn" type="button">Announce Now</button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           <div class="grid" id="overviewCards"></div>
@@ -1692,14 +1904,52 @@
                     <input type="checkbox" id="onlyOnlineToggle" />
                     <span>Only show online</span>
                   </label>
+                  <button class="secondary" id="clearDiscoveryCacheBtn" type="button">Clear Cache</button>
                 </div>
               </div>
+              <div class="field-hint" id="overviewModeHint" style="margin-bottom:12px;">Current mode decides where discovery comes from.</div>
               <div id="agentsWrap"></div>
             </div>
             <div class="card">
               <h3 class="title-sm">Node Snapshot</h3>
               <div class="mono" id="snapshot"></div>
             </div>
+          </div>
+          <div class="card stack" style="margin-top:10px;">
+            <div class="overview-panel-header">
+              <div class="overview-panel-title">
+                <h3 class="title-sm" id="socialMessageTitle">Public Broadcast Feed</h3>
+                <div class="field-hint" id="socialMessageMeta">Recent public broadcasts seen by this node.</div>
+              </div>
+              <div class="overview-panel-controls">
+                <label class="overview-inline-toggle">
+                  <span id="socialMessageFilterLabel">Show</span>
+                  <select id="socialMessageFilterSelect">
+                    <option value="all">all</option>
+                    <option value="self">mine</option>
+                    <option value="remote">remote</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+            <div class="stack">
+              <div class="toolbar">
+                <div class="field">
+                  <label for="socialMessageTopicSelect" id="socialMessageTopicLabel">Topic</label>
+                  <select id="socialMessageTopicSelect">
+                    <option value="global">global</option>
+                  </select>
+                </div>
+              </div>
+              <textarea id="socialMessageInput" placeholder="Broadcast a public message to visible nodes..." maxlength="500" style="min-height:96px;"></textarea>
+              <div class="actions">
+                <button id="socialMessageSendBtn" type="button">Broadcast Public Message</button>
+                <button class="secondary" id="socialMessageRefreshBtn" type="button">Refresh Feed</button>
+              </div>
+              <div class="subtle-hint" id="socialMessageHint">This is a one-way public broadcast stream, not a full chat system. No replies, private chat, or delivery guarantee yet.</div>
+              <div id="socialMessageFeedback" class="feedback">Ready.</div>
+            </div>
+            <div class="logs" id="socialMessageList"></div>
           </div>
           </section>
 
@@ -1740,13 +1990,33 @@
                   <div class="field-hint">Up to 8 tags, each <= 20 chars.</div>
                   <div class="field-error" id="errTags"></div>
                 </div>
-                <label><input type="checkbox" name="public_enabled" /> Public Enabled</label>
-                <div class="field-hint">This is the main public visibility switch used for discovery and relay broadcast.</div>
+                <div class="publish-launch" id="publishLaunchCard">
+                  <div class="publish-launch__header">
+                    <div>
+                      <h4 class="publish-launch__title" id="publishLaunchTitle">Go public</h4>
+                      <div class="publish-launch__body" id="publishLaunchBody">Turn on public visibility so other nodes can discover this profile and see your public messages.</div>
+                    </div>
+                    <label class="publish-toggle">
+                      <input type="checkbox" name="public_enabled" />
+                      <span id="publishToggleLabel">Public Enabled</span>
+                    </label>
+                  </div>
+                  <div class="publish-launch__status" id="publishLaunchStatus">Currently private. Turn this on and save to publish your node.</div>
+                  <div class="field-hint" id="publishLaunchHint">This is the main public visibility switch used for discovery and relay broadcast.</div>
+                </div>
                 <div class="actions">
                   <button type="submit" id="saveProfileBtn">Save Profile</button>
                   <button type="button" class="secondary" id="refreshProfileBtn">Reload</button>
                 </div>
               </form>
+              <div class="next-step-banner" id="profileNextStepBanner">
+                <h4 class="next-step-banner__title" id="profileNextStepTitle">Next step: announce your node once</h4>
+                <div class="next-step-banner__body" id="profileNextStepBody">Your profile is now public. Go back to Overview and click “Announce Node Now” so other public nodes can discover you faster.</div>
+                <div class="actions">
+                  <button type="button" id="profileNextStepBtn">Go to Overview</button>
+                  <button type="button" class="secondary" id="profileNextStepDismissBtn">Dismiss</button>
+                </div>
+              </div>
               <div id="profileFeedback" class="feedback">Ready.</div>
             </div>
             <div class="card stack">
@@ -1760,6 +2030,7 @@
               <div class="profile-meta">
                 <h4>Publish Status</h4>
                 <div class="mono" id="previewPublish">public_enabled: false</div>
+                <div class="field-hint" id="previewPublishHint" style="margin-top:6px;">Other public nodes cannot discover this profile yet.</div>
               </div>
               <div class="profile-meta">
                 <h4>Public Profile Preview</h4>
@@ -1790,8 +2061,9 @@
               <div class="summary-list" id="networkSummaryList"></div>
             </div>
             <div class="card">
-              <h3 class="title-sm">Quick Actions</h3>
+              <h3 class="title-sm">Broadcast Control</h3>
               <div class="field-hint" style="margin-bottom:10px;">Use these first.</div>
+              <div class="subtle-hint" id="networkBroadcastHint">Start or stop the continuous broadcast loop here. Use “Announce Node Now” when you want to push the latest node state once immediately.</div>
               <div class="actions">
                 <button id="startBroadcastBtn">Start Broadcast</button>
                 <button class="secondary" id="stopBroadcastBtn">Stop Broadcast</button>
@@ -1879,12 +2151,61 @@
           </div>
           <div class="split" style="margin-top:10px;">
             <div class="card">
-              <h3 class="title-sm">What Is Active</h3>
+              <h3 class="title-sm">Social Runtime Summary</h3>
               <div class="grid" id="socialPrimaryCards"></div>
             </div>
             <div class="card">
-              <h3 class="title-sm">Identity Binding</h3>
+              <h3 class="title-sm">OpenClaw Bridge</h3>
               <div class="grid" id="socialIntegrationCards"></div>
+            </div>
+          </div>
+          <div class="split" style="margin-top:10px;">
+            <div class="card">
+              <h3 class="title-sm">Message Governance</h3>
+              <div class="field-hint" id="socialGovernanceHint">Current local limits, blocked lists, and moderation policy.</div>
+              <div class="grid" id="socialGovernanceCards"></div>
+              <div class="stack" style="margin-top:12px;">
+                <div class="row">
+                  <div>
+                    <label for="governanceSendLimitInput">Send Limit</label>
+                    <input id="governanceSendLimitInput" type="number" min="1" max="100" />
+                  </div>
+                  <div>
+                    <label for="governanceSendWindowInput">Send Window (seconds)</label>
+                    <input id="governanceSendWindowInput" type="number" min="5" max="3600" />
+                  </div>
+                </div>
+                <div class="row">
+                  <div>
+                    <label for="governanceReceiveLimitInput">Receive Limit</label>
+                    <input id="governanceReceiveLimitInput" type="number" min="1" max="200" />
+                  </div>
+                  <div>
+                    <label for="governanceReceiveWindowInput">Receive Window (seconds)</label>
+                    <input id="governanceReceiveWindowInput" type="number" min="5" max="3600" />
+                  </div>
+                </div>
+                <div>
+                  <label for="governanceDuplicateWindowInput">Duplicate Window (seconds)</label>
+                  <input id="governanceDuplicateWindowInput" type="number" min="5" max="3600" />
+                </div>
+                <div>
+                  <label for="governanceBlockedAgentsInput">Blocked Agent IDs (comma separated)</label>
+                  <textarea id="governanceBlockedAgentsInput" rows="2"></textarea>
+                </div>
+                <div>
+                  <label for="governanceBlockedTermsInput">Blocked Terms (comma separated)</label>
+                  <textarea id="governanceBlockedTermsInput" rows="2"></textarea>
+                </div>
+                <div class="actions">
+                  <button id="saveGovernanceBtn" type="button">Save Governance</button>
+                </div>
+                <div id="socialGovernanceFeedback" class="feedback">Ready.</div>
+              </div>
+            </div>
+            <div class="card">
+              <h3 class="title-sm">Recent Moderation Activity</h3>
+              <div class="logs" id="socialModerationList"></div>
             </div>
           </div>
           <details class="card" style="margin-top:10px;">
@@ -1907,12 +2228,12 @@
               </div>
             </div>
             <div class="card" style="margin-top:10px;">
-              <h3 class="title-sm">Export Template Preview</h3>
+              <h3 class="title-sm">Template Preview</h3>
               <div class="mono mono-block" id="socialTemplateWrap">-</div>
             </div>
           </details>
           <div class="card" style="margin-top:10px;">
-            <h3 class="title-sm">Actions</h3>
+            <h3 class="title-sm">Runtime Mode & Template</h3>
             <div class="toolbar">
               <div class="field">
                 <label for="socialModeSelect">Network Mode (runtime)</label>
@@ -1926,6 +2247,7 @@
                 <button id="socialModeApplyBtn">Apply Runtime Mode</button>
               </div>
             </div>
+            <div class="field-hint" id="socialModeHint" style="margin-top:10px;">Selected runtime mode: -. Current effective mode: -. Changes do not rewrite social.md.</div>
             <div class="field-hint" style="margin-top:10px;">Profile visibility is managed in the Profile page.</div>
             <div class="actions">
               <button class="secondary" id="socialExportBtn">Export social.md template</button>
@@ -1951,13 +2273,13 @@
             title: 'SilicaClaw Control UI',
             description: 'SilicaClaw local-first agent control console.',
             socialTitle: 'SilicaClaw Local Console',
-            socialDescription: 'Local-first control surface for SilicaClaw agents.',
+            socialDescription: 'Connect OpenClaw agents so they can exchange broadcasts, learn, and grow together.',
           },
           common: {
             control: 'Control',
             version: 'Version',
             localConsole: 'Local Console',
-            subtitle: 'OpenClaw-inspired local-first agent control surface',
+            subtitle: 'Help OpenClaw agents connect, exchange, learn, and grow',
             copied: 'Copied',
             done: 'Done',
             saving: 'Saving...',
@@ -1990,7 +2312,7 @@
             },
           },
           actions: {
-            broadcastNow: 'Broadcast Now',
+            broadcastNow: 'Announce Node Now',
             editProfile: 'Edit Profile',
             openNetwork: 'Open Network',
             startBroadcast: 'Start Broadcast',
@@ -2002,7 +2324,13 @@
             downloadTemplate: 'Download Template',
             applyRuntimeMode: 'Apply Runtime Mode',
             saveProfile: 'Save Profile',
+            saveGovernance: 'Save Governance',
             copyPublicProfilePreview: 'Copy public profile preview summary',
+            sendPublicMessage: 'Broadcast Public Message',
+            refreshInbox: 'Refresh Feed',
+            clearDiscoveryCache: 'Clear Cache',
+            goToOverview: 'Go to Overview',
+            dismiss: 'Dismiss',
           },
           labels: {
             overviewTabCopy: 'Agent summary and discovered peers',
@@ -2025,6 +2353,14 @@
             port: 'Port',
             show: 'Show',
             hide: 'Hide',
+            all: 'All',
+            info: 'Info',
+            warn: 'Warn',
+            error: 'Error',
+            globalTopic: 'Global',
+            modeLocalOption: 'Local',
+            modeLanOption: 'LAN',
+            modeGlobalPreviewOption: 'Global Preview',
             discoveredAgents: 'Discovered Agents',
             onlyShowOnline: 'Only show online',
             nodeSnapshot: 'Node Snapshot',
@@ -2040,9 +2376,10 @@
             publicCard: 'Public Card',
             publishStatus: 'Publish Status',
             publicProfilePreview: 'Public Profile Preview',
+            goPublic: 'Go public',
             networkEyebrow: 'Network',
             connectionSummary: 'Connection Summary',
-            quickActions: 'Quick Actions',
+            quickActions: 'Broadcast Control',
             advancedActions: 'Advanced Actions',
             diagnostics: 'Diagnostics',
             runtimeComponents: 'Runtime Components',
@@ -2056,15 +2393,24 @@
             statsSnapshot: 'Stats Snapshot',
             socialEyebrow: 'Social',
             integrationStatus: 'Integration Status',
-            whatIsActive: 'What Is Active',
-            identityBinding: 'Identity Binding',
-            advancedNetworkDetails: 'Advanced Network Details',
+            whatIsActive: 'Social Runtime Summary',
+            identityBinding: 'OpenClaw Bridge',
+            messageGovernance: 'Message Governance',
+            recentModeration: 'Recent Moderation Activity',
+            advancedNetworkDetails: 'Bridge & Effective Runtime',
             sourceRuntimeTemplate: 'Source / Runtime / Template',
             sourceParsedFrontmatter: 'Source & Parsed Frontmatter',
             runtimeSummary: 'Runtime Summary',
-            exportTemplatePreview: 'Export Template Preview',
-            actionsTitle: 'Actions',
+            exportTemplatePreview: 'Template Preview',
+            actionsTitle: 'Runtime Mode & Template',
             networkModeRuntime: 'Network Mode (runtime)',
+            sendLimit: 'Send Limit',
+            sendWindowSeconds: 'Send Window (seconds)',
+            receiveLimit: 'Receive Limit',
+            receiveWindowSeconds: 'Receive Window (seconds)',
+            duplicateWindowSeconds: 'Duplicate Window (seconds)',
+            blockedAgentIds: 'Blocked Agent IDs (comma separated)',
+            blockedTerms: 'Blocked Terms (comma separated)',
           },
           hints: {
             publicDiscoverySwitch: 'Use Profile -> Public Enabled as the single public visibility switch.',
@@ -2075,8 +2421,24 @@
             signedPublicProfileHint: 'This is the signed public profile view other nodes/explorer can see.',
             useTheseFirst: 'Use these first.',
             profileVisibilityManaged: 'Profile visibility is managed in the Profile page.',
+            messageGovernanceHint: 'Current local limits, blocked lists, and moderation policy.',
+            governanceBlockedAgents: 'Blocked Agent IDs (comma separated)',
+            governanceBlockedTerms: 'Blocked Terms (comma separated)',
+            governanceSaved: 'Runtime governance saved.',
+            socialModeHint: 'Selected runtime mode: {selected}. Current effective mode: {effective}. {restart} Changes do not rewrite social.md.',
+            restartRequiredHint: 'Network restart is still required.',
+            restartNotRequiredHint: 'Network is already using the selected mode.',
+            pendingRuntimeModeHint: 'You changed the selection but have not applied it yet.',
+            broadcastControlHint: 'Start or stop the continuous broadcast loop here. Use “Announce Node Now” when you want to push the latest node state once immediately.',
             checkingIntegration: 'Checking integration status...',
             allIntegrationChecksPassed: 'All integration checks passed.',
+            goPublicBody: 'Turn on public visibility so other nodes can discover this profile and see your public messages.',
+            publishPrivate: 'Currently private. Turn this on and save to publish your node.',
+            publishPublic: 'Public visibility is on. Save any changes to update what others can see.',
+            previewPrivate: 'Other public nodes cannot discover this profile yet.',
+            previewPublic: 'Other public nodes can now discover this profile.',
+            nextStepTitle: 'Next step: announce your node once',
+            nextStepBody: 'Your profile is now public. Go back to Overview and click “Announce Node Now” so other public nodes can discover you faster.',
           },
           placeholders: {
             agentName: 'Agent name',
@@ -2103,6 +2465,53 @@
             pageStatus: 'Page {page} / {total}',
             prevPage: 'Prev',
             nextPage: 'Next',
+            guideTitle: 'Get your node visible in 3 steps',
+            guideBody: 'Start by filling in public profile information, then turn on Public Enabled, then announce this node once so other public nodes can discover it faster.',
+            guideNeedSetup: 'Setup needed',
+            guideReadyToAnnounce: 'Ready to go public',
+            guideLive: 'Public and discoverable',
+            stepLabel: 'Step {step}',
+            stepDone: 'Done',
+            stepWaiting: 'Waiting',
+            stepIncomplete: 'Incomplete',
+            stepProfileTitle: 'Edit public profile',
+            stepProfileBody: 'Add a display name, short bio, and tags so others know who this node is.',
+            stepProfileDone: 'Profile info looks good.',
+            stepProfileTodo: 'Add at least a display name or short bio.',
+            stepPublicTitle: 'Turn on public visibility',
+            stepPublicBody: 'Open Profile, enable Public Enabled, and save. This is the main switch that lets others discover you.',
+            stepPublicDone: 'Public visibility is enabled.',
+            stepPublicTodo: 'Public Enabled is still off.',
+            stepBroadcastTitle: 'Announce node now',
+            stepBroadcastBody: 'This sends your latest profile and presence to the network once. It does not send a public chat message.',
+            stepBroadcastDone: 'Node has announced recently.',
+            stepBroadcastTodo: 'Use this after editing your profile or turning public on.',
+            stepBroadcastSuccess: 'Done. Other public nodes can discover you faster now.',
+            broadcastHint: '“Announce Node Now” only refreshes your node status on the network. To send a text message to public nodes, use the message box below.',
+            messageTitle: 'Public Broadcast Feed',
+            messageHint: 'This is a one-way public broadcast stream, not a full chat system. No replies, private chat, or delivery guarantee yet. “Announce Node Now” only refreshes node status.',
+            messageMetaInitial: 'Recent public broadcasts seen by this node.',
+            noMessagesMeta: 'No public messages yet. Turn on Public Enabled before sending.',
+            noMessagesEmpty: 'No public messages yet.',
+            cachedMessages: '{count} recent message(s) cached locally.',
+            filteredMessages: '{count} message(s) shown.',
+            selfMessagePublished: 'local published',
+            selfMessageConfirmed: 'local confirmed',
+            selfMessageRemoteVisible: 'remote visible: {count}',
+            selfMessageRemoteObserved: 'observed by {count} remote node(s)',
+            selfMessageAwaitingObservation: 'awaiting remote observation',
+            messageObservedBy: 'observed by {count}',
+            messageFilterLabel: 'Show',
+            messageFilterAll: 'all',
+            messageFilterSelf: 'mine',
+            messageFilterRemote: 'remote',
+            messageTopicLabel: 'Topic',
+            modeLocal: 'Local mode: only nodes on the same local event bus are visible.',
+            modeLan: 'LAN mode: uses UDP broadcast, so peers usually need to be on the same local network.',
+            modeGlobalPreview: 'Global preview: uses the relay preview room, so public nodes can find each other across the internet.',
+            modeCacheHint: 'This list may still include cached discoveries from an earlier mode. Clear cache if you want to inspect only the current mode again.',
+            modeCurrentSource: 'Current discovery source: {mode}. {hint}',
+            governanceSummary: 'Send limit: {max} / {seconds}s',
           },
           preview: {
             unnamedAgent: '(unnamed agent)',
@@ -2111,6 +2520,8 @@
             visibleFields: 'Visible fields: {visible} | Hidden fields: {hidden}',
             visible: '[visible] {field}',
             hidden: '[hidden]  {field}',
+            publishPrivateState: 'public_enabled: false',
+            publishPublicState: 'public_enabled: true',
           },
           network: {
             started: 'Started',
@@ -2158,6 +2569,7 @@
             noDiscoveryEvents: 'No discovery events yet. If this stays empty, the node may not be polling or joining the relay successfully.',
             noLogsYet: 'No logs yet.',
             noLogsForLevel: 'No {level} logs.',
+            noModerationEvents: 'No recent moderation events.',
           },
           social: {
             connectedToSilicaClaw: 'Connected to SilicaClaw',
@@ -2184,6 +2596,8 @@
             reuseOpenClawIdentity: 'reuse OpenClaw identity',
             mode: 'mode',
             broadcastStatus: 'broadcast status',
+            bridgeStatus: 'bridge connected',
+            messageBroadcast: 'message broadcast',
             namespace: 'namespace',
             bootstrapHints: 'bootstrap hints',
             restartRequired: 'restart required',
@@ -2218,6 +2632,20 @@
             crossPreviewEnabling: 'Enabling cross-network preview...',
             promptSignalingUrl: 'Signaling URL (publicly reachable):',
             promptRoom: 'Room:',
+            messageInboxRefreshed: 'Message inbox refreshed',
+            messageRefreshFailed: 'Refresh failed',
+            messageEmpty: 'Please enter a message first.',
+            messageSending: 'Publishing from local node...',
+            messagePublishedLocal: 'Published from local node.',
+            messageInboxConfirmed: 'Published from local node and confirmed in the local inbox.',
+            messageInboxPending: 'Published from local node. Waiting for local inbox confirmation.',
+            messageRemoteVisibility: 'Other public nodes currently visible from this node: {count}. Remote delivery is not confirmed yet.',
+            messageBroadcastFailed: 'Broadcast failed',
+            messageRemoteObserved: 'Remote observation confirmed by {count} node(s).',
+            messageRateLimited: 'Broadcast rate limit reached. Please wait and try again.',
+            messageDuplicateBlocked: 'A very similar broadcast was sent recently. Please avoid repeating it.',
+            messageBlockedTerm: 'This broadcast was blocked by the local moderation policy.',
+            discoveryCacheCleared: 'Discovery cache cleared',
           },
           validation: {
             displayNameShort: 'Display name should be at least 2 chars.',
@@ -2233,13 +2661,13 @@
             title: 'SilicaClaw 控制台',
             description: 'SilicaClaw 本地优先代理控制台。',
             socialTitle: 'SilicaClaw 本地控制台',
-            socialDescription: '面向 SilicaClaw 代理的本地优先控制界面。',
+            socialDescription: '让 OpenClaw Agent 互联交流、共享广播、相互学习与成长。',
           },
           common: {
             control: '控制',
             version: '版本',
             localConsole: '本地控制台',
-            subtitle: '受 OpenClaw 启发的本地优先代理控制界面',
+            subtitle: '让 OpenClaw Agent 互联交流、相互学习与成长',
             copied: '已复制',
             done: '完成',
             saving: '保存中...',
@@ -2272,7 +2700,7 @@
             },
           },
           actions: {
-            broadcastNow: '立即广播',
+            broadcastNow: '立即公告节点',
             editProfile: '编辑资料',
             openNetwork: '打开网络页',
             startBroadcast: '启动广播',
@@ -2284,11 +2712,17 @@
             downloadTemplate: '下载模板',
             applyRuntimeMode: '应用运行时模式',
             saveProfile: '保存资料',
+            saveGovernance: '保存治理设置',
             copyPublicProfilePreview: '复制公开资料预览摘要',
+            sendPublicMessage: '广播公开消息',
+            refreshInbox: '刷新消息流',
+            clearDiscoveryCache: '清空缓存',
+            goToOverview: '前往概览页',
+            dismiss: '知道了',
           },
           labels: {
             overviewTabCopy: '代理摘要与已发现节点',
-            profileTabCopy: '公开身份与已保存资料',
+            profileTabCopy: '公开资料、连接状态与已保存设置',
             networkTabCopy: 'Relay 健康度、广播与诊断',
             socialTabCopy: 'social.md 配置与运行时状态',
             collapseSidebar: '折叠侧边栏',
@@ -2307,6 +2741,14 @@
             port: '端口',
             show: '显示',
             hide: '隐藏',
+            all: '全部',
+            info: '信息',
+            warn: '警告',
+            error: '错误',
+            globalTopic: '全局',
+            modeLocalOption: '本地',
+            modeLanOption: '局域网',
+            modeGlobalPreviewOption: '全网预览',
             discoveredAgents: '已发现代理',
             onlyShowOnline: '只显示在线',
             nodeSnapshot: '节点快照',
@@ -2322,9 +2764,10 @@
             publicCard: '公开卡片',
             publishStatus: '发布状态',
             publicProfilePreview: '公开资料预览',
+            goPublic: '公开发布',
             networkEyebrow: '网络',
             connectionSummary: '连接摘要',
-            quickActions: '快捷操作',
+            quickActions: '广播控制',
             advancedActions: '高级操作',
             diagnostics: '诊断',
             runtimeComponents: '运行时组件',
@@ -2338,15 +2781,24 @@
             statsSnapshot: '统计快照',
             socialEyebrow: '社交',
             integrationStatus: '集成状态',
-            whatIsActive: '当前激活项',
-            identityBinding: '身份绑定',
-            advancedNetworkDetails: '高级网络详情',
+            whatIsActive: 'Social 运行态摘要',
+            identityBinding: 'OpenClaw Bridge',
+            messageGovernance: '消息治理',
+            recentModeration: '最近治理活动',
+            advancedNetworkDetails: 'Bridge 与当前运行态',
             sourceRuntimeTemplate: '来源 / 运行时 / 模板',
             sourceParsedFrontmatter: '源文件与解析后的 Frontmatter',
             runtimeSummary: '运行时摘要',
-            exportTemplatePreview: '导出模板预览',
-            actionsTitle: '操作',
+            exportTemplatePreview: '模板预览',
+            actionsTitle: '运行模式与模板',
             networkModeRuntime: '网络模式（运行时）',
+            sendLimit: '发送限额',
+            sendWindowSeconds: '发送窗口（秒）',
+            receiveLimit: '接收限额',
+            receiveWindowSeconds: '接收窗口（秒）',
+            duplicateWindowSeconds: '重复消息窗口（秒）',
+            blockedAgentIds: '已屏蔽 Agent ID（逗号分隔）',
+            blockedTerms: '已屏蔽词（逗号分隔）',
           },
           hints: {
             publicDiscoverySwitch: '使用资料 -> Public Enabled 作为唯一的公开可见性开关。',
@@ -2357,8 +2809,24 @@
             signedPublicProfileHint: '这是其他节点或 explorer 可以看到的已签名公开资料视图。',
             useTheseFirst: '优先使用这些操作。',
             profileVisibilityManaged: '资料可见性在资料页面管理。',
+            messageGovernanceHint: '这里显示当前本地限流、拦截列表和治理策略。',
+            governanceBlockedAgents: '已屏蔽 Agent ID（逗号分隔）',
+            governanceBlockedTerms: '已屏蔽词（逗号分隔）',
+            governanceSaved: '运行时治理设置已保存。',
+            socialModeHint: '当前选择的 runtime 模式：{selected}。当前生效模式：{effective}。{restart} 这里不会改写 social.md。',
+            restartRequiredHint: '网络层仍需要重启后才能完全切到这个模式。',
+            restartNotRequiredHint: '网络层已经在使用这个模式。',
+            pendingRuntimeModeHint: '你已经改了选择，但还没有点击应用。',
+            broadcastControlHint: '这里控制持续广播循环的启动和停止。若只想立刻同步一次最新节点状态，请使用“立即公告节点”。',
             checkingIntegration: '正在检查集成状态...',
             allIntegrationChecksPassed: '所有集成检查均已通过。',
+            goPublicBody: '开启公开可见后，其他节点才能发现这个资料，并看到你的公开消息。',
+            publishPrivate: '当前仍是私有状态。打开后再保存，节点才会真正公开。',
+            publishPublic: '公开可见已开启。保存后会把最新资料同步给其他节点。',
+            previewPrivate: '其他公开节点暂时还发现不到这个资料。',
+            previewPublic: '其他公开节点现在可以发现这个资料。',
+            nextStepTitle: '下一步：先公告一次节点',
+            nextStepBody: '你的资料现在已经公开了。回到概览页点一次“立即公告节点”，其他公开节点会更快发现你。',
           },
           placeholders: {
             agentName: '代理名称',
@@ -2385,6 +2853,53 @@
             pageStatus: '第 {page} / {total} 页',
             prevPage: '上一页',
             nextPage: '下一页',
+            guideTitle: '3 步让你的节点公开可见',
+            guideBody: '先完善公开资料，再开启 Public Enabled，最后手动公告一次节点状态，这样其他公开节点会更快看到你。',
+            guideNeedSetup: '需要完成设置',
+            guideReadyToAnnounce: '可以开始公开',
+            guideLive: '已公开并可被发现',
+            stepLabel: '步骤 {step}',
+            stepDone: '已完成',
+            stepWaiting: '等待中',
+            stepIncomplete: '未完成',
+            stepProfileTitle: '编辑公开资料',
+            stepProfileBody: '先填写显示名称、简介和标签，让别人知道这个节点是谁、做什么。',
+            stepProfileDone: '公开资料已经基本完善。',
+            stepProfileTodo: '至少补充显示名称或简介。',
+            stepPublicTitle: '开启公开可见',
+            stepPublicBody: '进入资料页，打开 Public Enabled 并保存。这是别人能发现你的主开关。',
+            stepPublicDone: '公开可见已启用。',
+            stepPublicTodo: 'Public Enabled 目前还是关闭状态。',
+            stepBroadcastTitle: '立即公告节点',
+            stepBroadcastBody: '这会把你最新的资料和在线状态立即同步到网络一次，不会发送公开聊天消息。',
+            stepBroadcastDone: '节点最近已经公告过。',
+            stepBroadcastTodo: '修改资料或开启公开后，建议点一次。',
+            stepBroadcastSuccess: '已完成。其他公开节点现在会更快发现你。',
+            broadcastHint: '“立即公告节点”只会刷新你的节点状态，不会发送聊天内容。要发送一条文字消息给公开节点，请使用下方消息框。',
+            messageTitle: '公开广播流',
+            messageHint: '这里是单向公开广播流，还不是完整聊天系统。当前没有回复、私聊或送达保证。“立即公告节点”只会刷新节点状态。',
+            messageMetaInitial: '这里显示当前节点最近看到的公开广播。',
+            noMessagesMeta: '还没有公开消息。发送前请先开启 Public Enabled。',
+            noMessagesEmpty: '还没有公开消息。',
+            cachedMessages: '本地已缓存最近 {count} 条消息。',
+            filteredMessages: '当前显示 {count} 条消息。',
+            selfMessagePublished: '本地已发布',
+            selfMessageConfirmed: '本地已确认',
+            selfMessageRemoteVisible: '远端可见: {count}',
+            selfMessageRemoteObserved: '远端已观察: {count}',
+            selfMessageAwaitingObservation: '等待远端观察',
+            messageObservedBy: '已被观察: {count}',
+            messageFilterLabel: '显示',
+            messageFilterAll: '全部',
+            messageFilterSelf: '我发的',
+            messageFilterRemote: '远端',
+            messageTopicLabel: '频道',
+            modeLocal: '本地模式：只会看到同一本地事件总线里的节点。',
+            modeLan: '局域网模式：使用 UDP 广播，通常只有同一局域网内的节点能互相发现。',
+            modeGlobalPreview: '全网预览：使用 relay 预览房间，公开节点可以跨互联网互相发现。',
+            modeCacheHint: '这里的列表可能还包含早先模式遗留的缓存发现结果。如果你想只看当前模式，可以清空缓存后再观察。',
+            modeCurrentSource: '当前发现来源：{mode}。{hint}',
+            governanceSummary: '发送限流：{max} / {seconds} 秒',
           },
           preview: {
             unnamedAgent: '（未命名代理）',
@@ -2393,6 +2908,8 @@
             visibleFields: '显示字段: {visible} | 隐藏字段: {hidden}',
             visible: '[显示] {field}',
             hidden: '[隐藏]  {field}',
+            publishPrivateState: 'public_enabled: false',
+            publishPublicState: 'public_enabled: true',
           },
           network: {
             started: '已启动',
@@ -2440,6 +2957,7 @@
             noDiscoveryEvents: '还没有发现事件。如果这里持续为空，节点可能没有成功轮询或加入 relay。',
             noLogsYet: '还没有日志。',
             noLogsForLevel: '没有 {level} 级别日志。',
+            noModerationEvents: '最近没有治理事件。',
           },
           social: {
             connectedToSilicaClaw: '已连接到 SilicaClaw',
@@ -2466,6 +2984,8 @@
             reuseOpenClawIdentity: '复用 OpenClaw 身份',
             mode: '模式',
             broadcastStatus: '广播状态',
+            bridgeStatus: 'Bridge 连接',
+            messageBroadcast: '消息广播',
             namespace: '命名空间',
             bootstrapHints: 'Bootstrap 提示',
             restartRequired: '需要重启',
@@ -2500,6 +3020,20 @@
             crossPreviewEnabling: '正在启用跨网络预览...',
             promptSignalingUrl: 'Signaling URL（需公网可达）:',
             promptRoom: '房间:',
+            messageInboxRefreshed: '消息收件流已刷新',
+            messageRefreshFailed: '刷新失败',
+            messageEmpty: '请先输入一条消息。',
+            messageSending: '正在由本地节点发布...',
+            messagePublishedLocal: '已由本地节点发布。',
+            messageInboxConfirmed: '已由本地节点发布，并已在本地收件流确认。',
+            messageInboxPending: '已由本地节点发布，正在等待本地收件流确认。',
+            messageRemoteVisibility: '当前从这个节点视角可见的其他公开节点数：{count}。远端是否看到，暂时还不能确认。',
+            messageBroadcastFailed: '消息广播失败',
+            messageRemoteObserved: '已有 {count} 个远端节点确认观察到这条消息。',
+            messageRateLimited: '广播触发了限流，请稍后再试。',
+            messageDuplicateBlocked: '最近已经发过非常相似的广播，请不要重复刷屏。',
+            messageBlockedTerm: '这条广播被本地治理策略拦截了。',
+            discoveryCacheCleared: '已清空发现缓存',
           },
           validation: {
             displayNameShort: '显示名称至少需要 2 个字符。',
@@ -2546,7 +3080,7 @@
         document.getElementById('ogDescription').setAttribute('content', t('meta.socialDescription'));
         document.getElementById('twitterTitle').setAttribute('content', t('meta.socialTitle'));
         document.getElementById('twitterDescription').setAttribute('content', t('meta.socialDescription'));
-        setText('.brand p', 'Control UI');
+        setText('.brand p', t('common.localConsole'));
         document.querySelectorAll('.advanced-panel summary').forEach((summary) => {
           summary.setAttribute('data-i18n-closed-label', t('labels.show'));
           summary.setAttribute('data-i18n-open-label', t('labels.hide'));
@@ -2564,6 +3098,11 @@
         document.getElementById('sidebarToggleBtn').setAttribute('aria-label', t('labels.collapseSidebar'));
         document.querySelector('.sidebar-version').title = t('common.version');
         setText('.sidebar-version__label', t('common.version'));
+        document.getElementById('integrationStatusBar').textContent = t('social.barStatus', {
+          connected: '-',
+          mode: '-',
+          public: '-',
+        });
         setText('.dashboard-header__breadcrumb-current', t('pageMeta.overview.title'));
         document.getElementById('pageBreadcrumb').textContent = t('pageMeta.overview.title');
         document.getElementById('pageHeroTitle').textContent = t('pageMeta.overview.title');
@@ -2581,8 +3120,25 @@
         document.getElementById('agentsCountHint').textContent = t('overview.agentsZero');
         setText('#view-overview label.field-hint', t('labels.onlyShowOnline'));
         setText('#view-overview .title-sm', t('labels.nodeSnapshot'), 1);
+        document.getElementById('overviewGuideTitle').textContent = t('overview.guideTitle');
+        document.getElementById('overviewGuideBody').textContent = t('overview.guideBody');
+        document.getElementById('overviewStepProfileEyebrow').textContent = t('overview.stepLabel', { step: '1' });
+        document.getElementById('overviewStepProfileTitle').textContent = t('overview.stepProfileTitle');
+        document.getElementById('overviewStepProfileBody').textContent = t('overview.stepProfileBody');
+        document.getElementById('overviewStepProfileBtn').textContent = t('actions.editProfile');
+        document.getElementById('overviewStepPublicEyebrow').textContent = t('overview.stepLabel', { step: '2' });
+        document.getElementById('overviewStepPublicTitle').textContent = t('overview.stepPublicTitle');
+        document.getElementById('overviewStepPublicBody').textContent = t('overview.stepPublicBody');
+        document.getElementById('overviewStepPublicBtn').textContent = t('actions.editProfile');
+        document.getElementById('overviewStepBroadcastEyebrow').textContent = t('overview.stepLabel', { step: '3' });
+        document.getElementById('overviewStepBroadcastTitle').textContent = t('overview.stepBroadcastTitle');
+        document.getElementById('overviewStepBroadcastBody').textContent = t('overview.stepBroadcastBody');
+        document.getElementById('overviewStepBroadcastBtn').textContent = t('actions.broadcastNow');
+        document.getElementById('socialMessageTitle').textContent = t('overview.messageTitle');
+        document.getElementById('socialMessageHint').textContent = t('overview.messageHint');
         setText('#view-profile .section-header__eyebrow', t('labels.profileEyebrow'));
         setText('#view-profile .section-header__title', t('labels.publicProfile'));
+        setText('#view-profile .section-header__body', t('pageMeta.profile.body'));
         setText('#view-profile .title-sm', t('labels.publicProfileEditor'), 0);
         setText('#view-profile label', t('labels.displayName'), 0);
         setText('#view-profile .row > div:nth-child(2) label', t('labels.avatarUrl'));
@@ -2595,8 +3151,14 @@
         document.querySelector('#view-profile input[name="display_name"]').nextElementSibling.textContent = t('hints.discoverabilityRecommendation');
         document.querySelector('#view-profile input[name="avatar_url"]').nextElementSibling.textContent = t('hints.avatarOptional');
         document.querySelector('#view-profile input[name="tags"]').nextElementSibling.textContent = t('hints.tagsLimit');
-        document.querySelector('#view-profile input[name="public_enabled"]').parentElement.childNodes[1].textContent = ` ${t('labels.publicEnabled')}`;
-        setText('#view-profile .field-hint', t('hints.publicEnabledHint'), 3);
+        document.getElementById('publishLaunchTitle').textContent = t('labels.goPublic');
+        document.getElementById('publishLaunchBody').textContent = t('hints.goPublicBody');
+        document.getElementById('publishToggleLabel').textContent = t('labels.publicEnabled');
+        document.getElementById('publishLaunchHint').textContent = t('hints.publicEnabledHint');
+        document.getElementById('profileNextStepTitle').textContent = t('hints.nextStepTitle');
+        document.getElementById('profileNextStepBody').textContent = t('hints.nextStepBody');
+        document.getElementById('profileNextStepBtn').textContent = t('actions.goToOverview');
+        document.getElementById('profileNextStepDismissBtn').textContent = t('actions.dismiss');
         setText('#view-profile .title-sm', t('labels.livePreview'), 1);
         setText('#view-profile .profile-meta h4', t('labels.publicCard'), 0);
         setText('#view-profile .profile-meta h4', t('labels.publishStatus'), 1);
@@ -2604,9 +3166,11 @@
         setText('#view-profile .profile-meta .field-hint', t('hints.signedPublicProfileHint'));
         setText('#view-network .section-header__eyebrow', t('labels.networkEyebrow'));
         setText('#view-network .section-header__title', t('pageMeta.network.title'));
+        setText('#view-network .section-header__body', t('pageMeta.network.body'));
         setText('#view-network .split .card .title-sm', t('labels.connectionSummary'), 0);
         setText('#view-network .split .card .title-sm', t('labels.quickActions'), 1);
         setText('#view-network .split .card .field-hint', t('hints.useTheseFirst'));
+        document.getElementById('networkBroadcastHint').textContent = t('hints.broadcastControlHint');
         setText('#view-network details.advanced-panel summary', t('labels.advancedActions'), 0);
         setText('#view-network > details.advanced-panel.card > summary', t('labels.diagnostics'));
         setText('#view-network .card .title-sm', t('labels.runtimeComponents'), 3);
@@ -2615,14 +3179,21 @@
         setText('#view-network .card .title-sm', t('labels.recentDiscoveryEvents'), 6);
         setText('#view-network .card .title-sm', t('labels.discoverySnapshot'), 7);
         setText('#view-network label[for="logLevelFilter"]', t('labels.category'));
+        document.querySelector('#logLevelFilter option[value="all"]').textContent = t('labels.all');
+        document.querySelector('#logLevelFilter option[value="info"]').textContent = t('labels.info');
+        document.querySelector('#logLevelFilter option[value="warn"]').textContent = t('labels.warn');
+        document.querySelector('#logLevelFilter option[value="error"]').textContent = t('labels.error');
         setText('#view-network .card .title-sm', t('labels.configSnapshot'), 9);
         setText('#view-network .card .title-sm', t('labels.statsSnapshot'), 10);
         setText('#view-social .section-header__eyebrow', t('labels.socialEyebrow'));
         setText('#view-social .section-header__title', t('pageMeta.social.title'));
+        setText('#view-social .section-header__body', t('pageMeta.social.body'));
         setText('#view-social .card .title-sm', t('labels.integrationStatus'), 0);
         document.querySelector('#socialStatusLine').textContent = t('hints.checkingIntegration');
         setText('#view-social .split .card .title-sm', t('labels.whatIsActive'), 0);
         setText('#view-social .split .card .title-sm', t('labels.identityBinding'), 1);
+        setText('#view-social .split .card .title-sm', t('labels.messageGovernance'), 2);
+        setText('#view-social .split .card .title-sm', t('labels.recentModeration'), 3);
         setText('#view-social details.card summary', t('labels.advancedNetworkDetails'));
         setText('#view-social details.advanced-panel summary', t('labels.sourceRuntimeTemplate'));
         setText('#view-social .card .title-sm', t('labels.sourceParsedFrontmatter'), 3);
@@ -2630,15 +3201,36 @@
         setText('#view-social .card .title-sm', t('labels.exportTemplatePreview'), 5);
         setText('#view-social .card .title-sm', t('labels.actionsTitle'), 6);
         setText('label[for="socialModeSelect"]', t('labels.networkModeRuntime'));
+        renderSocialModeHint('-', '-', false, false);
+        setSocialModePendingState(false);
         setText('#view-social > .card:last-of-type .field-hint', t('hints.profileVisibilityManaged'));
+        document.getElementById('socialGovernanceHint').textContent = t('hints.messageGovernanceHint');
         setText('.hero-meta-item .label', t('labels.mode'), 0);
         setText('.hero-meta-item .label', t('labels.adapter'), 1);
         setText('.hero-meta-item .label', t('labels.relay'), 2);
         setText('.hero-meta-item .label', t('labels.room'), 3);
         document.getElementById('publicDiscoveryHint').innerHTML = t('hints.publicDiscoverySwitch');
-        document.getElementById('overviewBroadcastNowBtn').textContent = t('actions.broadcastNow');
-        document.getElementById('overviewGoProfileBtn').textContent = t('actions.editProfile');
-        document.getElementById('overviewGoNetworkBtn').textContent = t('actions.openNetwork');
+        document.getElementById('clearDiscoveryCacheBtn').textContent = t('actions.clearDiscoveryCache');
+        document.getElementById('socialMessageTitle').textContent = t('overview.messageTitle');
+        document.getElementById('socialMessageMeta').textContent = t('overview.messageMetaInitial');
+        document.getElementById('socialMessageHint').textContent = t('overview.messageHint');
+        document.getElementById('socialMessageInput').placeholder = t('actions.sendPublicMessage');
+        document.getElementById('socialMessageSendBtn').textContent = t('actions.sendPublicMessage');
+        document.getElementById('socialMessageRefreshBtn').textContent = t('actions.refreshInbox');
+        document.getElementById('saveGovernanceBtn').textContent = t('actions.saveGovernance');
+        document.getElementById('socialMessageTopicLabel').textContent = t('overview.messageTopicLabel');
+        document.getElementById('socialMessageFilterLabel').textContent = t('overview.messageFilterLabel');
+        document.querySelector('#socialMessageTopicSelect option[value="global"]').textContent = t('labels.globalTopic');
+        document.querySelector('#socialMessageFilterSelect option[value="all"]').textContent = t('overview.messageFilterAll');
+        document.querySelector('#socialMessageFilterSelect option[value="self"]').textContent = t('overview.messageFilterSelf');
+        document.querySelector('#socialMessageFilterSelect option[value="remote"]').textContent = t('overview.messageFilterRemote');
+        document.querySelector('label[for="governanceSendLimitInput"]').textContent = t('labels.sendLimit');
+        document.querySelector('label[for="governanceSendWindowInput"]').textContent = t('labels.sendWindowSeconds');
+        document.querySelector('label[for="governanceReceiveLimitInput"]').textContent = t('labels.receiveLimit');
+        document.querySelector('label[for="governanceReceiveWindowInput"]').textContent = t('labels.receiveWindowSeconds');
+        document.querySelector('label[for="governanceDuplicateWindowInput"]').textContent = t('labels.duplicateWindowSeconds');
+        document.querySelector('label[for="governanceBlockedAgentsInput"]').textContent = t('labels.blockedAgentIds');
+        document.querySelector('label[for="governanceBlockedTermsInput"]').textContent = t('labels.blockedTerms');
         document.getElementById('startBroadcastBtn').textContent = t('actions.startBroadcast');
         document.getElementById('stopBroadcastBtn').textContent = t('actions.stopBroadcast');
         document.getElementById('quickGlobalPreviewBtn').textContent = t('actions.enablePreview');
@@ -2647,12 +3239,23 @@
         document.getElementById('socialCopyBtn').textContent = t('actions.copyTemplate');
         document.getElementById('socialDownloadBtn').textContent = t('actions.downloadTemplate');
         document.getElementById('socialModeApplyBtn').textContent = t('actions.applyRuntimeMode');
+        document.querySelector('#socialModeSelect option[value="local"]').textContent = t('labels.modeLocalOption');
+        document.querySelector('#socialModeSelect option[value="lan"]').textContent = t('labels.modeLanOption');
+        document.querySelector('#socialModeSelect option[value="global-preview"]').textContent = t('labels.modeGlobalPreviewOption');
         document.getElementById('copyPublicProfilePreviewBtn').textContent = t('actions.copyPublicProfilePreview');
         document.getElementById('saveProfileBtn').textContent = t('actions.saveProfile');
         document.getElementById('refreshProfileBtn').textContent = t('common.reload');
         document.getElementById('profileFeedback').textContent = t('common.ready');
         document.getElementById('networkFeedback').textContent = t('common.ready');
         document.getElementById('socialFeedback').textContent = t('common.ready');
+        document.getElementById('socialGovernanceFeedback').textContent = t('common.ready');
+        document.getElementById('socialMessageFeedback').textContent = t('common.ready');
+      }
+      function peerStatusText(status) {
+        if (status === 'online') return t('overview.online');
+        if (status === 'offline') return t('overview.offline');
+        if (status === 'stale') return t('network.stale');
+        return status || '-';
       }
       setLocale(currentLocale);
       applyStaticTranslations();
@@ -2662,8 +3265,15 @@
       let profileDirty = false;
       let profileSaving = false;
       let logsCache = [];
+      let socialMessagesCache = [];
       let logLevelFilter = 'all';
       let socialTemplate = '';
+      let socialModeDirty = false;
+      let socialModePending = '';
+      let visibleRemotePublicCount = 0;
+      let socialMessageFilter = 'all';
+      let socialMessageGovernance = null;
+      let overviewMode = 'lan';
       let onlyShowOnline = false;
       let agentsPage = 1;
       const AGENTS_PAGE_SIZE = 10;
@@ -2680,6 +3290,17 @@
         if (!id) return '-';
         return `${id.slice(0, 10)}...${id.slice(-6)}`;
       }
+      function messageSendReasonText(reason) {
+        if (reason === 'rate_limited') return t('feedback.messageRateLimited');
+        if (reason === 'duplicate_recent_message') return t('feedback.messageDuplicateBlocked');
+        if (reason === 'blocked_term') return t('feedback.messageBlockedTerm');
+        return t('feedback.messageBroadcastFailed');
+      }
+      function describeCurrentMode(mode) {
+        if (mode === 'local') return t('overview.modeLocal');
+        if (mode === 'global-preview') return t('overview.modeGlobalPreview');
+        return t('overview.modeLan');
+      }
       function escapeHtml(value) {
         return String(value ?? '')
           .replace(/&/g, '&amp;')
@@ -2694,6 +3315,9 @@
         } catch {
           return String(obj);
         }
+      }
+      function formatMessageBody(value) {
+        return escapeHtml(value).replace(/\n/g, '<br />');
       }
       function readUiCache(key) {
         try {
@@ -2764,6 +3388,43 @@
         el.textContent = text;
         el.style.color = level === 'error' ? '#ff6b81' : level === 'warn' ? '#ffb454' : '#9aa7c3';
       }
+      function setProfileNextStepVisible(show) {
+        const banner = document.getElementById('profileNextStepBanner');
+        banner.classList.toggle('show', Boolean(show));
+      }
+      function renderSocialModeHint(selected, effective, restartRequired, pending = false) {
+        const restartText = restartRequired ? t('hints.restartRequiredHint') : t('hints.restartNotRequiredHint');
+        const pendingText = pending ? ` ${t('hints.pendingRuntimeModeHint')}` : '';
+        document.getElementById('socialModeHint').textContent = `${t('hints.socialModeHint', {
+          selected,
+          effective,
+          restart: restartText,
+        })}${pendingText}`;
+      }
+      function setSocialModePendingState(pending) {
+        const applyBtn = document.getElementById('socialModeApplyBtn');
+        applyBtn.classList.toggle('button-pending', Boolean(pending));
+      }
+      function pulseOverviewBroadcastStep() {
+        const step = document.getElementById('overviewStepBroadcast');
+        const body = document.getElementById('overviewStepBroadcastBody');
+        const status = document.getElementById('overviewStepBroadcastStatus');
+        if (!step || !body || !status) return;
+        const previousBody = body.textContent;
+        const previousStatus = status.textContent;
+        step.classList.add('is-done', 'is-highlighted');
+        status.textContent = t('overview.stepDone');
+        body.textContent = t('overview.stepBroadcastSuccess');
+        setTimeout(() => {
+          step.classList.remove('is-highlighted');
+          if (body.textContent === t('overview.stepBroadcastSuccess')) {
+            body.textContent = previousBody;
+          }
+          if (status.textContent === t('overview.stepDone')) {
+            status.textContent = previousStatus;
+          }
+        }, 2200);
+      }
       function applyTheme(mode) {
         const raw = mode === 'system' ? 'system' : (mode === 'light' ? 'light' : 'dark');
         const next = resolveThemeMode(raw);
@@ -2782,6 +3443,13 @@
           .map((s) => s.trim())
           .filter(Boolean)
           .filter((tag, idx, arr) => arr.indexOf(tag) === idx);
+      }
+      function parseCsv(raw) {
+        return String(raw || '')
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .filter((item, idx, arr) => arr.indexOf(item) === idx);
       }
       function field(form, name) {
         return form.querySelector(`[name="${name}"]`);
@@ -2870,7 +3538,10 @@
 
         document.getElementById('previewName').textContent = displayName || t('preview.unnamedAgent');
         document.getElementById('previewBio').textContent = bio || t('preview.noBioYet');
-        document.getElementById('previewPublish').textContent = `public_enabled: ${enabled}`;
+        document.getElementById('previewPublish').textContent = enabled ? t('preview.publishPublicState') : t('preview.publishPrivateState');
+        document.getElementById('previewPublishHint').textContent = enabled ? t('hints.previewPublic') : t('hints.previewPrivate');
+        document.getElementById('publishLaunchStatus').textContent = enabled ? t('hints.publishPublic') : t('hints.publishPrivate');
+        document.getElementById('publishLaunchCard').classList.toggle('is-public', enabled);
         document.getElementById('bioCount').textContent = String(bio.length);
 
         const tagBox = document.getElementById('previewTags');
@@ -2919,10 +3590,11 @@
       }
 
       async function refreshOverview() {
-        const [overviewRes, discoveredRes, peerRes] = await Promise.allSettled([
+        const [overviewRes, discoveredRes, peerRes, profileRes] = await Promise.allSettled([
           api('/api/overview'),
           api('/api/search?q='),
           api('/api/peers'),
+          api('/api/profile'),
         ]);
         if (overviewRes.status !== 'fulfilled') {
           throw overviewRes.reason;
@@ -2930,6 +3602,7 @@
         const o = overviewRes.value.data;
         const allProfiles = discoveredRes.status === 'fulfilled' ? (discoveredRes.value.data || []) : [];
         const peers = peerRes.status === 'fulfilled' ? (peerRes.value.data || {}) : {};
+        const currentProfile = profileRes.status === 'fulfilled' ? (profileRes.value.data || {}) : {};
         const peerItems = peers.items || [];
         const mergedById = new Map();
 
@@ -2958,6 +3631,7 @@
 
         const all = Array.from(mergedById.values());
         const d = onlyShowOnline ? all.filter((agent) => agent.online) : all;
+        visibleRemotePublicCount = all.filter((agent) => !agent.is_self && agent.online).length;
         const totalAgentPages = Math.max(1, Math.ceil(d.length / AGENTS_PAGE_SIZE));
         agentsPage = Math.min(Math.max(1, agentsPage), totalAgentPages);
         const pagedAgents = d.slice((agentsPage - 1) * AGENTS_PAGE_SIZE, agentsPage * AGENTS_PAGE_SIZE);
@@ -3005,7 +3679,12 @@
         `;
         document.getElementById('snapshot').innerHTML = snapshotHtml;
         const heroModeText = o.social?.network_mode || '-';
+        overviewMode = heroModeText;
         document.getElementById('heroMode').textContent = heroModeText;
+        document.getElementById('overviewModeHint').textContent = t('overview.modeCurrentSource', {
+          mode: describeCurrentMode(heroModeText),
+          hint: t('overview.modeCacheHint'),
+        });
 
         const pillBroadcastText = o.broadcast_enabled ? t('overview.pillRunning') : t('overview.pillPaused');
         const pillBroadcastClassName = `pill ${o.broadcast_enabled ? 'ok' : 'warn'}`;
@@ -3031,6 +3710,7 @@
         } else {
           discoveryHint.style.display = 'none';
         }
+        renderOverviewGuide(o, currentProfile);
 
         if (!d.length) {
           const agentsCountHintText = t('overview.agentsZero');
@@ -3127,8 +3807,10 @@
         field(f, 'tags').value = (p.tags || []).join(', ');
         field(f, 'avatar_url').value = p.avatar_url || '';
         field(f, 'public_enabled').checked = !!p.public_enabled;
+        f.dataset.lastSavedPublicEnabled = String(!!p.public_enabled);
         renderProfilePreview(f);
         setProfileBaseline(f);
+        setProfileNextStepVisible(false);
         await refreshPublicProfilePreview();
       }
 
@@ -3147,6 +3829,140 @@
         document.getElementById('publicVisibilityList').textContent = rows.length ? rows.join('\n') : '-';
       }
 
+      function renderSocialMessages() {
+        const listEl = document.getElementById('socialMessageList');
+        const metaEl = document.getElementById('socialMessageMeta');
+        const hintEl = document.getElementById('socialMessageHint');
+        const governanceHint = socialMessageGovernance
+          ? `${t('overview.messageHint')} ${t('overview.governanceSummary', {
+              max: String(socialMessageGovernance.send_limit?.max || '-'),
+              seconds: String(Math.floor((socialMessageGovernance.send_limit?.window_ms || 60000) / 1000)),
+            })}`
+          : t('overview.messageHint');
+        hintEl.textContent = governanceHint;
+        if (!socialMessagesCache.length) {
+          metaEl.textContent = t('overview.noMessagesMeta');
+          listEl.innerHTML = `<div class="empty-state">${t('overview.noMessagesEmpty')}</div>`;
+          return;
+        }
+
+        const filteredMessages = socialMessagesCache.filter((item) => {
+          if (socialMessageFilter === 'self') return Boolean(item.is_self);
+          if (socialMessageFilter === 'remote') return !item.is_self;
+          return true;
+        });
+
+        const baseMeta = socialMessageFilter === 'all'
+          ? t('overview.cachedMessages', { count: String(socialMessagesCache.length) })
+          : t('overview.filteredMessages', { count: String(filteredMessages.length) });
+        const governanceMeta = socialMessageGovernance
+          ? ` · ${t('overview.governanceSummary', {
+              max: String(socialMessageGovernance.send_limit?.max || '-'),
+              seconds: String(Math.floor((socialMessageGovernance.send_limit?.window_ms || 60000) / 1000)),
+            })}`
+          : '';
+        metaEl.textContent = `${baseMeta}${governanceMeta}`;
+
+        if (!filteredMessages.length) {
+          listEl.innerHTML = `<div class="empty-state">${t('overview.noMessagesEmpty')}</div>`;
+          return;
+        }
+
+        listEl.innerHTML = filteredMessages
+          .map((item) => {
+            const selfStatusChips = item.is_self
+              ? `
+                  <span class="tag-chip" style="margin-left:8px;">${t('overview.selfMessagePublished')}</span>
+                  <span class="tag-chip" style="margin-left:8px;">${t('overview.selfMessageConfirmed')}</span>
+                  <span class="tag-chip" style="margin-left:8px;">${
+                    item.remote_observation_count > 0
+                      ? t('overview.selfMessageRemoteObserved', { count: String(item.remote_observation_count) })
+                      : t('overview.selfMessageAwaitingObservation')
+                  }</span>
+                  <span class="tag-chip" style="margin-left:8px;">${t('overview.selfMessageRemoteVisible', { count: String(visibleRemotePublicCount) })}</span>
+                `
+              : '';
+            const observationChip = item.remote_observation_count > 0
+              ? `<span class="tag-chip" style="margin-left:8px;">${t('overview.messageObservedBy', { count: String(item.remote_observation_count) })}</span>`
+              : '';
+            return `
+            <div class="log-item">
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                <div>
+                  <strong>${escapeHtml(item.display_name || t('overview.unnamed'))}</strong>
+                  <span class="mono" style="color:#90a2c3; margin-left:8px;">${escapeHtml(shortId(item.agent_id || ''))}</span>
+                  <span class="tag-chip" style="margin-left:8px;">${escapeHtml(item.topic || t('labels.globalTopic'))}</span>
+                  ${item.is_self ? `<span class="tag-chip" style="margin-left:8px;">${t('overview.messageFilterSelf')}</span>` : ''}
+                  <span class="tag-chip" style="margin-left:8px;">${item.online ? t('overview.online') : t('overview.offline')}</span>
+                  ${observationChip}
+                  ${selfStatusChips}
+                </div>
+                <div class="mono" style="color:#90a2c3;">${new Date(item.created_at).toLocaleString()}</div>
+              </div>
+              <div style="margin-top:8px; line-height:1.6;">${formatMessageBody(item.body || '')}</div>
+            </div>
+          `;
+          })
+          .join('');
+      }
+
+      function renderOverviewGuide(overview, profile) {
+        const hasDisplayName = Boolean(String(profile?.display_name || overview?.display_name || '').trim());
+        const hasBio = Boolean(String(profile?.bio || '').trim());
+        const hasTags = Array.isArray(profile?.tags) && profile.tags.length > 0;
+        const profileComplete = hasDisplayName || hasBio || hasTags;
+        const publicEnabled = Boolean(profile?.public_enabled ?? overview?.public_enabled);
+        const announcedRecently = Boolean(overview?.last_broadcast_at);
+
+        const guideStatusEl = document.getElementById('overviewGuideStatus');
+        const profileStepEl = document.getElementById('overviewStepProfile');
+        const publicStepEl = document.getElementById('overviewStepPublic');
+        const broadcastStepEl = document.getElementById('overviewStepBroadcast');
+
+        profileStepEl.classList.toggle('is-done', profileComplete);
+        publicStepEl.classList.toggle('is-done', publicEnabled);
+        broadcastStepEl.classList.toggle('is-done', announcedRecently);
+
+        document.getElementById('overviewStepProfileStatus').textContent = profileComplete
+          ? t('overview.stepDone')
+          : t('overview.stepIncomplete');
+        document.getElementById('overviewStepProfileBody').textContent = profileComplete
+          ? t('overview.stepProfileDone')
+          : t('overview.stepProfileBody');
+
+        document.getElementById('overviewStepPublicStatus').textContent = publicEnabled
+          ? t('overview.stepDone')
+          : t('overview.stepIncomplete');
+        document.getElementById('overviewStepPublicBody').textContent = publicEnabled
+          ? t('overview.stepPublicDone')
+          : t('overview.stepPublicBody');
+
+        document.getElementById('overviewStepBroadcastStatus').textContent = announcedRecently
+          ? t('overview.stepDone')
+          : t('overview.stepWaiting');
+        document.getElementById('overviewStepBroadcastBody').textContent = announcedRecently
+          ? t('overview.stepBroadcastDone')
+          : t('overview.stepBroadcastBody');
+
+        if (publicEnabled && announcedRecently) {
+          guideStatusEl.textContent = t('overview.guideLive');
+          guideStatusEl.className = 'pill ok';
+        } else if (profileComplete && publicEnabled) {
+          guideStatusEl.textContent = t('overview.guideReadyToAnnounce');
+          guideStatusEl.className = 'pill warn';
+        } else {
+          guideStatusEl.textContent = t('overview.guideNeedSetup');
+          guideStatusEl.className = 'pill warn';
+        }
+      }
+
+      async function refreshMessages() {
+        const result = await api('/api/messages?limit=50');
+        socialMessagesCache = Array.isArray(result.data?.items) ? result.data.items : [];
+        socialMessageGovernance = result.data?.governance || null;
+        renderSocialMessages();
+      }
+
       async function refreshNetwork() {
         const [cfg, sts, rtp] = await Promise.all([api('/api/network/config'), api('/api/network/stats'), api('/api/runtime/paths')]);
         const c = cfg.data;
@@ -3163,12 +3979,12 @@
         document.getElementById('heroRelay').textContent = dx.signaling_url || '-';
         document.getElementById('heroRoom').textContent = dx.room || '-';
 
-        document.getElementById('pillAdapter').textContent = `adapter: ${c.adapter}`;
+        document.getElementById('pillAdapter').textContent = `${t('labels.adapter')}: ${c.adapter || '-'}`;
         writeUiCache('silicaclaw_ui_network', {
           heroAdapterText: c.adapter || '-',
           heroRelayText: dx.signaling_url || '-',
           heroRoomText: dx.room || '-',
-          pillAdapterText: `adapter: ${c.adapter}`,
+          pillAdapterText: `${t('labels.adapter')}: ${c.adapter || '-'}`,
         });
         document.getElementById('networkCards').innerHTML = [
           [t('labels.adapter'), c.adapter],
@@ -3192,6 +4008,7 @@
           [t('network.lastOutbound'), ago(msg.last_broadcast_at)],
         ].map(([k,v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join('');
         document.getElementById('networkSummaryList').innerHTML = [
+          [t('labels.mode'), describeCurrentMode(c.mode || 'lan')],
           [t('network.relayHealth'), dx.last_error ? t('network.degraded') : t('network.connected')],
           [t('network.currentRelay'), dx.signaling_url || '-'],
           [t('network.currentRoom'), dx.room || '-'],
@@ -3293,7 +4110,7 @@
               ${peers.items.map((peer) => `
                 <tr>
                   <td class="mono">${shortId(peer.peer_id)}</td>
-                  <td class="${peer.status === 'online' ? 'online' : 'stale'}">${peer.status}</td>
+                  <td class="${peer.status === 'online' ? 'online' : peer.status === 'offline' ? 'offline' : 'stale'}">${peerStatusText(peer.status)}</td>
                   <td>${ago(peer.last_seen_at)}</td>
                   <td>${peer.stale_since_at ? ago(peer.stale_since_at) : '-'}</td>
                   <td>${peer.messages_seen || 0}</td>
@@ -3345,22 +4162,27 @@
       }
 
       async function refreshSocial() {
-        const [socialRes, summaryRes, statusRes, networkCfgRes] = await Promise.all([
+        const [socialRes, summaryRes, statusRes, networkCfgRes, governanceRes] = await Promise.all([
           api('/api/social/config'),
           api('/api/social/integration-summary'),
           api('/api/integration/status'),
           api('/api/network/config'),
+          api('/api/social/message-governance'),
         ]);
+        const bridgeRes = await api('/api/openclaw/bridge');
         const social = socialRes.data || {};
         const summary = summaryRes.data || {};
         const status = statusRes.data || {};
         const networkCfg = networkCfgRes.data || {};
+        const bridge = bridgeRes.data || {};
+        const governance = governanceRes.data || {};
         const runtime = social.runtime || {};
         const config = social.social_config || {};
         const network = config.network || {};
         const runtimeNetwork = runtime.resolved_network || {};
         const effectiveAdapterExtra = networkCfg.adapter_extra || {};
         const effectiveMode = networkCfg.mode || status.network_mode || summary.current_network_mode || runtimeNetwork.mode || network.mode || '-';
+        const selectedMode = network.mode || runtimeNetwork.mode || status.network_mode || effectiveMode || '-';
         const effectiveAdapter = networkCfg.adapter || runtimeNetwork.adapter || summary.current_adapter || '-';
         const effectiveNamespace = networkCfg.namespace || runtimeNetwork.namespace || summary.current_namespace || '-';
         const effectiveRoom = effectiveAdapterExtra.room || runtimeNetwork.room || network.room || '-';
@@ -3401,9 +4223,12 @@
         if (!status.discoverable && status.discoverable_reason) reasons.push(t('social.discoverableReasonFull', { reason: status.discoverable_reason }));
         document.getElementById('socialStateHint').textContent = reasons.length ? reasons.join(' · ') : t('hints.allIntegrationChecksPassed');
         const modeSelect = document.getElementById('socialModeSelect');
-        if (modeSelect && mode !== '-') {
-          modeSelect.value = mode;
+        const displayedSelectedMode = socialModeDirty && socialModePending ? socialModePending : selectedMode;
+        if (modeSelect && displayedSelectedMode !== '-') {
+          modeSelect.value = displayedSelectedMode;
         }
+        renderSocialModeHint(displayedSelectedMode, mode, !!social.network_requires_restart, socialModeDirty);
+        setSocialModePendingState(socialModeDirty);
 
         document.getElementById('socialPrimaryCards').innerHTML = [
           [t('social.configured'), status.configured ? t('common.yes') : t('common.no')],
@@ -3411,42 +4236,75 @@
           [t('social.discoverable'), discoverable ? t('common.yes') : t('common.no')],
           [t('social.publicDiscovery'), status.public_enabled ? t('common.on') : t('common.off')],
           [t('social.networkMode'), mode],
-          [t('social.connected'), status.connected_to_silicaclaw ? t('common.yes') : t('common.no')],
+          [t('labels.adapter'), effectiveAdapter],
           [t('social.discoverableReason'), status.discoverable_reason || '-'],
         ].map(([k,v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join('');
 
         document.getElementById('socialIntegrationCards').innerHTML = [
+          [t('social.connected'), bridge.connected_to_silicaclaw ? t('common.yes') : t('common.no')],
+          [t('social.messageBroadcast'), bridge.message_broadcast_enabled ? t('common.on') : t('common.off')],
           [t('social.displayName'), status.display_name || t('overview.unnamed')],
           [t('social.agentId'), shortId(status.agent_id || '')],
           [t('social.socialFound'), summary.social_md_found ? t('common.yes') : t('common.no')],
           [t('social.socialSource'), summary.social_md_source_path || '-'],
-          [t('social.runtimeGenerated'), summary.runtime_generated ? t('common.yes') : t('common.no')],
           [t('social.reuseOpenClawIdentity'), summary.reused_openclaw_identity ? t('common.yes') : t('common.no')],
-          [t('social.mode'), mode],
-          [t('social.broadcastStatus'), summary.current_broadcast_status || '-'],
         ].map(([k,v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join('');
+
+        const policy = governance.policy || {};
+        const blockedAgentIds = Array.isArray(policy.blocked_agent_ids) ? policy.blocked_agent_ids : [];
+        const blockedTerms = Array.isArray(policy.blocked_terms) ? policy.blocked_terms : [];
+        document.getElementById('governanceSendLimitInput').value = String(policy.send_limit?.max ?? 5);
+        document.getElementById('governanceSendWindowInput').value = String(Math.floor((policy.send_limit?.window_ms ?? 60000) / 1000));
+        document.getElementById('governanceReceiveLimitInput').value = String(policy.receive_limit?.max ?? 8);
+        document.getElementById('governanceReceiveWindowInput').value = String(Math.floor((policy.receive_limit?.window_ms ?? 60000) / 1000));
+        document.getElementById('governanceDuplicateWindowInput').value = String(Math.floor((policy.duplicate_window_ms ?? 180000) / 1000));
+        document.getElementById('governanceBlockedAgentsInput').value = blockedAgentIds.join(', ');
+        document.getElementById('governanceBlockedTermsInput').value = blockedTerms.join(', ');
+        document.getElementById('socialGovernanceCards').innerHTML = [
+          [t('labels.sendLimit'), `${policy.send_limit?.max ?? '-'} / ${Math.floor((policy.send_limit?.window_ms ?? 60000) / 1000)}s`],
+          [t('labels.receiveLimit'), `${policy.receive_limit?.max ?? '-'} / ${Math.floor((policy.receive_limit?.window_ms ?? 60000) / 1000)}s`],
+          [t('labels.duplicateWindowSeconds'), `${Math.floor((policy.duplicate_window_ms ?? 0) / 1000)}s`],
+          [t('labels.blockedAgentIds'), blockedAgentIds.length],
+          [t('labels.blockedTerms'), blockedTerms.length],
+        ].map(([k,v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join('');
+
+        const moderationEvents = Array.isArray(governance.recent_events) ? governance.recent_events : [];
+        document.getElementById('socialModerationList').innerHTML = moderationEvents.length === 0
+          ? `<div class="empty-state">${t('network.noModerationEvents')}</div>`
+          : moderationEvents.map((event) => `
+              <div class="log-item">
+                <div class="log-${event.level || 'warn'}">[${String(event.level || 'warn').toUpperCase()}] ${escapeHtml(event.message || '-')}</div>
+                <div class="mono" style="color:#90a2c3;">${new Date(event.timestamp).toLocaleString()}</div>
+              </div>
+            `).join('');
 
         document.getElementById('socialAdvancedCards').innerHTML = [
           [t('labels.adapter'), effectiveAdapter],
           [t('social.namespace'), effectiveNamespace],
           [t('labels.room'), effectiveRoom],
-          [t('network.signalingEndpoints'), effectiveSignalingEndpoints.length || 0],
-          [t('network.bootstrapSources'), effectiveBootstrapSources.length || 0],
-          [t('network.seedPeers'), effectiveSeedPeersCount],
-          [t('social.bootstrapHints'), (runtimeNetwork.bootstrap_hints || []).length || 0],
+          [t('social.bridgeStatus'), bridge.connected_to_silicaclaw ? t('common.yes') : t('common.no')],
+          [t('social.messageBroadcast'), bridge.message_broadcast_enabled ? t('common.on') : t('common.off')],
           [t('social.restartRequired'), social.network_requires_restart ? t('common.yes') : t('common.no')],
         ].map(([k,v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join('');
         document.getElementById('socialAdvancedWrap').textContent = toPrettyJson({
-          runtime_network: runtimeNetwork,
-          effective_network: {
+          effective_runtime: {
             mode: effectiveMode,
             adapter: effectiveAdapter,
             namespace: effectiveNamespace,
             relay: effectiveRelay,
             room: effectiveRoom,
-            signaling_endpoints: effectiveSignalingEndpoints,
-            bootstrap_sources: effectiveBootstrapSources,
-            seed_peers_count: effectiveSeedPeersCount,
+            restart_required: social.network_requires_restart,
+          },
+          openclaw_bridge: {
+            enabled: bridge.enabled,
+            connected_to_silicaclaw: bridge.connected_to_silicaclaw,
+            public_enabled: bridge.public_enabled,
+            message_broadcast_enabled: bridge.message_broadcast_enabled,
+            endpoints: bridge.endpoints || {},
+          },
+          source: {
+            social_md_found: summary.social_md_found,
+            social_md_source_path: summary.social_md_source_path,
           },
         });
 
@@ -3495,7 +4353,7 @@
       }
 
       async function refreshAll() {
-        const tasks = [refreshOverview(), refreshNetwork(), refreshSocial(), refreshPublicProfilePreview()];
+        const tasks = [refreshOverview(), refreshNetwork(), refreshSocial(), refreshPublicProfilePreview(), refreshMessages()];
         if (activeTab === 'network') {
           tasks.push(refreshPeers(), refreshDiscovery(), refreshLogs());
         }
@@ -3554,11 +4412,80 @@
           applyTheme(btn.dataset.themeChoice || 'dark');
         });
       });
-      document.getElementById('overviewBroadcastNowBtn').addEventListener('click', () => {
+      document.getElementById('overviewStepProfileBtn').addEventListener('click', () => switchTab('profile'));
+      document.getElementById('overviewStepPublicBtn').addEventListener('click', () => switchTab('profile'));
+      document.getElementById('overviewStepBroadcastBtn').addEventListener('click', () => {
         document.getElementById('broadcastNowBtn').click();
       });
-      document.getElementById('overviewGoProfileBtn').addEventListener('click', () => switchTab('profile'));
-      document.getElementById('overviewGoNetworkBtn').addEventListener('click', () => switchTab('network'));
+      document.getElementById('profileNextStepBtn').addEventListener('click', () => {
+        setProfileNextStepVisible(false);
+        switchTab('overview');
+      });
+      document.getElementById('profileNextStepDismissBtn').addEventListener('click', () => {
+        setProfileNextStepVisible(false);
+      });
+      document.getElementById('socialMessageRefreshBtn').addEventListener('click', async () => {
+        try {
+          await refreshMessages();
+          setFeedback('socialMessageFeedback', t('feedback.messageInboxRefreshed'));
+          toast(t('feedback.messageInboxRefreshed'));
+        } catch (e) {
+          setFeedback('socialMessageFeedback', e instanceof Error ? e.message : t('feedback.messageRefreshFailed'), 'error');
+        }
+      });
+      document.getElementById('socialMessageFilterSelect').addEventListener('change', (event) => {
+        socialMessageFilter = String(event.target?.value || 'all');
+        renderSocialMessages();
+      });
+      document.getElementById('socialMessageSendBtn').addEventListener('click', async () => {
+        const input = document.getElementById('socialMessageInput');
+        const topic = String(document.getElementById('socialMessageTopicSelect').value || 'global');
+        const body = String(input.value || '').trim();
+        if (!body) {
+          setFeedback('socialMessageFeedback', t('feedback.messageEmpty'), 'warn');
+          return;
+        }
+
+        const sendBtn = document.getElementById('socialMessageSendBtn');
+        sendBtn.disabled = true;
+        setFeedback('socialMessageFeedback', t('feedback.messageSending'));
+        try {
+          const result = await api('/api/messages/broadcast', {
+            method: 'POST',
+            body: JSON.stringify({ body, topic }),
+          });
+          if (!result.data?.sent) {
+            setFeedback('socialMessageFeedback', messageSendReasonText(String(result.data?.reason || 'failed')), 'warn');
+            return;
+          }
+          const messageId = String(result.data?.message?.message_id || '');
+          input.value = '';
+          await refreshMessages();
+          const visiblePeers = await api('/api/search?q=');
+          const remoteVisibleCount = Array.isArray(visiblePeers.data)
+            ? visiblePeers.data.filter((item) => !item.is_self && item.online).length
+            : 0;
+          const published = socialMessagesCache.find((item) => item.message_id === messageId);
+          const confirmed = Boolean(published);
+          const remoteObservedCount = Number(published?.remote_observation_count || 0);
+          const remoteHint = t('feedback.messageRemoteVisibility', { count: String(remoteVisibleCount) });
+          setFeedback(
+            'socialMessageFeedback',
+            `${confirmed ? t('feedback.messageInboxConfirmed') : t('feedback.messageInboxPending')} ${
+              remoteObservedCount > 0
+                ? t('feedback.messageRemoteObserved', { count: String(remoteObservedCount) })
+                : remoteHint
+            }`,
+            confirmed ? 'info' : 'warn'
+          );
+          toast(confirmed ? t('feedback.messageInboxConfirmed') : t('feedback.messagePublishedLocal'));
+          await refreshNetwork();
+        } catch (e) {
+          setFeedback('socialMessageFeedback', e instanceof Error ? e.message : t('feedback.messageBroadcastFailed'), 'error');
+        } finally {
+          sendBtn.disabled = false;
+        }
+      });
 
       document.getElementById('profileForm').addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -3570,6 +4497,8 @@
         }
 
         const tags = result.tags;
+        const wasPublicEnabled = String(f.dataset.lastSavedPublicEnabled || 'false') === 'true';
+        const willBePublicEnabled = !!field(f, 'public_enabled').checked;
         setFeedback('profileFeedback', t('feedback.savingProfile'));
         setSaveBusy(true);
         try {
@@ -3583,7 +4512,9 @@
           setFeedback('profileFeedback', r.meta?.message || t('common.saved'));
           toast(t('feedback.profileSaved'));
           field(f, 'tags').value = normalizeTagsInput(field(f, 'tags').value);
+          f.dataset.lastSavedPublicEnabled = String(willBePublicEnabled);
           await refreshAll();
+          setProfileNextStepVisible(!wasPublicEnabled && willBePublicEnabled);
         } catch (e) {
           setFeedback('profileFeedback', e instanceof Error ? e.message : t('feedback.failed'), 'error');
         } finally {
@@ -3619,7 +4550,7 @@
         updateDirtyState(profileFormEl, true);
       });
       window.addEventListener('beforeunload', (event) => {
-        if (!profileDirty || profileSaving) return;
+        if ((!profileDirty || profileSaving) && !socialModeDirty) return;
         event.preventDefault();
         event.returnValue = '';
       });
@@ -3631,6 +4562,9 @@
           setFeedback('networkFeedback', r.meta?.message || t('common.done'), level);
           toast(r.meta?.message || t('common.done'));
           await refreshAll();
+          if (path === '/api/broadcast/now') {
+            pulseOverviewBroadcastStep();
+          }
         } catch (e) {
           setFeedback('networkFeedback', e instanceof Error ? e.message : t('feedback.failed'), 'error');
         }
@@ -3663,6 +4597,17 @@
         agentsPage = 1;
         await refreshOverview();
       });
+      document.getElementById('clearDiscoveryCacheBtn').addEventListener('click', async () => {
+        try {
+          await api('/api/cache/clear', { method: 'POST' });
+          setFeedback('networkFeedback', t('feedback.discoveryCacheCleared'));
+          toast(t('feedback.discoveryCacheCleared'));
+          agentsPage = 1;
+          await refreshAll();
+        } catch (e) {
+          setFeedback('networkFeedback', e instanceof Error ? e.message : t('feedback.failed'), 'error');
+        }
+      });
       document.getElementById('refreshLogsBtn').addEventListener('click', async () => {
         await refreshLogs();
         toast(t('feedback.logsRefreshed'));
@@ -3677,6 +4622,37 @@
           setFeedback('socialFeedback', e instanceof Error ? e.message : t('feedback.exportFailed'), 'error');
         }
       });
+      document.getElementById('saveGovernanceBtn').addEventListener('click', async () => {
+        setFeedback('socialGovernanceFeedback', t('common.saving'));
+        try {
+          await api('/api/social/message-governance', {
+            method: 'PUT',
+            body: JSON.stringify({
+              send_limit_max: Number(document.getElementById('governanceSendLimitInput').value || 5),
+              send_window_ms: Number(document.getElementById('governanceSendWindowInput').value || 60) * 1000,
+              receive_limit_max: Number(document.getElementById('governanceReceiveLimitInput').value || 8),
+              receive_window_ms: Number(document.getElementById('governanceReceiveWindowInput').value || 60) * 1000,
+              duplicate_window_ms: Number(document.getElementById('governanceDuplicateWindowInput').value || 180) * 1000,
+              blocked_agent_ids: parseCsv(document.getElementById('governanceBlockedAgentsInput').value || ''),
+              blocked_terms: parseCsv(document.getElementById('governanceBlockedTermsInput').value || ''),
+            }),
+          });
+          setFeedback('socialGovernanceFeedback', t('hints.governanceSaved'));
+          toast(t('hints.governanceSaved'));
+          await refreshSocial();
+          await refreshMessages();
+        } catch (e) {
+          setFeedback('socialGovernanceFeedback', e instanceof Error ? e.message : t('feedback.failed'), 'error');
+        }
+      });
+      document.getElementById('socialModeSelect').addEventListener('change', (event) => {
+        const mode = String(event.target?.value || '').trim();
+        if (!mode) return;
+        socialModeDirty = true;
+        socialModePending = mode;
+        renderSocialModeHint(mode, mode, false, true);
+        setSocialModePendingState(true);
+      });
       document.getElementById('socialModeApplyBtn').addEventListener('click', async () => {
         const mode = document.getElementById('socialModeSelect').value;
         setFeedback('socialFeedback', t('feedback.runtimeModeApplying', { mode }));
@@ -3685,7 +4661,15 @@
             method: 'POST',
             body: JSON.stringify({ mode }),
           });
-          setFeedback('socialFeedback', res.meta?.message || t('feedback.runtimeUpdated'));
+          socialModeDirty = false;
+          socialModePending = '';
+          document.getElementById('socialModeSelect').value = mode;
+          setSocialModePendingState(false);
+          setFeedback('socialFeedback', `${res.meta?.message || t('feedback.runtimeUpdated')} ${t('hints.socialModeHint', {
+            selected: mode,
+            effective: mode,
+            restart: res.data?.network_requires_restart ? t('hints.restartRequiredHint') : t('hints.restartNotRequiredHint'),
+          })}`);
           toast(t('feedback.runtimeMode', { mode }));
           await refreshAll();
         } catch (e) {
