@@ -1,4 +1,5 @@
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import vm from 'node:vm';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -80,6 +81,9 @@ async function main() {
   // Import built modules (requires npm run build)
   const core = await import(pathToFileURL(path.resolve(root, 'packages/core/dist/index.js')).href);
   const network = await import(pathToFileURL(path.resolve(root, 'packages/network/dist/index.js')).href);
+  const localConsole = await import(
+    pathToFileURL(path.resolve(root, 'apps/local-console/dist/apps/local-console/src/server.js')).href
+  );
 
   // Core smoke: identity/profile/presence
   const identity = core.createIdentity();
@@ -97,6 +101,19 @@ async function main() {
 
   const presence = core.signPresence(identity);
   assert(core.verifyPresence(presence, identity.public_key), 'Presence signature verification failed');
+
+  const socialMessage = core.signSocialMessage({
+    identity,
+    message_id: 'smoke-social-msg-1',
+    display_name: 'demo-agent',
+    body: 'hello peers',
+    created_at: Date.now(),
+  });
+  assert(core.verifySocialMessage(socialMessage), 'Social message signature verification failed');
+  assert(
+    core.verifySocialMessage({ ...socialMessage, body: 'tampered' }) === false,
+    'Tampered social message should not verify'
+  );
 
   // Core smoke: index + search + TTL
   let state = core.createEmptyDirectoryState();
@@ -156,7 +173,44 @@ async function main() {
 
   await adapter.stop();
 
-  console.log('Functional check passed: core + network preview + UI script syntax + data sanity');
+  // OpenClaw bridge service smoke
+  process.env.NETWORK_ADAPTER = 'mock';
+  const tempStorageRoot = mkdtempSync(path.join(tmpdir(), 'silicaclaw-functional-check-'));
+  mkdirSync(path.join(tempStorageRoot, 'data'), { recursive: true });
+  const service = new localConsole.LocalNodeService({
+    workspaceRoot: root,
+    storageRoot: tempStorageRoot,
+  });
+  await service.start();
+  try {
+    const bridgeStatus = service.getOpenClawBridgeStatus();
+    assert(typeof bridgeStatus.agent_id === 'string', 'Bridge status missing agent_id');
+
+    const bridgeProfile = service.getOpenClawBridgeProfile();
+    assert(bridgeProfile?.profile, 'Bridge profile payload missing profile');
+
+    const currentProfile = service.getProfile();
+    assert(currentProfile, 'Current profile missing');
+    await service.updateProfile({
+      display_name: currentProfile.display_name || 'bridge-smoke',
+      bio: currentProfile.bio || 'bridge smoke',
+      tags: Array.isArray(currentProfile.tags) ? currentProfile.tags : ['openclaw'],
+      avatar_url: currentProfile.avatar_url || '',
+      public_enabled: true,
+    });
+
+    const sendResult = await service.sendSocialMessage('bridge smoke message');
+    assert(sendResult.sent === true, 'Bridge message send failed');
+
+    const messageList = service.getSocialMessages(5);
+    const items = Array.isArray(messageList?.items) ? messageList.items : [];
+    assert(items.some((item) => item.body === 'bridge smoke message'), 'Bridge message not visible in bridge list');
+  } finally {
+    await service.stop();
+    rmSync(tempStorageRoot, { recursive: true, force: true });
+  }
+
+  console.log('Functional check passed: core + network preview + bridge service smoke + UI script syntax + data sanity');
 }
 
 main().catch((error) => {

@@ -5,7 +5,7 @@
     "rootDir": "./src",
     "baseUrl": ".",
     "paths": {
-      "@silicaclaw/core": ["../../node_modules/@silicaclaw/core/dist/index.d.ts"]
+      "@silicaclaw/core": ["../../packages/core/dist/index.d.ts"]
     }
   },
   "include": ["src"]

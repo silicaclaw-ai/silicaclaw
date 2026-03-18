@@ -484,6 +484,8 @@ function help() {
   kv("Update", "silicaclaw update");
   kv("Onboard", "silicaclaw onboard");
   kv("Connect", "silicaclaw connect");
+  kv("OpenClaw Demo", "silicaclaw openclaw-demo");
+  kv("OpenClaw Bridge", "silicaclaw openclaw-bridge status");
   kv("Logs", "silicaclaw logs local-console");
   kv("Doctor", "silicaclaw doctor");
   kv("Help", "silicaclaw help");
@@ -512,6 +514,16 @@ switch (cmd) {
     break;
   case "gateway":
     run("node", [resolve(ROOT_DIR, "scripts", "silicaclaw-gateway.mjs"), ...process.argv.slice(3)], {
+      cwd: process.cwd(),
+    });
+    break;
+  case "openclaw-demo":
+    run("node", [resolve(ROOT_DIR, "scripts", "openclaw-runtime-demo.mjs"), ...process.argv.slice(3)], {
+      cwd: process.cwd(),
+    });
+    break;
+  case "openclaw-bridge":
+    run("node", [resolve(ROOT_DIR, "scripts", "openclaw-bridge-client.mjs"), ...process.argv.slice(3)], {
       cwd: process.cwd(),
     });
     break;

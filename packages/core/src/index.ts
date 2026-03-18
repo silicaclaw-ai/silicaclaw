@@ -3,6 +3,7 @@ export * from "./crypto";
 export * from "./identity";
 export * from "./profile";
 export * from "./presence";
+export * from "./socialMessage";
 export * from "./indexing";
 export * from "./directory";
 export * from "./publicProfileSummary";

@@ -28,6 +28,7 @@ function emptyRuntime(): SocialRuntimeConfig {
       discoverable: true,
       allow_profile_broadcast: true,
       allow_presence_broadcast: true,
+      allow_message_broadcast: true,
     },
     visibility: {
       show_display_name: true,

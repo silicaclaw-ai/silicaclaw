@@ -3,6 +3,8 @@ import { Express } from "express";
 type SocialRoutesDeps = {
   getSocialConfigView: () => unknown;
   getIntegrationSummary: () => unknown;
+  getMessageGovernanceView: () => Promise<unknown>;
+  updateMessageGovernance: (input: Record<string, unknown>) => Promise<unknown>;
   exportSocialTemplate: () => { filename: string; content: string };
   setNetworkModeRuntime: (mode: "local" | "lan" | "global-preview") => Promise<unknown>;
   reloadSocialConfig: () => Promise<unknown>;
@@ -31,6 +33,25 @@ export function registerSocialRoutes(app: Express, deps: SocialRoutesDeps): void
 
   app.get("/api/social/integration-summary", (_req, res) => {
     sendOk(res, deps.getIntegrationSummary());
+  });
+
+  app.get("/api/social/message-governance", async (_req, res) => {
+    sendOk(res, await deps.getMessageGovernanceView());
+  });
+
+  app.put("/api/social/message-governance", async (req, res) => {
+    try {
+      sendOk(res, await deps.updateMessageGovernance(req.body || {}), {
+        message: "Runtime message governance updated (social.md unchanged)",
+      });
+    } catch (error) {
+      sendError(
+        res,
+        500,
+        "SOCIAL_GOVERNANCE_UPDATE_FAILED",
+        error instanceof Error ? error.message : "Runtime governance update failed"
+      );
+    }
   });
 
   app.get("/api/social/export-template", (_req, res) => {

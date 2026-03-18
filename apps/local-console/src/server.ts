@@ -30,11 +30,17 @@ import {
   resolveIdentityWithSocial,
   resolveProfileInputWithSocial,
   searchDirectory,
+  signSocialMessage,
+  signSocialMessageObservation,
   signPresence,
   signProfile,
   SocialConfig,
+  SocialMessageObservationRecord,
+  SocialMessageRecord,
   SocialRuntimeConfig,
   generateSocialMdTemplate,
+  verifySocialMessage,
+  verifySocialMessageObservation,
   verifyPresence,
   verifyProfile,
 } from "@silicaclaw/core";
@@ -48,7 +54,17 @@ import {
   UdpLanBroadcastTransport,
   WebRTCPreviewAdapter,
 } from "@silicaclaw/network";
-import { CacheRepo, IdentityRepo, LogRepo, ProfileRepo, SocialRuntimeRepo } from "@silicaclaw/storage";
+import {
+  CacheRepo,
+  IdentityRepo,
+  LogRepo,
+  ProfileRepo,
+  SocialMessageGovernanceConfig,
+  SocialMessageGovernanceRepo,
+  SocialMessageRepo,
+  SocialMessageObservationRepo,
+  SocialRuntimeRepo,
+} from "@silicaclaw/storage";
 import { registerSocialRoutes } from "./socialRoutes";
 
 const BROADCAST_INTERVAL_MS = Number(process.env.BROADCAST_INTERVAL_MS || 20_000);
@@ -71,6 +87,25 @@ const WEBRTC_ROOM = process.env.WEBRTC_ROOM || "silicaclaw-global-preview";
 const WEBRTC_SEED_PEERS = process.env.WEBRTC_SEED_PEERS || "";
 const WEBRTC_BOOTSTRAP_HINTS = process.env.WEBRTC_BOOTSTRAP_HINTS || "";
 const PROFILE_VERSION = "v0.9";
+const SOCIAL_MESSAGE_TOPIC = "social.message";
+const SOCIAL_MESSAGE_OBSERVATION_TOPIC = "social.message.observation";
+const DEFAULT_SOCIAL_MESSAGE_CHANNEL = "global";
+const SOCIAL_MESSAGE_MAX_BODY_CHARS = Number(process.env.SOCIAL_MESSAGE_MAX_BODY_CHARS || 500);
+const SOCIAL_MESSAGE_HISTORY_LIMIT = Number(process.env.SOCIAL_MESSAGE_HISTORY_LIMIT || 100);
+const SOCIAL_MESSAGE_SEND_WINDOW_MS = Number(process.env.SOCIAL_MESSAGE_SEND_WINDOW_MS || 60_000);
+const SOCIAL_MESSAGE_SEND_MAX_PER_WINDOW = Number(process.env.SOCIAL_MESSAGE_SEND_MAX_PER_WINDOW || 5);
+const SOCIAL_MESSAGE_RECEIVE_WINDOW_MS = Number(process.env.SOCIAL_MESSAGE_RECEIVE_WINDOW_MS || 60_000);
+const SOCIAL_MESSAGE_RECEIVE_MAX_PER_WINDOW = Number(process.env.SOCIAL_MESSAGE_RECEIVE_MAX_PER_WINDOW || 8);
+const SOCIAL_MESSAGE_DUPLICATE_WINDOW_MS = Number(process.env.SOCIAL_MESSAGE_DUPLICATE_WINDOW_MS || 180_000);
+const SOCIAL_MESSAGE_MAX_FUTURE_MS = Number(process.env.SOCIAL_MESSAGE_MAX_FUTURE_MS || 30_000);
+const SOCIAL_MESSAGE_MAX_AGE_MS = Number(process.env.SOCIAL_MESSAGE_MAX_AGE_MS || 15 * 60_000);
+const SOCIAL_MESSAGE_OBSERVATION_HISTORY_LIMIT = Number(process.env.SOCIAL_MESSAGE_OBSERVATION_HISTORY_LIMIT || 500);
+const SOCIAL_MESSAGE_BLOCKED_AGENT_IDS = new Set(
+  dedupeStrings(parseListEnv(process.env.SOCIAL_MESSAGE_BLOCKED_AGENT_IDS || ""))
+);
+const SOCIAL_MESSAGE_BLOCKED_TERMS = dedupeStrings(parseListEnv(process.env.SOCIAL_MESSAGE_BLOCKED_TERMS || ""))
+  .map((term) => term.trim().toLowerCase())
+  .filter(Boolean);
 
 function readWorkspaceVersion(workspaceRoot: string): string {
   const pkgFile = resolve(workspaceRoot, "package.json");
@@ -128,7 +163,14 @@ function migrateLegacyDataIfNeeded(workspaceRoot: string, storageRoot: string): 
   const legacyDataDir = resolve(workspaceRoot, "data");
   const targetDataDir = resolve(storageRoot, "data");
   if (legacyDataDir === targetDataDir) return;
-  const files = ["identity.json", "profile.json", "cache.json", "logs.json"];
+  const files = [
+    "identity.json",
+    "profile.json",
+    "cache.json",
+    "logs.json",
+    "social-messages.json",
+    "social-message-observations.json",
+  ];
   for (const file of files) {
     const src = resolve(legacyDataDir, file);
     const dst = resolve(targetDataDir, file);
@@ -179,18 +221,56 @@ type IntegrationStatusSummary = {
   status_line: string;
 };
 
-class LocalNodeService {
+type SocialMessageView = SocialMessageRecord & {
+  is_self: boolean;
+  online: boolean;
+  last_seen_at: number | null;
+  observation_count: number;
+  remote_observation_count: number;
+  last_observed_at: number | null;
+  delivery_status: "local-only" | "remote-observed";
+};
+
+type RuntimeMessageGovernance = SocialMessageGovernanceConfig;
+
+type OpenClawBridgeStatus = {
+  enabled: boolean;
+  connected_to_silicaclaw: boolean;
+  public_enabled: boolean;
+  message_broadcast_enabled: boolean;
+  network_mode: "local" | "lan" | "global-preview";
+  adapter: string;
+  agent_id: string;
+  display_name: string;
+  identity_source: "silicaclaw-existing" | "openclaw-existing" | "silicaclaw-generated";
+  openclaw_identity_source_path: string | null;
+  social_source_path: string | null;
+  endpoints: {
+    status: string;
+    profile: string;
+    messages: string;
+    send_message: string;
+  };
+};
+
+export class LocalNodeService {
   private workspaceRoot: string;
   private storageRoot: string;
   private identityRepo: IdentityRepo;
   private profileRepo: ProfileRepo;
   private cacheRepo: CacheRepo;
   private logRepo: LogRepo;
+  private socialMessageGovernanceRepo: SocialMessageGovernanceRepo;
+  private socialMessageRepo: SocialMessageRepo;
+  private socialMessageObservationRepo: SocialMessageObservationRepo;
   private socialRuntimeRepo: SocialRuntimeRepo;
 
   private identity: AgentIdentity | null = null;
   private profile: PublicProfile | null = null;
   private directory: DirectoryState = createEmptyDirectoryState();
+  private socialMessages: SocialMessageRecord[] = [];
+  private socialMessageObservations: SocialMessageObservationRecord[] = [];
+  private messageGovernance: RuntimeMessageGovernance;
 
   private receivedCount = 0;
   private broadcastCount = 0;
@@ -202,6 +282,8 @@ class LocalNodeService {
 
   private receivedByTopic: Record<string, number> = {};
   private publishedByTopic: Record<string, number> = {};
+  private outboundMessageTimestamps: number[] = [];
+  private inboundMessageTimestampsByAgent: Record<string, number[]> = {};
 
   private initState: InitState = {
     identity_auto_created: false,
@@ -232,9 +314,9 @@ class LocalNodeService {
   private webrtcBootstrapSources: string[] = [];
   private appVersion = "unknown";
 
-  constructor() {
-    this.workspaceRoot = resolveWorkspaceRoot();
-    this.storageRoot = resolveStorageRoot(this.workspaceRoot);
+  constructor(options?: { workspaceRoot?: string; storageRoot?: string }) {
+    this.workspaceRoot = options?.workspaceRoot || resolveWorkspaceRoot();
+    this.storageRoot = options?.storageRoot || resolveStorageRoot(this.workspaceRoot);
     this.appVersion = readWorkspaceVersion(this.workspaceRoot);
     migrateLegacyDataIfNeeded(this.workspaceRoot, this.storageRoot);
 
@@ -242,7 +324,11 @@ class LocalNodeService {
     this.profileRepo = new ProfileRepo(this.storageRoot);
     this.cacheRepo = new CacheRepo(this.storageRoot);
     this.logRepo = new LogRepo(this.storageRoot);
+    this.socialMessageGovernanceRepo = new SocialMessageGovernanceRepo(this.storageRoot);
+    this.socialMessageRepo = new SocialMessageRepo(this.storageRoot);
+    this.socialMessageObservationRepo = new SocialMessageObservationRepo(this.storageRoot);
     this.socialRuntimeRepo = new SocialRuntimeRepo(this.storageRoot);
+    this.messageGovernance = this.defaultMessageGovernance();
 
     let loadedSocial = loadSocialConfig(this.workspaceRoot);
     if (!loadedSocial.meta.found) {
@@ -332,6 +418,14 @@ class LocalNodeService {
         enabled: this.socialConfig.enabled,
         source_path: this.socialSourcePath,
         network_mode: this.networkMode,
+        mode_explainer: this.getModeExplainer(),
+      governance: {
+        send_limit: { max: this.messageGovernance.send_limit_max, window_ms: this.messageGovernance.send_window_ms },
+        receive_limit: { max: this.messageGovernance.receive_limit_max, window_ms: this.messageGovernance.receive_window_ms },
+        duplicate_window_ms: this.messageGovernance.duplicate_window_ms,
+        blocked_agent_count: this.messageGovernance.blocked_agent_ids.length,
+        blocked_term_count: this.messageGovernance.blocked_terms.length,
+      },
       },
     };
   }
@@ -445,6 +539,7 @@ class LocalNodeService {
           : this.adapterMode === "webrtc-preview" || this.adapterMode === "relay-preview"
             ? "internet-preview"
             : "local-process",
+      mode_explainer: this.getModeExplainer(),
     };
   }
 
@@ -825,6 +920,188 @@ class LocalNodeService {
     return this.identity;
   }
 
+  getSocialMessages(limit = 50, options?: { agent_id?: string | null }): {
+    total: number;
+    items: SocialMessageView[];
+    governance: {
+      send_limit: { max: number; window_ms: number };
+      receive_limit: { max: number; window_ms: number };
+      duplicate_window_ms: number;
+      blocked_agent_count: number;
+      blocked_term_count: number;
+    };
+  } {
+    const resolvedLimit = Math.max(1, Math.min(200, Number(limit) || 50));
+    this.ensureLocalDirectoryBaseline();
+    this.compactCacheInMemory();
+    const agentId = String(options?.agent_id || "").trim();
+    const filtered = agentId
+      ? this.socialMessages.filter((message) => message.agent_id === agentId)
+      : this.socialMessages;
+    return {
+      total: filtered.length,
+      items: filtered.slice(0, resolvedLimit).map((message) => {
+        const profile = this.directory.profiles[message.agent_id];
+        const lastSeenAt = this.directory.presence[message.agent_id] ?? 0;
+        const observations = this.socialMessageObservations.filter((item) => item.message_id === message.message_id);
+        const remoteObservationCount = observations.filter((item) => item.observer_agent_id !== message.agent_id).length;
+        const lastObservedAt = observations.length > 0 ? Math.max(...observations.map((item) => item.observed_at)) : 0;
+        return {
+          ...message,
+          display_name: profile?.display_name || message.display_name || "Unnamed",
+          is_self: message.agent_id === this.identity?.agent_id,
+          online: isAgentOnline(lastSeenAt, Date.now(), PRESENCE_TTL_MS),
+          last_seen_at: lastSeenAt || null,
+          observation_count: observations.length,
+          remote_observation_count: remoteObservationCount,
+          last_observed_at: lastObservedAt || null,
+          delivery_status: remoteObservationCount > 0 ? "remote-observed" : "local-only",
+        };
+      }),
+      governance: {
+        send_limit: { max: this.messageGovernance.send_limit_max, window_ms: this.messageGovernance.send_window_ms },
+        receive_limit: { max: this.messageGovernance.receive_limit_max, window_ms: this.messageGovernance.receive_window_ms },
+        duplicate_window_ms: this.messageGovernance.duplicate_window_ms,
+        blocked_agent_count: this.messageGovernance.blocked_agent_ids.length,
+        blocked_term_count: this.messageGovernance.blocked_terms.length,
+      },
+    };
+  }
+
+  getOpenClawBridgeStatus(): OpenClawBridgeStatus {
+    const integration = this.getIntegrationStatus();
+    return {
+      enabled: this.socialConfig.enabled,
+      connected_to_silicaclaw: integration.connected_to_silicaclaw,
+      public_enabled: integration.public_enabled,
+      message_broadcast_enabled: this.socialConfig.discovery.allow_message_broadcast && this.broadcastEnabled,
+      network_mode: this.networkMode,
+      adapter: this.adapterMode,
+      agent_id: this.identity?.agent_id ?? "",
+      display_name: this.profile?.display_name ?? "",
+      identity_source: this.resolvedIdentitySource,
+      openclaw_identity_source_path: this.resolvedOpenClawIdentityPath,
+      social_source_path: this.socialSourcePath,
+      endpoints: {
+        status: "/api/openclaw/bridge",
+        profile: "/api/openclaw/bridge/profile",
+        messages: "/api/openclaw/bridge/messages",
+        send_message: "/api/openclaw/bridge/message",
+      },
+    };
+  }
+
+  getOpenClawBridgeProfile() {
+    return {
+      identity: this.getIdentity(),
+      profile: this.getProfile(),
+      public_profile_preview: this.getPublicProfilePreview(),
+      integration: this.getIntegrationSummary(),
+      bridge: this.getOpenClawBridgeStatus(),
+    };
+  }
+
+  getRuntimeMessageGovernance() {
+    return this.messageGovernance;
+  }
+
+  async getMessageGovernanceView() {
+    const logs = await this.logRepo.get();
+    const recentEvents = logs
+      .filter((entry) => (
+        entry.message.includes("Rejected social message") ||
+        entry.message.includes("Social message blocked") ||
+        entry.message.includes("Social message throttled")
+      ))
+      .slice(0, 20);
+
+    return {
+      policy: {
+        send_limit: { max: this.messageGovernance.send_limit_max, window_ms: this.messageGovernance.send_window_ms },
+        receive_limit: { max: this.messageGovernance.receive_limit_max, window_ms: this.messageGovernance.receive_window_ms },
+        duplicate_window_ms: this.messageGovernance.duplicate_window_ms,
+        blocked_agent_ids: Array.from(this.messageGovernance.blocked_agent_ids),
+        blocked_terms: Array.from(this.messageGovernance.blocked_terms),
+      },
+      recent_events: recentEvents,
+    };
+  }
+
+  async updateMessageGovernance(input: Partial<RuntimeMessageGovernance>) {
+    const next: RuntimeMessageGovernance = {
+      send_limit_max: Math.max(1, Math.min(100, Number(input.send_limit_max ?? this.messageGovernance.send_limit_max) || this.messageGovernance.send_limit_max)),
+      send_window_ms: Math.max(5_000, Math.min(3_600_000, Number(input.send_window_ms ?? this.messageGovernance.send_window_ms) || this.messageGovernance.send_window_ms)),
+      receive_limit_max: Math.max(1, Math.min(200, Number(input.receive_limit_max ?? this.messageGovernance.receive_limit_max) || this.messageGovernance.receive_limit_max)),
+      receive_window_ms: Math.max(5_000, Math.min(3_600_000, Number(input.receive_window_ms ?? this.messageGovernance.receive_window_ms) || this.messageGovernance.receive_window_ms)),
+      duplicate_window_ms: Math.max(5_000, Math.min(3_600_000, Number(input.duplicate_window_ms ?? this.messageGovernance.duplicate_window_ms) || this.messageGovernance.duplicate_window_ms)),
+      blocked_agent_ids: dedupeStrings(Array.isArray(input.blocked_agent_ids) ? input.blocked_agent_ids.map((item) => String(item || "").trim()) : this.messageGovernance.blocked_agent_ids),
+      blocked_terms: dedupeStrings(Array.isArray(input.blocked_terms) ? input.blocked_terms.map((item) => String(item || "").trim().toLowerCase()) : this.messageGovernance.blocked_terms),
+    };
+    this.messageGovernance = next;
+    await this.socialMessageGovernanceRepo.set(next);
+    await this.log("info", "Runtime message governance updated");
+    return this.getMessageGovernanceView();
+  }
+
+  async sendSocialMessage(body: string, topic = DEFAULT_SOCIAL_MESSAGE_CHANNEL): Promise<{ sent: boolean; reason: string; message?: SocialMessageView }> {
+    if (!this.identity || !this.profile) {
+      return { sent: false, reason: "missing_identity_or_profile" };
+    }
+    if (!this.profile.public_enabled) {
+      return { sent: false, reason: "public_disabled" };
+    }
+    if (!this.broadcastEnabled) {
+      return { sent: false, reason: "broadcast_paused" };
+    }
+    if (!this.socialConfig.discovery.allow_message_broadcast) {
+      return { sent: false, reason: "message_broadcast_disabled" };
+    }
+
+    const normalizedBody = this.normalizeSocialMessageBody(body);
+    const normalizedTopic = String(topic || DEFAULT_SOCIAL_MESSAGE_CHANNEL).trim() || DEFAULT_SOCIAL_MESSAGE_CHANNEL;
+    if (!normalizedBody) {
+      return { sent: false, reason: "empty_message" };
+    }
+    if (normalizedBody.length > SOCIAL_MESSAGE_MAX_BODY_CHARS) {
+      return { sent: false, reason: "message_too_long" };
+    }
+    if (this.containsBlockedMessageTerm(normalizedBody)) {
+      await this.log("warn", `Social message blocked: blocked_term (${this.identity.agent_id.slice(0, 10)})`);
+      return { sent: false, reason: "blocked_term" };
+    }
+    if (this.isRateLimited(this.outboundMessageTimestamps, this.messageGovernance.send_window_ms, this.messageGovernance.send_limit_max)) {
+      await this.log("warn", `Social message throttled: rate_limited (${this.identity.agent_id.slice(0, 10)})`);
+      return { sent: false, reason: "rate_limited" };
+    }
+    if (this.hasRecentDuplicateMessage(this.identity.agent_id, normalizedBody, normalizedTopic)) {
+      await this.log("warn", `Social message blocked: duplicate_recent_message (${this.identity.agent_id.slice(0, 10)})`);
+      return { sent: false, reason: "duplicate_recent_message" };
+    }
+
+    const message = signSocialMessage({
+      identity: this.identity,
+      message_id: createHash("sha256")
+        .update(`${this.identity.agent_id}:${normalizedTopic}:${Date.now()}:${normalizedBody}:${Math.random()}`, "utf8")
+        .digest("hex"),
+      display_name: this.profile.display_name,
+      topic: normalizedTopic,
+      body: normalizedBody,
+      created_at: Date.now(),
+    });
+
+    this.recordTimestamp(this.outboundMessageTimestamps, this.messageGovernance.send_window_ms, message.created_at);
+    this.ingestSocialMessage(message);
+    await this.publish(SOCIAL_MESSAGE_TOPIC, message);
+    await this.persistSocialMessages();
+    await this.log("info", `Social message broadcast (${message.message_id.slice(0, 10)})`);
+
+    return {
+      sent: true,
+      reason: "sent",
+      message: this.getSocialMessages(1).items[0],
+    };
+  }
+
   async getLogs() {
     return this.logRepo.get();
   }
@@ -1019,6 +1296,12 @@ class LocalNodeService {
     await this.profileRepo.set(this.profile);
 
     this.directory = dedupeIndex(await this.cacheRepo.get());
+    this.messageGovernance = {
+      ...this.defaultMessageGovernance(),
+      ...(await this.socialMessageGovernanceRepo.get()),
+    };
+    this.socialMessages = this.normalizeSocialMessages(await this.socialMessageRepo.get());
+    this.socialMessageObservations = this.normalizeSocialMessageObservations(await this.socialMessageObservationRepo.get());
     this.directory = ingestProfileRecord(this.directory, { type: "profile", profile: this.profile });
     this.compactCacheInMemory();
     await this.persistCache();
@@ -1100,7 +1383,10 @@ class LocalNodeService {
     await this.socialRuntimeRepo.set(runtime);
   }
 
-  private async onMessage(topic: "profile" | "presence" | "index", data: unknown): Promise<void> {
+  private async onMessage(
+    topic: "profile" | "presence" | "index" | "social.message" | "social.message.observation",
+    data: unknown
+  ): Promise<void> {
     this.receivedCount += 1;
     this.receivedByTopic[topic] = (this.receivedByTopic[topic] ?? 0) + 1;
     this.lastMessageAt = Date.now();
@@ -1143,6 +1429,40 @@ class LocalNodeService {
       return;
     }
 
+    if (topic === SOCIAL_MESSAGE_TOPIC) {
+      const record = this.normalizeIncomingSocialMessage(data);
+      if (!record) {
+        return;
+      }
+      if (!verifySocialMessage(record)) {
+        await this.log("warn", `Rejected social message with invalid signature (${record.message_id.slice(0, 10)})`);
+        return;
+      }
+      const governanceReason = this.getIncomingSocialMessageRejectionReason(record);
+      if (governanceReason) {
+        await this.log("warn", `Rejected social message (${record.message_id.slice(0, 10)}): ${governanceReason}`);
+        return;
+      }
+      this.ingestSocialMessage(record);
+      await this.persistSocialMessages();
+      await this.publishObservationForMessage(record);
+      return;
+    }
+
+    if (topic === SOCIAL_MESSAGE_OBSERVATION_TOPIC) {
+      const record = this.normalizeIncomingSocialMessageObservation(data);
+      if (!record) {
+        return;
+      }
+      if (!verifySocialMessageObservation(record)) {
+        await this.log("warn", `Rejected message observation with invalid signature (${record.observation_id.slice(0, 10)})`);
+        return;
+      }
+      this.ingestSocialMessageObservation(record);
+      await this.persistSocialMessageObservations();
+      return;
+    }
+
     const record = data as IndexRefRecord;
     if (!record?.key || !record?.agent_id) {
       return;
@@ -1178,6 +1498,12 @@ class LocalNodeService {
     });
     this.network.subscribe("index", (data: IndexRefRecord) => {
       this.onMessage("index", data);
+    });
+    this.network.subscribe(SOCIAL_MESSAGE_TOPIC, (data: SocialMessageRecord) => {
+      this.onMessage(SOCIAL_MESSAGE_TOPIC, data);
+    });
+    this.network.subscribe(SOCIAL_MESSAGE_OBSERVATION_TOPIC, (data: SocialMessageObservationRecord) => {
+      this.onMessage(SOCIAL_MESSAGE_OBSERVATION_TOPIC, data);
     });
     this.subscriptionsBound = true;
   }
@@ -1302,6 +1628,14 @@ class LocalNodeService {
     await this.cacheRepo.set(this.directory);
   }
 
+  private async persistSocialMessages(): Promise<void> {
+    await this.socialMessageRepo.set(this.socialMessages);
+  }
+
+  private async persistSocialMessageObservations(): Promise<void> {
+    await this.socialMessageObservationRepo.set(this.socialMessageObservations);
+  }
+
   private async log(level: "info" | "warn" | "error", message: string): Promise<void> {
     await this.logRepo.append({
       level,
@@ -1391,6 +1725,40 @@ class LocalNodeService {
     return host ? `OpenClaw @ ${host}` : "OpenClaw Agent";
   }
 
+  private getModeExplainer() {
+    if (this.networkMode === "local") {
+      return {
+        mode: "local",
+        short_label: "Local only",
+        summary: "Only nodes inside the same local process bus are visible.",
+      };
+    }
+    if (this.networkMode === "lan") {
+      return {
+        mode: "lan",
+        short_label: "LAN broadcast",
+        summary: "Uses UDP LAN broadcast. Peers usually need to be on the same local network.",
+      };
+    }
+    return {
+      mode: "global-preview",
+      short_label: "Relay preview",
+      summary: "Uses the public relay preview room so public nodes can find each other across the internet.",
+    };
+  }
+
+  private defaultMessageGovernance(): RuntimeMessageGovernance {
+    return {
+      send_limit_max: SOCIAL_MESSAGE_SEND_MAX_PER_WINDOW,
+      send_window_ms: SOCIAL_MESSAGE_SEND_WINDOW_MS,
+      receive_limit_max: SOCIAL_MESSAGE_RECEIVE_MAX_PER_WINDOW,
+      receive_window_ms: SOCIAL_MESSAGE_RECEIVE_WINDOW_MS,
+      duplicate_window_ms: SOCIAL_MESSAGE_DUPLICATE_WINDOW_MS,
+      blocked_agent_ids: Array.from(SOCIAL_MESSAGE_BLOCKED_AGENT_IDS),
+      blocked_terms: Array.from(SOCIAL_MESSAGE_BLOCKED_TERMS),
+    };
+  }
+
   private adapterForMode(mode: "local" | "lan" | "global-preview"): "local-event-bus" | "real-preview" | "webrtc-preview" | "relay-preview" {
     if (mode === "local") return "local-event-bus";
     if (mode === "lan") return "real-preview";
@@ -1400,9 +1768,10 @@ class LocalNodeService {
   private applyResolvedNetworkConfig(): void {
     const modeEnv = String(NETWORK_MODE || "").trim();
     const resolvedMode =
-      modeEnv === "local" || modeEnv === "lan" || modeEnv === "global-preview"
+      this.socialConfig.network.mode ||
+      (modeEnv === "local" || modeEnv === "lan" || modeEnv === "global-preview"
         ? modeEnv
-        : this.socialConfig.network.mode || "lan";
+        : "lan");
 
     this.networkMode = resolvedMode;
     this.networkNamespace = this.socialConfig.network.namespace || process.env.NETWORK_NAMESPACE || "silicaclaw.preview";
@@ -1478,6 +1847,242 @@ class LocalNodeService {
     this.webrtcSeedPeers = seedPeers;
     this.webrtcBootstrapHints = bootstrapHints;
     this.webrtcBootstrapSources = [signalingSource, roomSource, seedPeersSource, bootstrapHintsSource];
+  }
+
+  private normalizeSocialMessageBody(body: string): string {
+    return String(body || "")
+      .replace(/\r\n/g, "\n")
+      .split("\n")
+      .map((line) => line.trimEnd())
+      .join("\n")
+      .trim();
+  }
+
+  private normalizeWindowTimestamps(timestamps: number[], windowMs: number, now = Date.now()): number[] {
+    return timestamps.filter((timestamp) => now - timestamp <= windowMs);
+  }
+
+  private recordTimestamp(timestamps: number[], windowMs: number, at = Date.now()): void {
+    const cleaned = this.normalizeWindowTimestamps(timestamps, windowMs, at);
+    cleaned.push(at);
+    timestamps.splice(0, timestamps.length, ...cleaned);
+  }
+
+  private isRateLimited(timestamps: number[], windowMs: number, maxCount: number, now = Date.now()): boolean {
+    const cleaned = this.normalizeWindowTimestamps(timestamps, windowMs, now);
+    timestamps.splice(0, timestamps.length, ...cleaned);
+    return cleaned.length >= maxCount;
+  }
+
+  private containsBlockedMessageTerm(body: string): boolean {
+    const normalized = String(body || "").toLowerCase();
+    return this.messageGovernance.blocked_terms.some((term) => normalized.includes(term));
+  }
+
+  private hasRecentDuplicateMessage(agentId: string, body: string, topic: string, now = Date.now()): boolean {
+    return this.socialMessages.some((item) => (
+      item.agent_id === agentId &&
+      item.topic === topic &&
+      item.body === body &&
+      now - item.created_at <= this.messageGovernance.duplicate_window_ms
+    ));
+  }
+
+  private getIncomingSocialMessageRejectionReason(record: SocialMessageRecord): string | null {
+    const now = Date.now();
+    if (this.messageGovernance.blocked_agent_ids.includes(record.agent_id)) {
+      return "blocked_agent";
+    }
+    if (this.containsBlockedMessageTerm(record.body)) {
+      return "blocked_term";
+    }
+    if (record.created_at - now > SOCIAL_MESSAGE_MAX_FUTURE_MS) {
+      return "message_from_future";
+    }
+    if (now - record.created_at > SOCIAL_MESSAGE_MAX_AGE_MS) {
+      return "message_too_old";
+    }
+    const timestamps = this.inboundMessageTimestampsByAgent[record.agent_id] || [];
+    this.inboundMessageTimestampsByAgent[record.agent_id] = timestamps;
+    if (this.isRateLimited(timestamps, this.messageGovernance.receive_window_ms, this.messageGovernance.receive_limit_max, now)) {
+      return "remote_rate_limited";
+    }
+    if (this.hasRecentDuplicateMessage(record.agent_id, record.body, record.topic, now)) {
+      return "duplicate_recent_message";
+    }
+    this.recordTimestamp(timestamps, this.messageGovernance.receive_window_ms, now);
+    return null;
+  }
+
+  private canPublishMessageObservation(): boolean {
+    return Boolean(
+      this.identity &&
+      this.profile?.public_enabled &&
+      this.broadcastEnabled &&
+      this.socialConfig.discovery.allow_message_broadcast
+    );
+  }
+
+  private async publishObservationForMessage(message: SocialMessageRecord): Promise<void> {
+    if (!this.identity || !this.profile || !this.canPublishMessageObservation()) {
+      return;
+    }
+    if (message.agent_id === this.identity.agent_id) {
+      return;
+    }
+    const existing = this.socialMessageObservations.find((item) => (
+      item.message_id === message.message_id && item.observer_agent_id === this.identity?.agent_id
+    ));
+    if (existing) {
+      return;
+    }
+    const observation = signSocialMessageObservation({
+      identity: this.identity,
+      observation_id: createHash("sha256")
+        .update(`${message.message_id}:${this.identity.agent_id}:${Date.now()}`, "utf8")
+        .digest("hex"),
+      message_id: message.message_id,
+      observed_agent_id: message.agent_id,
+      observer_display_name: this.profile.display_name,
+      observed_at: Date.now(),
+    });
+    this.ingestSocialMessageObservation(observation);
+    await this.publish(SOCIAL_MESSAGE_OBSERVATION_TOPIC, observation);
+    await this.persistSocialMessageObservations();
+  }
+
+  private normalizeIncomingSocialMessage(value: unknown): SocialMessageRecord | null {
+    if (typeof value !== "object" || value === null) {
+      return null;
+    }
+    const record = value as Partial<SocialMessageRecord>;
+    const body = this.normalizeSocialMessageBody(String(record.body || ""));
+    const agentId = String(record.agent_id || "").trim();
+    const displayName = String(record.display_name || "").trim();
+    const topic = String(record.topic || DEFAULT_SOCIAL_MESSAGE_CHANNEL).trim() || DEFAULT_SOCIAL_MESSAGE_CHANNEL;
+    const messageId = String(record.message_id || "").trim();
+    const createdAt = Number(record.created_at || 0);
+    if (
+      record.type !== SOCIAL_MESSAGE_TOPIC ||
+      !messageId ||
+      !agentId ||
+      typeof record.public_key !== "string" ||
+      !String(record.public_key).trim() ||
+      !body ||
+      typeof record.signature !== "string" ||
+      !String(record.signature).trim() ||
+      !Number.isFinite(createdAt) ||
+      body.length > SOCIAL_MESSAGE_MAX_BODY_CHARS
+    ) {
+      return null;
+    }
+    return {
+      type: SOCIAL_MESSAGE_TOPIC,
+      message_id: messageId,
+      agent_id: agentId,
+      public_key: String(record.public_key).trim(),
+      display_name: displayName || "Unnamed",
+      topic,
+      body,
+      created_at: createdAt,
+      signature: String(record.signature).trim(),
+    };
+  }
+
+  private normalizeSocialMessages(items: unknown): SocialMessageRecord[] {
+    if (!Array.isArray(items)) {
+      return [];
+    }
+    const deduped = new Set<string>();
+    return items
+      .map((item) => this.normalizeIncomingSocialMessage(item))
+      .filter((item): item is SocialMessageRecord => Boolean(item))
+      .sort((a, b) => b.created_at - a.created_at)
+      .filter((item) => {
+        if (deduped.has(item.message_id)) {
+          return false;
+        }
+        deduped.add(item.message_id);
+        return true;
+      })
+      .slice(0, SOCIAL_MESSAGE_HISTORY_LIMIT);
+  }
+
+  private normalizeIncomingSocialMessageObservation(value: unknown): SocialMessageObservationRecord | null {
+    if (typeof value !== "object" || value === null) {
+      return null;
+    }
+    const record = value as Partial<SocialMessageObservationRecord>;
+    const observationId = String(record.observation_id || "").trim();
+    const messageId = String(record.message_id || "").trim();
+    const observedAgentId = String(record.observed_agent_id || "").trim();
+    const observerAgentId = String(record.observer_agent_id || "").trim();
+    const observerDisplayName = String(record.observer_display_name || "").trim();
+    const observedAt = Number(record.observed_at || 0);
+    if (
+      record.type !== SOCIAL_MESSAGE_OBSERVATION_TOPIC ||
+      !observationId ||
+      !messageId ||
+      !observedAgentId ||
+      !observerAgentId ||
+      typeof record.observer_public_key !== "string" ||
+      !String(record.observer_public_key).trim() ||
+      typeof record.signature !== "string" ||
+      !String(record.signature).trim() ||
+      !Number.isFinite(observedAt)
+    ) {
+      return null;
+    }
+    return {
+      type: SOCIAL_MESSAGE_OBSERVATION_TOPIC,
+      observation_id: observationId,
+      message_id: messageId,
+      observed_agent_id: observedAgentId,
+      observer_agent_id: observerAgentId,
+      observer_public_key: String(record.observer_public_key).trim(),
+      observer_display_name: observerDisplayName || "Unnamed",
+      observed_at: observedAt,
+      signature: String(record.signature).trim(),
+    };
+  }
+
+  private normalizeSocialMessageObservations(items: unknown): SocialMessageObservationRecord[] {
+    if (!Array.isArray(items)) {
+      return [];
+    }
+    const deduped = new Set<string>();
+    return items
+      .map((item) => this.normalizeIncomingSocialMessageObservation(item))
+      .filter((item): item is SocialMessageObservationRecord => Boolean(item))
+      .sort((a, b) => b.observed_at - a.observed_at)
+      .filter((item) => {
+        if (deduped.has(item.observation_id)) {
+          return false;
+        }
+        deduped.add(item.observation_id);
+        return true;
+      })
+      .slice(0, SOCIAL_MESSAGE_OBSERVATION_HISTORY_LIMIT);
+  }
+
+  private ingestSocialMessage(message: SocialMessageRecord): void {
+    const existing = this.socialMessages.findIndex((item) => item.message_id === message.message_id);
+    if (existing >= 0) {
+      this.socialMessages[existing] = message;
+    } else {
+      this.socialMessages.unshift(message);
+    }
+    this.socialMessages = this.normalizeSocialMessages(this.socialMessages);
+  }
+
+  private ingestSocialMessageObservation(observation: SocialMessageObservationRecord): void {
+    const existing = this.socialMessageObservations.findIndex((item) => item.observation_id === observation.observation_id);
+    if (existing >= 0) {
+      this.socialMessageObservations[existing] = observation;
+    } else {
+      this.socialMessageObservations.unshift(observation);
+    }
+    this.socialMessageObservations = this.normalizeSocialMessageObservations(this.socialMessageObservations);
   }
 }
 
@@ -1589,7 +2194,7 @@ function renderBootstrapScript(payload: unknown): string {
 </script>`;
 }
 
-async function main() {
+export async function main() {
   const app = express();
   const port = Number(process.env.PORT || 4310);
   const staticDir = resolveLocalConsoleStaticDir();
@@ -1695,6 +2300,8 @@ async function main() {
   registerSocialRoutes(app, {
     getSocialConfigView: () => node.getSocialConfigView(),
     getIntegrationSummary: () => node.getIntegrationSummary(),
+    getMessageGovernanceView: () => node.getMessageGovernanceView(),
+    updateMessageGovernance: (input) => node.updateMessageGovernance(input),
     exportSocialTemplate: () => node.exportSocialTemplate(),
     setNetworkModeRuntime: (mode) => node.setNetworkModeRuntime(mode),
     reloadSocialConfig: () => node.reloadSocialConfig(),
@@ -1739,6 +2346,50 @@ async function main() {
       const result = await node.broadcastNow("manual_button");
       sendOk(res, result, {
         message: result.sent ? "Broadcast published" : `Broadcast skipped: ${result.reason}`,
+      });
+    })
+  );
+
+  app.post(
+    "/api/messages/broadcast",
+    asyncRoute(async (req, res) => {
+      const body = String(req.body?.body || "");
+      const topic = String(req.body?.topic || DEFAULT_SOCIAL_MESSAGE_CHANNEL);
+      const result = await node.sendSocialMessage(body, topic);
+      sendOk(res, result, {
+        message: result.sent ? "Message broadcast published" : `Message broadcast skipped: ${result.reason}`,
+      });
+    })
+  );
+
+  app.get("/api/messages", (req, res) => {
+    const limit = Number(req.query.limit ?? 50);
+    const agentId = String(req.query.agent_id ?? "").trim();
+    sendOk(res, node.getSocialMessages(limit, { agent_id: agentId || null }));
+  });
+
+  app.get("/api/openclaw/bridge", (_req, res) => {
+    sendOk(res, node.getOpenClawBridgeStatus());
+  });
+
+  app.get("/api/openclaw/bridge/profile", (_req, res) => {
+    sendOk(res, node.getOpenClawBridgeProfile());
+  });
+
+  app.get("/api/openclaw/bridge/messages", (req, res) => {
+    const limit = Number(req.query.limit ?? 50);
+    const agentId = String(req.query.agent_id ?? "").trim();
+    sendOk(res, node.getSocialMessages(limit, { agent_id: agentId || null }));
+  });
+
+  app.post(
+    "/api/openclaw/bridge/message",
+    asyncRoute(async (req, res) => {
+      const body = String(req.body?.body || "");
+      const topic = String(req.body?.topic || DEFAULT_SOCIAL_MESSAGE_CHANNEL);
+      const result = await node.sendSocialMessage(body, topic);
+      sendOk(res, result, {
+        message: result.sent ? "OpenClaw bridge message published" : `OpenClaw bridge message skipped: ${result.reason}`,
       });
     })
   );
@@ -1879,8 +2530,10 @@ async function main() {
   });
 }
 
-main().catch((error) => {
-  // eslint-disable-next-line no-console
-  console.error(error);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((error) => {
+    // eslint-disable-next-line no-console
+    console.error(error);
+    process.exit(1);
+  });
+}
