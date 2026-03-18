@@ -1,7 +1,12 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "baseUrl": ".",
+    "paths": {
+      "@silicaclaw/core": ["../../node_modules/@silicaclaw/core/dist/index.d.ts"]
+    }
   },
   "include": ["src"]
 }

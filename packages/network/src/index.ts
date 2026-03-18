@@ -3,6 +3,7 @@ export * from "./mock";
 export * from "./localEventBus";
 export * from "./realPreview";
 export * from "./webrtcPreview";
+export * from "./relayPreview";
 
 export * from "./abstractions/messageEnvelope";
 export * from "./abstractions/topicCodec";

@@ -1,0 +1,8 @@
+{
+  "app_dir": "/Users/pengs/Downloads/workspace/silicaclaw",
+  "mode": "local",
+  "adapter": "local-event-bus",
+  "signaling_url": "http://localhost:4510",
+  "room": "silicaclaw-demo",
+  "updated_at": 1773818270501
+}

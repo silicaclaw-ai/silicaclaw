@@ -2,12 +2,34 @@
 
 ## v1.0 beta - 2026-03-18
 
+### Beta 22
+
+- internet-first defaults:
+  - default network mode is now `global-preview`
+  - default relay adapter is now `relay-preview`
+  - default relay URL is now `https://relay.silicaclaw.com`
+  - default room is now `silicaclaw-global-preview`
+- added Cloudflare relay deployment:
+  - Worker + Durable Object based shared discovery/message relay
+  - custom domain support for `relay.silicaclaw.com`
+- `silicaclaw start` / `gateway start` / onboarding now align with internet relay defaults
+- local-console server now respects relay defaults and no longer falls back to localhost for global preview
+- docs updated so users no longer need to manually configure a signaling URL for the default internet path
+
 ### Release Polish
 
 - added release docs:
   - `INSTALL.md`
   - `DEMO_GUIDE.md`
   - `RELEASE_NOTES_v1.0.md`
+- CLI onboarding install UX polish:
+  - added shell alias fallback (`silicaclaw -> npx @silicaclaw/cli@beta`) when global install is unavailable
+  - reduced reliance on manual PATH/env edits for first-run success
+- `silicaclaw update` guidance polish:
+  - prioritize zero-setup `npx` flow
+  - clarify global install is optional
+  - hide global-install recommendation during `npx` runtime to avoid repeated `EACCES` loops
+  - add explicit `command not found` alias guidance for first-run shells
 - README first-screen and structure polish:
   - fixed v1.0 beta project positioning
   - added concise feature summary

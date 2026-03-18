@@ -44,6 +44,7 @@ import {
   MockNetworkAdapter,
   NetworkAdapter,
   RealNetworkAdapterPreview,
+  RelayPreviewAdapter,
   UdpLanBroadcastTransport,
   WebRTCPreviewAdapter,
 } from "@silicaclaw/network";
@@ -63,9 +64,9 @@ const NETWORK_PEER_REMOVE_AFTER_MS = Number(process.env.NETWORK_PEER_REMOVE_AFTE
 const NETWORK_UDP_BIND_ADDRESS = process.env.NETWORK_UDP_BIND_ADDRESS || "0.0.0.0";
 const NETWORK_UDP_BROADCAST_ADDRESS = process.env.NETWORK_UDP_BROADCAST_ADDRESS || "255.255.255.255";
 const NETWORK_PEER_ID = process.env.NETWORK_PEER_ID;
-const WEBRTC_SIGNALING_URL = process.env.WEBRTC_SIGNALING_URL || "http://localhost:4510";
+const WEBRTC_SIGNALING_URL = process.env.WEBRTC_SIGNALING_URL || "https://relay.silicaclaw.com";
 const WEBRTC_SIGNALING_URLS = process.env.WEBRTC_SIGNALING_URLS || "";
-const WEBRTC_ROOM = process.env.WEBRTC_ROOM || "silicaclaw-room";
+const WEBRTC_ROOM = process.env.WEBRTC_ROOM || "silicaclaw-global-preview";
 const WEBRTC_SEED_PEERS = process.env.WEBRTC_SEED_PEERS || "";
 const WEBRTC_BOOTSTRAP_HINTS = process.env.WEBRTC_BOOTSTRAP_HINTS || "";
 const PROFILE_VERSION = "v0.9";
@@ -190,7 +191,7 @@ class LocalNodeService {
   };
 
   private network: NetworkAdapter;
-  private adapterMode: "mock" | "local-event-bus" | "real-preview" | "webrtc-preview";
+  private adapterMode: "mock" | "local-event-bus" | "real-preview" | "webrtc-preview" | "relay-preview";
   private networkMode: "local" | "lan" | "global-preview" = "lan";
   private networkNamespace: string;
   private networkPort: number | null;
@@ -205,7 +206,7 @@ class LocalNodeService {
     "silicaclaw-existing";
   private resolvedOpenClawIdentityPath: string | null = null;
   private webrtcSignalingUrls: string[] = [];
-  private webrtcRoom = "silicaclaw-room";
+  private webrtcRoom = "silicaclaw-global-preview";
   private webrtcSeedPeers: string[] = [];
   private webrtcBootstrapHints: string[] = [];
   private webrtcBootstrapSources: string[] = [];
@@ -319,7 +320,7 @@ class LocalNodeService {
       real_preview_stats: diagnostics?.stats ?? null,
       real_preview_transport_stats: diagnostics?.transport_stats ?? null,
       real_preview_discovery_stats: diagnostics?.discovery_stats ?? null,
-      webrtc_preview: diagnostics && diagnostics.adapter === "webrtc-preview"
+      webrtc_preview: diagnostics && (diagnostics.adapter === "webrtc-preview" || diagnostics.adapter === "relay-preview")
         ? {
             signaling_url: diagnostics.signaling_url ?? null,
             signaling_endpoints: diagnostics.signaling_endpoints ?? [],
@@ -350,7 +351,7 @@ class LocalNodeService {
       },
       limits: diagnostics?.limits ?? null,
       adapter_config: diagnostics?.config ?? null,
-      adapter_extra: diagnostics && diagnostics.adapter === "webrtc-preview"
+      adapter_extra: diagnostics && (diagnostics.adapter === "webrtc-preview" || diagnostics.adapter === "relay-preview")
         ? {
             signaling_url: diagnostics.signaling_url ?? null,
             signaling_endpoints: diagnostics.signaling_endpoints ?? [],
@@ -387,8 +388,8 @@ class LocalNodeService {
       demo_mode:
         this.adapterMode === "real-preview"
           ? "lan-preview"
-          : this.adapterMode === "webrtc-preview"
-            ? "webrtc-preview"
+          : this.adapterMode === "webrtc-preview" || this.adapterMode === "relay-preview"
+            ? "internet-preview"
             : "local-process",
     };
   }
@@ -644,7 +645,7 @@ class LocalNodeService {
     }
 
     this.socialConfig.network.mode = "global-preview";
-    this.socialConfig.network.adapter = "webrtc-preview";
+    this.socialConfig.network.adapter = "relay-preview";
     this.socialConfig.network.signaling_url = signalingUrl;
     this.socialConfig.network.signaling_urls = [signalingUrl];
     this.socialConfig.network.room = room || "silicaclaw-demo";
@@ -652,7 +653,7 @@ class LocalNodeService {
     await this.restartNetworkAdapter("quick_connect_global_preview");
     this.socialNetworkRequiresRestart = false;
     await this.writeSocialRuntime();
-    await this.log("info", `Quick connect enabled (webrtc-preview, room=${this.webrtcRoom})`);
+    await this.log("info", `Quick connect enabled (relay-preview, room=${this.webrtcRoom})`);
 
     return {
       mode: this.networkMode,
@@ -1111,7 +1112,7 @@ class LocalNodeService {
 
   private buildNetworkAdapter(): {
     adapter: NetworkAdapter;
-    mode: "mock" | "local-event-bus" | "real-preview" | "webrtc-preview";
+    mode: "mock" | "local-event-bus" | "real-preview" | "webrtc-preview" | "relay-preview";
     port: number | null;
   } {
     const mode = (process.env.NETWORK_ADAPTER as typeof this.adapterMode | undefined) || this.socialConfig.network.adapter;
@@ -1163,6 +1164,25 @@ class LocalNodeService {
           maxPastDriftMs: NETWORK_MAX_PAST_DRIFT_MS,
         }),
         mode: "webrtc-preview",
+        port: this.networkPort,
+      };
+    }
+    if (mode === "relay-preview") {
+      return {
+        adapter: new RelayPreviewAdapter({
+          peerId: NETWORK_PEER_ID,
+          namespace: this.networkNamespace,
+          signalingUrl: this.webrtcSignalingUrls[0] ?? WEBRTC_SIGNALING_URL,
+          signalingUrls: this.webrtcSignalingUrls,
+          room: this.webrtcRoom,
+          seedPeers: this.webrtcSeedPeers,
+          bootstrapHints: this.webrtcBootstrapHints,
+          bootstrapSources: this.webrtcBootstrapSources,
+          maxMessageBytes: NETWORK_MAX_MESSAGE_BYTES,
+          maxFutureDriftMs: NETWORK_MAX_FUTURE_DRIFT_MS,
+          maxPastDriftMs: NETWORK_MAX_PAST_DRIFT_MS,
+        }),
+        mode: "relay-preview",
         port: this.networkPort,
       };
     }
@@ -1299,10 +1319,10 @@ class LocalNodeService {
     return host ? `OpenClaw @ ${host}` : "OpenClaw Agent";
   }
 
-  private adapterForMode(mode: "local" | "lan" | "global-preview"): "local-event-bus" | "real-preview" | "webrtc-preview" {
+  private adapterForMode(mode: "local" | "lan" | "global-preview"): "local-event-bus" | "real-preview" | "webrtc-preview" | "relay-preview" {
     if (mode === "local") return "local-event-bus";
     if (mode === "lan") return "real-preview";
-    return "webrtc-preview";
+    return "relay-preview";
   }
 
   private applyResolvedNetworkConfig(): void {
@@ -1310,7 +1330,7 @@ class LocalNodeService {
     this.networkNamespace = this.socialConfig.network.namespace || process.env.NETWORK_NAMESPACE || "silicaclaw.preview";
     this.networkPort = Number(this.socialConfig.network.port || process.env.NETWORK_PORT || 44123);
 
-    const builtInGlobalSignalingUrls = ["http://localhost:4510"];
+    const builtInGlobalSignalingUrls = ["https://relay.silicaclaw.com"];
     const builtInGlobalRoom = "silicaclaw-global-preview";
 
     const signalingUrlsSocial = dedupeStrings(this.socialConfig.network.signaling_urls || []);
@@ -1326,34 +1346,34 @@ class LocalNodeService {
     } else if (signalingUrlSocial) {
       signalingUrls = [signalingUrlSocial];
       signalingSource = "social.md:network.signaling_url";
-    } else if (this.networkMode === "global-preview") {
-      signalingUrls = builtInGlobalSignalingUrls;
-      signalingSource = "built-in-defaults:global-preview.signaling_urls";
     } else if (signalingUrlsEnv.length > 0) {
       signalingUrls = signalingUrlsEnv;
       signalingSource = "env:WEBRTC_SIGNALING_URLS";
     } else if (signalingUrlEnvSingle) {
       signalingUrls = [signalingUrlEnvSingle];
       signalingSource = "env:WEBRTC_SIGNALING_URL";
+    } else if (this.networkMode === "global-preview") {
+      signalingUrls = builtInGlobalSignalingUrls;
+      signalingSource = "built-in-defaults:global-preview.signaling_urls";
     } else {
-      signalingUrls = ["http://localhost:4510"];
-      signalingSource = "default:http://localhost:4510";
+      signalingUrls = ["https://relay.silicaclaw.com"];
+      signalingSource = "default:https://relay.silicaclaw.com";
     }
 
     const roomSocial = String(this.socialConfig.network.room || "").trim();
     const roomEnv = String(WEBRTC_ROOM || "").trim();
     const room =
       roomSocial ||
-      (this.networkMode === "global-preview" ? builtInGlobalRoom : "") ||
       roomEnv ||
-      "silicaclaw-room";
+      (this.networkMode === "global-preview" ? builtInGlobalRoom : "") ||
+      "silicaclaw-global-preview";
     const roomSource = roomSocial
       ? "social.md:network.room"
-      : this.networkMode === "global-preview"
-        ? "built-in-defaults:global-preview.room"
-        : roomEnv
+      : roomEnv
           ? "env:WEBRTC_ROOM"
-          : "default:silicaclaw-room";
+          : this.networkMode === "global-preview"
+        ? "built-in-defaults:global-preview.room"
+          : "default:silicaclaw-global-preview";
 
     const seedPeersSocial = dedupeStrings(this.socialConfig.network.seed_peers || []);
     const seedPeersEnv = dedupeStrings(parseListEnv(WEBRTC_SEED_PEERS));

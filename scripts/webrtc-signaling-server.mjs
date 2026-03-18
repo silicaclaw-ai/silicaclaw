@@ -6,7 +6,7 @@ const port = Number(process.env.PORT || process.env.WEBRTC_SIGNALING_PORT || 451
 const PEER_STALE_MS = Number(process.env.WEBRTC_SIGNALING_PEER_STALE_MS || 120000);
 const SIGNAL_DEDUPE_WINDOW_MS = Number(process.env.WEBRTC_SIGNALING_DEDUPE_WINDOW_MS || 60000);
 
-/** @type {Map<string, {peers: Map<string, {last_seen_at:number}>, queues: Map<string, any[]>, signal_fingerprints: Map<string, number>}>} */
+/** @type {Map<string, {peers: Map<string, {last_seen_at:number}>, queues: Map<string, any[]>, relay_queues: Map<string, any[]>, signal_fingerprints: Map<string, number>}>} */
 const rooms = new Map();
 
 const counters = {
@@ -24,6 +24,7 @@ function getRoom(roomId) {
     rooms.set(id, {
       peers: new Map(),
       queues: new Map(),
+      relay_queues: new Map(),
       signal_fingerprints: new Map(),
     });
   }
@@ -73,6 +74,7 @@ function cleanupRoom(roomId) {
     if (peer.last_seen_at < threshold) {
       room.peers.delete(peerId);
       room.queues.delete(peerId);
+      room.relay_queues.delete(peerId);
       counters.stale_peers_cleaned_total += 1;
     }
   }
@@ -95,6 +97,9 @@ function touchPeer(room, peerId) {
   }
   if (!room.queues.has(peerId)) {
     room.queues.set(peerId, []);
+  }
+  if (!room.relay_queues.has(peerId)) {
+    room.relay_queues.set(peerId, []);
   }
 }
 
@@ -168,6 +173,23 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { ok: true, messages: queue });
   }
 
+  if (req.method === 'GET' && url.pathname === '/relay/poll') {
+    const roomId = String(url.searchParams.get('room') || 'silicaclaw-room');
+    const peerId = String(url.searchParams.get('peer_id') || '');
+    if (!peerId) {
+      counters.invalid_payload_total += 1;
+      return json(res, 400, { ok: false, error: 'missing_peer_id' });
+    }
+
+    const room = getRoom(roomId);
+    touchPeer(room, peerId);
+    cleanupRoom(roomId);
+
+    const queue = room.relay_queues.get(peerId) || [];
+    room.relay_queues.set(peerId, []);
+    return json(res, 200, { ok: true, messages: queue });
+  }
+
   if (req.method === 'POST' && url.pathname === '/join') {
     const body = await parseBody(req);
     const roomId = String(body.room || 'silicaclaw-room');
@@ -193,6 +215,7 @@ const server = http.createServer(async (req, res) => {
     if (peerId) {
       room.peers.delete(peerId);
       room.queues.delete(peerId);
+      room.relay_queues.delete(peerId);
       counters.leave_total += 1;
     } else {
       counters.invalid_payload_total += 1;
@@ -238,6 +261,34 @@ const server = http.createServer(async (req, res) => {
 
     counters.signal_total += 1;
     return json(res, 200, { ok: true });
+  }
+
+  if (req.method === 'POST' && url.pathname === '/relay/publish') {
+    const body = await parseBody(req);
+    const roomId = String(body.room || 'silicaclaw-room');
+    const peerId = String(body.peer_id || '');
+    const envelope = body.envelope;
+    if (!peerId || typeof envelope !== 'object' || envelope === null) {
+      counters.invalid_payload_total += 1;
+      return json(res, 400, { ok: false, error: 'invalid_relay_payload' });
+    }
+
+    const room = getRoom(roomId);
+    touchPeer(room, peerId);
+
+    for (const targetPeerId of room.peers.keys()) {
+      if (targetPeerId === peerId) continue;
+      if (!room.relay_queues.has(targetPeerId)) room.relay_queues.set(targetPeerId, []);
+      room.relay_queues.get(targetPeerId).push({
+        id: String(body.id || randomUUID()),
+        room: roomId,
+        from_peer_id: peerId,
+        envelope,
+        at: now(),
+      });
+    }
+
+    return json(res, 200, { ok: true, delivered_to: Math.max(0, room.peers.size - 1) });
   }
 
   return json(res, 404, { ok: false, error: 'not_found' });

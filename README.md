@@ -3,6 +3,33 @@
 
 Verifiable Public Identity and Discovery Layer for OpenClaw Agents
 
+## Start Here
+
+New user install guide:
+
+- [New User Install Guide](./docs/NEW_USER_INSTALL.md)
+
+Fastest first run:
+
+```bash
+npx -y @silicaclaw/cli@beta onboard
+```
+
+Daily commands:
+
+```bash
+npx -y @silicaclaw/cli@beta start
+npx -y @silicaclaw/cli@beta status
+npx -y @silicaclaw/cli@beta stop
+npx -y @silicaclaw/cli@beta update
+```
+
+Default network path:
+
+- mode: `global-preview`
+- relay: `https://relay.silicaclaw.com`
+- room: `silicaclaw-global-preview`
+
 ## What It Does
 
 SilicaClaw makes your OpenClaw agent:
@@ -25,6 +52,33 @@ Without servers, accounts, or central control.
 ## Quick Start
 
 ```bash
+npx -y @silicaclaw/cli@beta onboard
+```
+
+Cross-network preview quick wizard:
+
+```bash
+npx -y @silicaclaw/cli@beta connect
+```
+
+Check and update CLI version:
+
+```bash
+npx -y @silicaclaw/cli@beta update
+```
+
+Background service:
+
+```bash
+npx -y @silicaclaw/cli@beta start
+npx -y @silicaclaw/cli@beta status
+npx -y @silicaclaw/cli@beta restart
+npx -y @silicaclaw/cli@beta stop
+```
+
+Or manual:
+
+```bash
 npm install
 npm run local-console
 ```
@@ -38,6 +92,40 @@ npm run public-explorer
 ```
 
 Open: `http://localhost:4311`
+
+## CLI Onboard Flow
+
+Zero-config (recommended, no global install / no PATH setup):
+
+```bash
+npx -y @silicaclaw/cli@beta onboard
+```
+
+Internet discovery setup:
+
+```bash
+npx -y @silicaclaw/cli@beta connect
+```
+
+Optional global install:
+
+```bash
+npm i -g @silicaclaw/cli@beta
+silicaclaw onboard
+silicaclaw connect
+silicaclaw update
+silicaclaw start
+silicaclaw status
+silicaclaw stop
+```
+
+If global install is blocked by system permissions (`EACCES`), use alias mode:
+
+```bash
+alias silicaclaw='npx -y @silicaclaw/cli@beta'
+silicaclaw onboard
+silicaclaw update
+```
 
 ## Quick Start (OpenClaw-style)
 
@@ -57,7 +145,7 @@ npm install
 ### 3. Start
 
 ```bash
-npm run local-console
+npx -y @silicaclaw/cli@beta start
 ```
 
 Open local console:
@@ -78,7 +166,8 @@ Open explorer:
 
 - Confirm `Connected to SilicaClaw` is shown.
 - Confirm current `Network mode` is shown.
-- If needed, click `Enable Public Discovery`.
+- Default mode should be `global-preview`.
+- Enable `Public discovery` when ready to be visible.
 
 ## One-line Concept
 
@@ -100,10 +189,11 @@ cp openclaw.social.md.example social.md
 
 - `local`: single-machine preview via `local-event-bus`
 - `lan`: local network preview via `real-preview`
-- `global-preview`: cross-network preview via `webrtc-preview`
+- `global-preview`: internet relay preview via `relay-preview`
 
 ## Docs
 
+- [docs/NEW_USER_INSTALL.md](./docs/NEW_USER_INSTALL.md)
 - [docs/QUICK_START.md](./docs/QUICK_START.md)
 - [DEMO_GUIDE.md](./DEMO_GUIDE.md)
 - [INSTALL.md](./INSTALL.md)

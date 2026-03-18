@@ -427,6 +427,22 @@
         white-space: pre-wrap;
         word-break: break-word;
       }
+      .advanced-panel {
+        margin-top: 10px;
+      }
+      .advanced-panel summary {
+        cursor: pointer;
+        list-style: none;
+        user-select: none;
+      }
+      .advanced-panel summary::-webkit-details-marker { display: none; }
+      .advanced-panel summary::after {
+        content: "Show";
+        float: right;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .advanced-panel[open] summary::after { content: "Hide"; }
 
       .toast {
         position: fixed;
@@ -474,10 +490,7 @@
           <button class="tab active" data-tab="overview">Overview</button>
           <button class="tab" data-tab="profile">Profile</button>
           <button class="tab" data-tab="network">Network</button>
-          <button class="tab" data-tab="peers">Peers</button>
-          <button class="tab" data-tab="discovery">Discovery Events</button>
-          <button class="tab" data-tab="social">Social Config</button>
-          <button class="tab" data-tab="logs">Logs</button>
+          <button class="tab" data-tab="social">Social</button>
         </nav>
 
         <div class="sidebar-foot" id="sideMeta">adapter: -<br/>namespace: -</div>
@@ -602,15 +615,20 @@
               <div class="mono" id="networkComponents"></div>
             </div>
             <div class="card">
-              <h3 class="title-sm">Actions</h3>
+              <h3 class="title-sm">Quick Actions</h3>
               <div class="actions">
                 <button id="startBroadcastBtn">Start Broadcast</button>
                 <button class="secondary" id="stopBroadcastBtn">Stop Broadcast</button>
                 <button class="secondary" id="broadcastNowBtn">Broadcast Now</button>
+              </div>
+              <details class="advanced-panel">
+                <summary class="title-sm">Advanced Actions</summary>
+                <div class="actions" style="margin-top:10px;">
                 <button class="secondary" id="refreshCacheBtn">Refresh Cache</button>
                 <button class="secondary" id="clearCacheBtn">Clear Discovered Cache</button>
                 <button class="secondary" id="quickGlobalPreviewBtn">Enable Cross-network Preview</button>
               </div>
+              </details>
               <div id="networkFeedback" class="feedback" style="margin-top:10px;">Ready.</div>
             </div>
           </div>
@@ -624,32 +642,47 @@
               <div class="mono mono-block" id="networkStatsSnapshot">-</div>
             </div>
           </div>
-        </section>
-
-        <section id="view-peers" class="view">
-          <div class="grid" id="peerCards"></div>
-          <div class="card" style="margin-top:10px;">
-            <h3 class="title-sm">Peer Inventory</h3>
-            <div id="peerTableWrap"></div>
-          </div>
-          <div class="card" style="margin-top:10px;">
-            <h3 class="title-sm">Peer Discovery Stats</h3>
-            <div class="mono mono-block" id="peerStatsWrap">-</div>
-          </div>
-        </section>
-
-        <section id="view-discovery" class="view">
-          <div class="grid" id="discoveryCards"></div>
-          <div class="split">
+          <details class="advanced-panel card">
+            <summary class="title-sm">Diagnostics</summary>
+            <div class="grid" id="peerCards" style="margin-top:10px;"></div>
             <div class="card" style="margin-top:10px;">
-              <h3 class="title-sm">Recent Discovery Events</h3>
-              <div class="logs" id="discoveryEventList"></div>
+              <h3 class="title-sm">Peer Inventory</h3>
+              <div id="peerTableWrap"></div>
             </div>
             <div class="card" style="margin-top:10px;">
-              <h3 class="title-sm">Discovery Snapshot</h3>
-              <div class="mono mono-block" id="discoverySnapshot">-</div>
+              <h3 class="title-sm">Peer Discovery Stats</h3>
+              <div class="mono mono-block" id="peerStatsWrap">-</div>
             </div>
-          </div>
+            <div class="grid" id="discoveryCards" style="margin-top:10px;"></div>
+            <div class="split">
+              <div class="card" style="margin-top:10px;">
+                <h3 class="title-sm">Recent Discovery Events</h3>
+                <div class="logs" id="discoveryEventList"></div>
+              </div>
+              <div class="card" style="margin-top:10px;">
+                <h3 class="title-sm">Discovery Snapshot</h3>
+                <div class="mono mono-block" id="discoverySnapshot">-</div>
+              </div>
+            </div>
+            <div class="card" style="margin-top:10px;">
+              <h3 class="title-sm">Logs</h3>
+              <div class="toolbar">
+                <div class="field">
+                  <label for="logLevelFilter">Category</label>
+                  <select id="logLevelFilter">
+                    <option value="all">all</option>
+                    <option value="info">info</option>
+                    <option value="warn">warn</option>
+                    <option value="error">error</option>
+                  </select>
+                </div>
+                <div>
+                  <button type="button" class="secondary" id="refreshLogsBtn">Refresh Logs</button>
+                </div>
+              </div>
+              <div class="logs" id="logList"></div>
+            </div>
+          </details>
         </section>
 
         <section id="view-social" class="view">
@@ -666,22 +699,25 @@
             <div class="grid" id="socialAdvancedCards" style="margin-top:10px;"></div>
             <div class="mono mono-block" id="socialAdvancedWrap" style="margin-top:10px;">-</div>
           </details>
-          <div class="split">
-            <div class="card" style="margin-top:10px;">
-              <h3 class="title-sm">Source & Parsed Frontmatter</h3>
-              <div class="mono mono-block" id="socialSourceWrap">-</div>
-              <div style="height:10px;"></div>
-              <div class="mono mono-block" id="socialRawWrap">-</div>
+          <details class="advanced-panel card">
+            <summary class="title-sm">Source / Runtime / Template</summary>
+            <div class="split">
+              <div class="card" style="margin-top:10px;">
+                <h3 class="title-sm">Source & Parsed Frontmatter</h3>
+                <div class="mono mono-block" id="socialSourceWrap">-</div>
+                <div style="height:10px;"></div>
+                <div class="mono mono-block" id="socialRawWrap">-</div>
+              </div>
+              <div class="card" style="margin-top:10px;">
+                <h3 class="title-sm">Runtime Summary</h3>
+                <div class="mono mono-block" id="socialRuntimeWrap">-</div>
+              </div>
             </div>
             <div class="card" style="margin-top:10px;">
-              <h3 class="title-sm">Runtime Summary</h3>
-              <div class="mono mono-block" id="socialRuntimeWrap">-</div>
+              <h3 class="title-sm">Export Template Preview</h3>
+              <div class="mono mono-block" id="socialTemplateWrap">-</div>
             </div>
-          </div>
-          <div class="card" style="margin-top:10px;">
-            <h3 class="title-sm">Export Template Preview</h3>
-            <div class="mono mono-block" id="socialTemplateWrap">-</div>
-          </div>
+          </details>
           <div class="card" style="margin-top:10px;">
             <h3 class="title-sm">Actions</h3>
             <div class="toolbar">
@@ -705,27 +741,6 @@
               <button class="secondary" id="socialDownloadBtn">Download Template</button>
             </div>
             <div id="socialFeedback" class="feedback" style="margin-top:10px;">Ready.</div>
-          </div>
-        </section>
-
-        <section id="view-logs" class="view">
-          <div class="card">
-            <h3 class="title-sm">Recent Logs</h3>
-            <div class="toolbar">
-              <div class="field">
-                <label for="logLevelFilter">Category</label>
-                <select id="logLevelFilter">
-                  <option value="all">all</option>
-                  <option value="info">info</option>
-                  <option value="warn">warn</option>
-                  <option value="error">error</option>
-                </select>
-              </div>
-              <div>
-                <button type="button" class="secondary" id="refreshLogsBtn">Refresh Logs</button>
-              </div>
-            </div>
-            <div class="logs" id="logList"></div>
           </div>
         </section>
       </main>
@@ -919,7 +934,7 @@
         }
         activeTab = tab;
         document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
-        ['overview', 'profile', 'network', 'peers', 'discovery', 'social', 'logs'].forEach((k) => {
+        ['overview', 'profile', 'network', 'social'].forEach((k) => {
           document.getElementById(`view-${k}`).classList.toggle('active', k === tab);
         });
         if (tab === 'profile' && !profileDirty && !profileSaving) {
@@ -1320,7 +1335,10 @@
 
       async function refreshAll() {
         try {
-          const tasks = [refreshOverview(), refreshNetwork(), refreshPeers(), refreshDiscovery(), refreshSocial(), refreshLogs(), refreshPublicProfilePreview()];
+          const tasks = [refreshOverview(), refreshNetwork(), refreshSocial(), refreshPublicProfilePreview()];
+          if (activeTab === 'network') {
+            tasks.push(refreshPeers(), refreshDiscovery(), refreshLogs());
+          }
           const shouldRefreshProfile = !(activeTab === 'profile' && profileDirty);
           if (shouldRefreshProfile) {
             tasks.push(refreshProfile());

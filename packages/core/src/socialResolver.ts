@@ -257,13 +257,25 @@ export function resolveProfileInputWithSocial(args: {
   const baseAvatarUrl = existingProfile?.avatar_url || "";
   const baseTags = existingProfile?.tags || [];
 
+  // Preserve values saved from local-console first; only fall back to social/openclaw defaults
+  // when local profile fields are empty.
+  const displayName = baseDisplayName || socialConfig.identity.display_name || openclawProfile?.display_name || "";
+  const bio = baseBio || socialConfig.identity.bio || openclawProfile?.bio || "";
+  const avatarUrl = baseAvatarUrl || socialConfig.identity.avatar_url || openclawProfile?.avatar_url || "";
+  const tags =
+    baseTags.length > 0
+      ? baseTags
+      : socialConfig.identity.tags.length > 0
+        ? socialConfig.identity.tags
+        : openclawProfile?.tags || [];
+
   return {
     agent_id: agentId,
-    display_name: socialConfig.identity.display_name || openclawProfile?.display_name || baseDisplayName,
-    bio: socialConfig.identity.bio || openclawProfile?.bio || baseBio,
-    avatar_url: socialConfig.identity.avatar_url || openclawProfile?.avatar_url || baseAvatarUrl,
-    tags: socialConfig.identity.tags.length > 0 ? socialConfig.identity.tags : openclawProfile?.tags || baseTags,
-    public_enabled: socialConfig.public_enabled,
+    display_name: displayName,
+    bio,
+    avatar_url: avatarUrl,
+    tags,
+    public_enabled: existingProfile?.public_enabled ?? socialConfig.public_enabled,
   };
 }
 

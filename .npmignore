@@ -1,0 +1,18 @@
+# Local/runtime artifacts
+.npm-cache/
+node_modules/
+**/.DS_Store
+
+# Local-first runtime data (machine-specific)
+data/*.json
+apps/local-console/data/*.json
+apps/local-console/.silicaclaw/
+apps/local-console/social.md
+social.md
+.openclaw/social.md
+
+# Build outputs
+**/dist/
+
+# Logs
+*.log

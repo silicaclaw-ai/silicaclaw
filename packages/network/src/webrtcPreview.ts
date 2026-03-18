@@ -301,7 +301,7 @@ export class WebRTCPreviewAdapter implements NetworkAdapter {
     if (!this.wrtc) {
       this.stats.start_errors += 1;
       throw new Error(
-        "WebRTC runtime unavailable: RTCPeerConnection not found. In Node.js install `wrtc` and restart."
+        "WebRTC runtime unavailable: RTCPeerConnection not found. In Node.js install `@roamhq/wrtc` (or `wrtc`) and restart."
       );
     }
 
@@ -488,14 +488,24 @@ export class WebRTCPreviewAdapter implements NetworkAdapter {
     }
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const wrtc = require("wrtc");
+      const wrtc = require("@roamhq/wrtc");
       return {
         RTCPeerConnection: wrtc.RTCPeerConnection,
         RTCSessionDescription: wrtc.RTCSessionDescription,
         RTCIceCandidate: wrtc.RTCIceCandidate,
       };
     } catch {
-      return null;
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const wrtc = require("wrtc");
+        return {
+          RTCPeerConnection: wrtc.RTCPeerConnection,
+          RTCSessionDescription: wrtc.RTCSessionDescription,
+          RTCIceCandidate: wrtc.RTCIceCandidate,
+        };
+      } catch {
+        return null;
+      }
     }
   }
 

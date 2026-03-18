@@ -5,7 +5,7 @@ export type SocialIdentityConfig = {
   tags: string[];
 };
 
-export type SocialNetworkAdapter = "mock" | "local-event-bus" | "real-preview" | "webrtc-preview";
+export type SocialNetworkAdapter = "mock" | "local-event-bus" | "real-preview" | "webrtc-preview" | "relay-preview";
 export type SocialNetworkMode = "local" | "lan" | "global-preview";
 
 export type SocialNetworkConfig = {
@@ -104,13 +104,13 @@ const DEFAULT_SOCIAL_CONFIG: SocialConfig = {
     tags: [],
   },
   network: {
-    mode: "lan",
+    mode: "global-preview",
     namespace: "silicaclaw.preview",
-    adapter: "real-preview",
+    adapter: "relay-preview",
     port: 44123,
-    signaling_url: "http://localhost:4510",
+    signaling_url: "https://relay.silicaclaw.com",
     signaling_urls: [],
-    room: "silicaclaw-room",
+    room: "silicaclaw-global-preview",
     seed_peers: [],
     bootstrap_hints: [],
   },
@@ -298,7 +298,8 @@ function asAdapter(value: unknown, fallback: SocialNetworkAdapter): SocialNetwor
     value === "mock" ||
     value === "local-event-bus" ||
     value === "real-preview" ||
-    value === "webrtc-preview"
+    value === "webrtc-preview" ||
+    value === "relay-preview"
   ) {
     return value;
   }
@@ -315,7 +316,7 @@ function asMode(value: unknown, fallback: SocialNetworkMode): SocialNetworkMode 
 function adapterForMode(mode: SocialNetworkMode): SocialNetworkAdapter {
   if (mode === "local") return "local-event-bus";
   if (mode === "lan") return "real-preview";
-  return "webrtc-preview";
+  return "relay-preview";
 }
 
 export function normalizeSocialConfig(input: unknown): SocialConfig {

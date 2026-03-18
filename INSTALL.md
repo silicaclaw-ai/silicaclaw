@@ -16,6 +16,55 @@ cd silicaclaw
 npm install
 ```
 
+CLI-style onboarding command (recommended, zero-config):
+
+```bash
+npx @silicaclaw/cli@beta onboard
+```
+
+Cross-network quick wizard (defaults to global-preview):
+
+```bash
+npx @silicaclaw/cli@beta connect
+```
+
+Check/update CLI version:
+
+```bash
+npx @silicaclaw/cli@beta update
+```
+
+Gateway background service commands:
+
+```bash
+npx @silicaclaw/cli@beta gateway start --mode=local
+npx @silicaclaw/cli@beta gateway status
+npx @silicaclaw/cli@beta gateway restart --mode=lan
+npx @silicaclaw/cli@beta gateway stop
+```
+
+For most home users, just press Enter on defaults and use `local` mode first.
+
+Optional global install (advanced users only):
+
+```bash
+npm i -g @silicaclaw/cli
+silicaclaw onboard
+silicaclaw connect
+silicaclaw update
+silicaclaw gateway start --mode=local
+silicaclaw gateway status
+silicaclaw gateway stop
+```
+
+If global install fails with `EACCES`, use alias mode (no PATH edits):
+
+```bash
+alias silicaclaw='npx -y @silicaclaw/cli@beta'
+silicaclaw onboard
+silicaclaw update
+```
+
 ## 3. Run
 
 Start local console:
@@ -25,6 +74,20 @@ npm run local-console
 ```
 
 Note: local-console runs in watch mode, so backend changes auto-reload during development.
+
+OpenClaw-style interactive install/start guide (recommended):
+
+```bash
+npm run quickstart
+```
+
+It will guide you step-by-step in terminal:
+
+- check environment
+- install dependencies
+- prepare `social.md`
+- choose network mode
+- start local-console with correct runtime args
 
 Open:
 
@@ -94,13 +157,15 @@ npm run webrtc-signaling
 Cross-network preview node:
 
 ```bash
-NETWORK_ADAPTER=webrtc-preview WEBRTC_SIGNALING_URL=http://localhost:4510 WEBRTC_ROOM=silicaclaw-demo npm run local-console
+NETWORK_ADAPTER=relay-preview WEBRTC_SIGNALING_URL=https://relay.silicaclaw.com WEBRTC_ROOM=silicaclaw-global-preview npm run local-console
 ```
 
 If Node runtime lacks WebRTC support:
 
 ```bash
-npm install wrtc
+npm install @roamhq/wrtc
+# fallback:
+# npm install wrtc
 ```
 
 ## 8. Validation
