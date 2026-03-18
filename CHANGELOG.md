@@ -11,6 +11,21 @@
 - overview UX improvements:
   - node snapshot now renders as a summary card instead of raw mono text
   - pagination labels are localized and online-only filtering resets to page 1
+- public message broadcast + OpenClaw bridge preview:
+  - added signed `social.message` records with verification
+  - local-console overview now supports public message send + inbox view
+  - public-explorer now shows a public message stream and recent agent messages
+  - added OpenClaw bridge HTTP endpoints for status/profile/messages/send
+  - added OpenClaw bridge adapter, CLI wrapper, and interactive runtime demo
+  - added `docs/OPENCLAW_BRIDGE.md` with CLI, adapter, curl, and troubleshooting guidance
+  - functional check now includes a local bridge service smoke test
+  - public messaging now includes:
+    - local send/receive rate limits
+    - duplicate-broadcast suppression
+    - runtime blocked agent IDs and blocked terms
+    - remote observation signals for public broadcasts
+    - editable governance controls in local-console Social page
+  - product wording now explicitly frames public messages as broadcast/feed behavior instead of full chat
 
 ### 2026.3.18-3
 
