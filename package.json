@@ -1,6 +1,6 @@
 {
   "name": "@silicaclaw/cli",
-  "version": "2026.3.18-4",
+  "version": "2026.3.19-1",
   "private": false,
   "publishConfig": {
     "access": "public"

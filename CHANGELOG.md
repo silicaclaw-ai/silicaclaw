@@ -1,8 +1,8 @@
 # Changelog
 
-## v1.0 beta - 2026-03-18
+## v1.0 beta - 2026-03-19
 
-### 2026.3.18-4
+### 2026.3.19-1
 
 - local-console UI polish:
   - sidebar spacing, collapsed rail behavior, footer version card, and topbar shell now align more closely with OpenClaw
