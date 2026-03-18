@@ -1,7 +1,7 @@
 import express, { NextFunction, Request, Response } from "express";
 import cors from "cors";
 import { resolve } from "path";
-import { existsSync } from "fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync } from "fs";
 import { createHash } from "crypto";
 import { hostname } from "os";
 import {
@@ -26,6 +26,7 @@ import {
   ingestProfileRecord,
   isAgentOnline,
   loadSocialConfig,
+  getSocialConfigSearchPaths,
   resolveIdentityWithSocial,
   resolveProfileInputWithSocial,
   searchDirectory,
@@ -69,6 +70,56 @@ const WEBRTC_SEED_PEERS = process.env.WEBRTC_SEED_PEERS || "";
 const WEBRTC_BOOTSTRAP_HINTS = process.env.WEBRTC_BOOTSTRAP_HINTS || "";
 const PROFILE_VERSION = "v0.9";
 
+function resolveWorkspaceRoot(cwd = process.cwd()): string {
+  if (existsSync(resolve(cwd, "apps", "local-console", "package.json"))) {
+    return cwd;
+  }
+  const candidate = resolve(cwd, "..", "..");
+  if (existsSync(resolve(candidate, "apps", "local-console", "package.json"))) {
+    return candidate;
+  }
+  return cwd;
+}
+
+function resolveStorageRoot(workspaceRoot: string, cwd = process.cwd()): string {
+  const appRoot = resolve(workspaceRoot, "apps", "local-console");
+  if (existsSync(resolve(appRoot, "package.json"))) {
+    return appRoot;
+  }
+  return cwd;
+}
+
+function hasMeaningfulJson(filePath: string): boolean {
+  if (!existsSync(filePath)) return false;
+  try {
+    const raw = readFileSync(filePath, "utf8").trim();
+    if (!raw) return false;
+    const parsed = JSON.parse(raw) as unknown;
+    if (parsed == null) return false;
+    if (Array.isArray(parsed)) return parsed.length > 0;
+    if (typeof parsed === "object") return Object.keys(parsed as Record<string, unknown>).length > 0;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+function migrateLegacyDataIfNeeded(workspaceRoot: string, storageRoot: string): void {
+  const legacyDataDir = resolve(workspaceRoot, "data");
+  const targetDataDir = resolve(storageRoot, "data");
+  if (legacyDataDir === targetDataDir) return;
+  const files = ["identity.json", "profile.json", "cache.json", "logs.json"];
+  for (const file of files) {
+    const src = resolve(legacyDataDir, file);
+    const dst = resolve(targetDataDir, file);
+    if (!existsSync(src)) continue;
+    if (hasMeaningfulJson(dst)) continue;
+    if (!hasMeaningfulJson(src)) continue;
+    mkdirSync(targetDataDir, { recursive: true });
+    copyFileSync(src, dst);
+  }
+}
+
 function parseListEnv(raw: string): string[] {
   return raw
     .split(/[,\n]/g)
@@ -109,11 +160,13 @@ type IntegrationStatusSummary = {
 };
 
 class LocalNodeService {
-  private identityRepo = new IdentityRepo(process.cwd());
-  private profileRepo = new ProfileRepo(process.cwd());
-  private cacheRepo = new CacheRepo(process.cwd());
-  private logRepo = new LogRepo(process.cwd());
-  private socialRuntimeRepo = new SocialRuntimeRepo(process.cwd());
+  private workspaceRoot: string;
+  private storageRoot: string;
+  private identityRepo: IdentityRepo;
+  private profileRepo: ProfileRepo;
+  private cacheRepo: CacheRepo;
+  private logRepo: LogRepo;
+  private socialRuntimeRepo: SocialRuntimeRepo;
 
   private identity: AgentIdentity | null = null;
   private profile: PublicProfile | null = null;
@@ -158,16 +211,26 @@ class LocalNodeService {
   private webrtcBootstrapSources: string[] = [];
 
   constructor() {
-    let loadedSocial = loadSocialConfig(process.cwd());
+    this.workspaceRoot = resolveWorkspaceRoot();
+    this.storageRoot = resolveStorageRoot(this.workspaceRoot);
+    migrateLegacyDataIfNeeded(this.workspaceRoot, this.storageRoot);
+
+    this.identityRepo = new IdentityRepo(this.storageRoot);
+    this.profileRepo = new ProfileRepo(this.storageRoot);
+    this.cacheRepo = new CacheRepo(this.storageRoot);
+    this.logRepo = new LogRepo(this.storageRoot);
+    this.socialRuntimeRepo = new SocialRuntimeRepo(this.storageRoot);
+
+    let loadedSocial = loadSocialConfig(this.workspaceRoot);
     if (!loadedSocial.meta.found) {
-      ensureDefaultSocialMd(process.cwd(), {
+      ensureDefaultSocialMd(this.workspaceRoot, {
         display_name: this.getDefaultDisplayName(),
         bio: "Local AI agent connected to SilicaClaw",
         tags: ["openclaw", "local-first"],
         mode: "lan",
         public_enabled: false,
       });
-      loadedSocial = loadSocialConfig(process.cwd());
+      loadedSocial = loadSocialConfig(this.workspaceRoot);
       this.initState.social_auto_created = true;
     }
     this.socialConfig = loadedSocial.config;
@@ -179,73 +242,17 @@ class LocalNodeService {
     this.networkNamespace = this.socialConfig.network.namespace || process.env.NETWORK_NAMESPACE || "silicaclaw.preview";
     this.networkPort = Number(this.socialConfig.network.port || process.env.NETWORK_PORT || 44123);
     this.applyResolvedNetworkConfig();
-
-    const mode = (process.env.NETWORK_ADAPTER as typeof this.adapterMode | undefined) || this.socialConfig.network.adapter;
-    if (mode === "mock") {
-      this.network = new MockNetworkAdapter();
-      this.adapterMode = "mock";
-      this.networkPort = null;
-      return;
-    }
-    if (mode === "real-preview") {
-      this.network = new RealNetworkAdapterPreview({
-        peerId: NETWORK_PEER_ID,
-        namespace: this.networkNamespace,
-        transport: new UdpLanBroadcastTransport({
-          port: this.networkPort,
-          bindAddress: NETWORK_UDP_BIND_ADDRESS,
-          broadcastAddress: NETWORK_UDP_BROADCAST_ADDRESS,
-        }),
-        peerDiscovery: new HeartbeatPeerDiscovery({
-          heartbeatIntervalMs: NETWORK_HEARTBEAT_INTERVAL_MS,
-          staleAfterMs: NETWORK_PEER_STALE_AFTER_MS,
-          removeAfterMs: NETWORK_PEER_REMOVE_AFTER_MS,
-        }),
-        maxMessageBytes: NETWORK_MAX_MESSAGE_BYTES,
-        dedupeWindowMs: NETWORK_DEDUPE_WINDOW_MS,
-        dedupeMaxEntries: NETWORK_DEDUPE_MAX_ENTRIES,
-        maxFutureDriftMs: NETWORK_MAX_FUTURE_DRIFT_MS,
-        maxPastDriftMs: NETWORK_MAX_PAST_DRIFT_MS,
-      });
-      this.adapterMode = "real-preview";
-      return;
-    }
-    if (mode === "webrtc-preview") {
-      this.network = new WebRTCPreviewAdapter({
-        peerId: NETWORK_PEER_ID,
-        namespace: this.networkNamespace,
-        signalingUrl: this.webrtcSignalingUrls[0] ?? WEBRTC_SIGNALING_URL,
-        signalingUrls: this.webrtcSignalingUrls,
-        room: this.webrtcRoom,
-        seedPeers: this.webrtcSeedPeers,
-        bootstrapHints: this.webrtcBootstrapHints,
-        bootstrapSources: this.webrtcBootstrapSources,
-        maxMessageBytes: NETWORK_MAX_MESSAGE_BYTES,
-        maxFutureDriftMs: NETWORK_MAX_FUTURE_DRIFT_MS,
-        maxPastDriftMs: NETWORK_MAX_PAST_DRIFT_MS,
-      });
-      this.adapterMode = "webrtc-preview";
-      return;
-    }
-    this.network = new LocalEventBusAdapter();
-    this.adapterMode = "local-event-bus";
-    this.networkPort = null;
+    const resolved = this.buildNetworkAdapter();
+    this.network = resolved.adapter;
+    this.adapterMode = resolved.mode;
+    this.networkPort = resolved.port;
   }
 
   async start(): Promise<void> {
     await this.hydrateFromDisk();
 
     await this.network.start();
-
-    this.network.subscribe("profile", (data: SignedProfileRecord) => {
-      this.onMessage("profile", data);
-    });
-    this.network.subscribe("presence", (data: PresenceRecord) => {
-      this.onMessage("presence", data);
-    });
-    this.network.subscribe("index", (data: IndexRefRecord) => {
-      this.onMessage("index", data);
-    });
+    this.bindNetworkSubscriptions();
 
     this.startBroadcastLoop();
     await this.log("info", "Local node started");
@@ -497,6 +504,18 @@ class LocalNodeService {
     };
   }
 
+  getRuntimePaths() {
+    return {
+      workspace_root: this.workspaceRoot,
+      storage_root: this.storageRoot,
+      data_dir: resolve(this.storageRoot, "data"),
+      social_runtime_path: resolve(this.storageRoot, ".silicaclaw", "social.runtime.json"),
+      local_console_public_dir: resolve(this.workspaceRoot, "apps", "local-console", "public"),
+      social_lookup_paths: getSocialConfigSearchPaths(this.workspaceRoot),
+      social_source_path: this.socialSourcePath,
+    };
+  }
+
   getIntegrationSummary() {
     const status = this.getIntegrationStatus();
     const runtimeGenerated = Boolean(this.socialRuntime && this.socialRuntime.last_loaded_at > 0);
@@ -617,6 +636,34 @@ class LocalNodeService {
     };
   }
 
+  async quickConnectGlobalPreview(options?: { signaling_url?: string; room?: string }) {
+    const signalingUrl = String(options?.signaling_url || "").trim();
+    const room = String(options?.room || "").trim();
+    if (!signalingUrl) {
+      throw new Error("missing_signaling_url");
+    }
+
+    this.socialConfig.network.mode = "global-preview";
+    this.socialConfig.network.adapter = "webrtc-preview";
+    this.socialConfig.network.signaling_url = signalingUrl;
+    this.socialConfig.network.signaling_urls = [signalingUrl];
+    this.socialConfig.network.room = room || "silicaclaw-demo";
+    this.applyResolvedNetworkConfig();
+    await this.restartNetworkAdapter("quick_connect_global_preview");
+    this.socialNetworkRequiresRestart = false;
+    await this.writeSocialRuntime();
+    await this.log("info", `Quick connect enabled (webrtc-preview, room=${this.webrtcRoom})`);
+
+    return {
+      mode: this.networkMode,
+      adapter: this.adapterMode,
+      signaling_url: this.webrtcSignalingUrls[0] ?? null,
+      room: this.webrtcRoom,
+      network_requires_restart: false,
+      note: "Cross-network preview enabled.",
+    };
+  }
+
   async reloadSocialConfig() {
     const before = {
       mode: this.networkMode,
@@ -625,7 +672,7 @@ class LocalNodeService {
       port: this.networkPort,
     };
 
-    const loaded = loadSocialConfig(process.cwd());
+    const loaded = loadSocialConfig(this.workspaceRoot);
     this.socialConfig = loaded.config;
     this.socialSourcePath = loaded.meta.source_path;
     this.socialFound = loaded.meta.found;
@@ -653,7 +700,7 @@ class LocalNodeService {
   }
 
   async generateDefaultSocialMd() {
-    const result = ensureDefaultSocialMd(process.cwd(), {
+    const result = ensureDefaultSocialMd(this.workspaceRoot, {
       display_name: this.getDefaultDisplayName(),
       bio: "Local AI agent connected to SilicaClaw",
       tags: ["openclaw", "local-first"],
@@ -772,6 +819,34 @@ class LocalNodeService {
     };
   }
 
+  async clearDiscoveredCache() {
+    const selfAgentId = this.profile?.agent_id || this.identity?.agent_id || "";
+    const profileEntries = Object.entries(this.directory.profiles);
+    const removedProfiles = profileEntries.filter(([agentId]) => agentId !== selfAgentId).length;
+    const removedPresence = Object.entries(this.directory.presence).filter(([agentId]) => agentId !== selfAgentId).length;
+    const removedIndexRefs = Object.values(this.directory.index).reduce((acc, agentIds) => {
+      const removed = agentIds.filter((agentId) => agentId !== selfAgentId).length;
+      return acc + removed;
+    }, 0);
+
+    this.directory = createEmptyDirectoryState();
+    if (this.profile) {
+      this.directory = ingestProfileRecord(this.directory, {
+        type: "profile",
+        profile: this.profile,
+      });
+    }
+    await this.persistCache();
+    await this.log("warn", `Discovered cache cleared (profiles=${removedProfiles}, presence=${removedPresence}, index_refs=${removedIndexRefs})`);
+
+    return {
+      removed_profiles: removedProfiles,
+      removed_presence: removedPresence,
+      removed_index_refs: removedIndexRefs,
+      kept_self_profile: Boolean(this.profile),
+    };
+  }
+
   async setBroadcastEnabled(enabled: boolean) {
     this.broadcastEnabled = enabled;
     if (enabled) {
@@ -846,7 +921,7 @@ class LocalNodeService {
       socialConfig: this.socialConfig,
       existingIdentity,
       generatedIdentity: createIdentity(),
-      rootDir: process.cwd(),
+      rootDir: this.workspaceRoot,
     });
     this.identity = resolvedIdentity.identity;
     this.resolvedIdentitySource = resolvedIdentity.source;
@@ -865,7 +940,7 @@ class LocalNodeService {
       socialConfig: this.socialConfig,
       agentId: this.identity.agent_id,
       existingProfile: existingProfile && existingProfile.agent_id === this.identity.agent_id ? existingProfile : null,
-      rootDir: process.cwd(),
+      rootDir: this.workspaceRoot,
     });
     this.profile = signProfile(profileInput, this.identity);
     if (!existingProfile || existingProfile.agent_id !== this.identity.agent_id) {
@@ -891,7 +966,7 @@ class LocalNodeService {
       socialConfig: this.socialConfig,
       agentId: this.identity.agent_id,
       existingProfile: this.profile,
-      rootDir: process.cwd(),
+      rootDir: this.workspaceRoot,
     });
     const nextProfile = signProfile(nextProfileInput, this.identity);
     this.profile = nextProfile;
@@ -1020,6 +1095,104 @@ class LocalNodeService {
     this.broadcaster = setInterval(async () => {
       await this.broadcastNow("interval");
     }, BROADCAST_INTERVAL_MS);
+  }
+
+  private bindNetworkSubscriptions(): void {
+    this.network.subscribe("profile", (data: SignedProfileRecord) => {
+      this.onMessage("profile", data);
+    });
+    this.network.subscribe("presence", (data: PresenceRecord) => {
+      this.onMessage("presence", data);
+    });
+    this.network.subscribe("index", (data: IndexRefRecord) => {
+      this.onMessage("index", data);
+    });
+  }
+
+  private buildNetworkAdapter(): {
+    adapter: NetworkAdapter;
+    mode: "mock" | "local-event-bus" | "real-preview" | "webrtc-preview";
+    port: number | null;
+  } {
+    const mode = (process.env.NETWORK_ADAPTER as typeof this.adapterMode | undefined) || this.socialConfig.network.adapter;
+    if (mode === "mock") {
+      return {
+        adapter: new MockNetworkAdapter(),
+        mode: "mock",
+        port: null,
+      };
+    }
+    if (mode === "real-preview") {
+      return {
+        adapter: new RealNetworkAdapterPreview({
+          peerId: NETWORK_PEER_ID,
+          namespace: this.networkNamespace,
+          transport: new UdpLanBroadcastTransport({
+            port: this.networkPort ?? undefined,
+            bindAddress: NETWORK_UDP_BIND_ADDRESS,
+            broadcastAddress: NETWORK_UDP_BROADCAST_ADDRESS,
+          }),
+          peerDiscovery: new HeartbeatPeerDiscovery({
+            heartbeatIntervalMs: NETWORK_HEARTBEAT_INTERVAL_MS,
+            staleAfterMs: NETWORK_PEER_STALE_AFTER_MS,
+            removeAfterMs: NETWORK_PEER_REMOVE_AFTER_MS,
+          }),
+          maxMessageBytes: NETWORK_MAX_MESSAGE_BYTES,
+          dedupeWindowMs: NETWORK_DEDUPE_WINDOW_MS,
+          dedupeMaxEntries: NETWORK_DEDUPE_MAX_ENTRIES,
+          maxFutureDriftMs: NETWORK_MAX_FUTURE_DRIFT_MS,
+          maxPastDriftMs: NETWORK_MAX_PAST_DRIFT_MS,
+        }),
+        mode: "real-preview",
+        port: this.networkPort,
+      };
+    }
+    if (mode === "webrtc-preview") {
+      return {
+        adapter: new WebRTCPreviewAdapter({
+          peerId: NETWORK_PEER_ID,
+          namespace: this.networkNamespace,
+          signalingUrl: this.webrtcSignalingUrls[0] ?? WEBRTC_SIGNALING_URL,
+          signalingUrls: this.webrtcSignalingUrls,
+          room: this.webrtcRoom,
+          seedPeers: this.webrtcSeedPeers,
+          bootstrapHints: this.webrtcBootstrapHints,
+          bootstrapSources: this.webrtcBootstrapSources,
+          maxMessageBytes: NETWORK_MAX_MESSAGE_BYTES,
+          maxFutureDriftMs: NETWORK_MAX_FUTURE_DRIFT_MS,
+          maxPastDriftMs: NETWORK_MAX_PAST_DRIFT_MS,
+        }),
+        mode: "webrtc-preview",
+        port: this.networkPort,
+      };
+    }
+    return {
+      adapter: new LocalEventBusAdapter(),
+      mode: "local-event-bus",
+      port: null,
+    };
+  }
+
+  private async restartNetworkAdapter(reason: string): Promise<void> {
+    const previous = this.network;
+    try {
+      await previous.stop();
+    } catch (error) {
+      await this.log("warn", `Old adapter stop error during restart (${reason}): ${error instanceof Error ? error.message : String(error)}`);
+    }
+
+    const next = this.buildNetworkAdapter();
+    this.network = next.adapter;
+    this.adapterMode = next.mode;
+    this.networkPort = next.port;
+
+    await this.network.start();
+    this.bindNetworkSubscriptions();
+    this.startBroadcastLoop();
+
+    if (this.broadcastEnabled && this.profile?.public_enabled) {
+      await this.broadcastNow("adapter_restart");
+    }
   }
 
   private compactCacheInMemory(): number {
@@ -1284,6 +1457,10 @@ async function main() {
     sendOk(res, node.getPublicProfilePreview());
   });
 
+  app.get("/api/runtime/paths", (_req, res) => {
+    sendOk(res, node.getRuntimePaths());
+  });
+
   app.put(
     "/api/profile",
     asyncRoute(async (req, res) => {
@@ -1324,6 +1501,24 @@ async function main() {
   app.get("/api/network/stats", (_req, res) => {
     sendOk(res, node.getNetworkStats());
   });
+
+  app.post(
+    "/api/network/quick-connect-global-preview",
+    asyncRoute(async (req, res) => {
+      const body = (req.body ?? {}) as { signaling_url?: unknown; room?: unknown };
+      const signalingUrl = String(body.signaling_url || "").trim();
+      const room = String(body.room || "").trim();
+      if (!signalingUrl) {
+        sendError(res, 400, "invalid_request", "signaling_url is required");
+        return;
+      }
+      const result = await node.quickConnectGlobalPreview({
+        signaling_url: signalingUrl,
+        room,
+      });
+      sendOk(res, result, { message: "Cross-network preview enabled" });
+    })
+  );
 
   app.get("/api/peers", (_req, res) => {
     sendOk(res, node.getPeersSummary());
@@ -1389,6 +1584,14 @@ async function main() {
     asyncRoute(async (_req, res) => {
       const result = await node.refreshCache();
       sendOk(res, result, { message: "Cache refreshed" });
+    })
+  );
+
+  app.post(
+    "/api/cache/clear",
+    asyncRoute(async (_req, res) => {
+      const result = await node.clearDiscoveredCache();
+      sendOk(res, result, { message: "Discovered cache cleared (self profile kept)" });
     })
   );
 

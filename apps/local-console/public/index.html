@@ -517,6 +517,10 @@
             <div class="card">
               <h3 class="title-sm">Discovered Agents</h3>
               <div class="field-hint" id="agentsCountHint">0 agents</div>
+              <label class="field-hint" style="display:inline-flex;gap:6px;align-items:center;margin:6px 0 8px;">
+                <input type="checkbox" id="onlyOnlineToggle" />
+                Only show online
+              </label>
               <div id="agentsWrap"></div>
             </div>
             <div class="card">
@@ -604,6 +608,8 @@
                 <button class="secondary" id="stopBroadcastBtn">Stop Broadcast</button>
                 <button class="secondary" id="broadcastNowBtn">Broadcast Now</button>
                 <button class="secondary" id="refreshCacheBtn">Refresh Cache</button>
+                <button class="secondary" id="clearCacheBtn">Clear Discovered Cache</button>
+                <button class="secondary" id="quickGlobalPreviewBtn">Enable Cross-network Preview</button>
               </div>
               <div id="networkFeedback" class="feedback" style="margin-top:10px;">Ready.</div>
             </div>
@@ -735,6 +741,7 @@
       let logsCache = [];
       let logLevelFilter = 'all';
       let socialTemplate = '';
+      let onlyShowOnline = false;
 
       function ago(ts) {
         if (!ts) return '-';
@@ -923,7 +930,8 @@
       async function refreshOverview() {
         const [overview, discovered] = await Promise.all([api('/api/overview'), api('/api/search?q=')]);
         const o = overview.data;
-        const d = discovered.data || [];
+        const all = discovered.data || [];
+        const d = onlyShowOnline ? all.filter((agent) => agent.online) : all;
 
         document.getElementById('overviewCards').innerHTML = [
           ['Discovered', o.discovered_count],
@@ -975,7 +983,9 @@
           document.getElementById('agentsCountHint').textContent = '0 agents';
           document.getElementById('agentsWrap').innerHTML = '<div class="label">No discovered agents yet.</div>';
         } else {
-          document.getElementById('agentsCountHint').textContent = `${d.length} agents discovered`;
+          document.getElementById('agentsCountHint').textContent = onlyShowOnline
+            ? `${d.length}/${all.length} agents (online filter)`
+            : `${d.length} agents discovered`;
           document.getElementById('agentsWrap').innerHTML = `
             <table class="table">
               <thead><tr><th>Name</th><th>Agent ID</th><th>Status</th><th>Updated</th></tr></thead>
@@ -1024,9 +1034,10 @@
       }
 
       async function refreshNetwork() {
-        const [cfg, sts] = await Promise.all([api('/api/network/config'), api('/api/network/stats')]);
+        const [cfg, sts, rtp] = await Promise.all([api('/api/network/config'), api('/api/network/stats'), api('/api/runtime/paths')]);
         const c = cfg.data;
         const s = sts.data;
+        const runtimePaths = rtp.data || {};
         const msg = s.message_counters || {};
         const p = s.peer_counters || {};
         const a = s.adapter_stats || {};
@@ -1096,6 +1107,7 @@
         document.getElementById('networkConfigSnapshot').textContent = toPrettyJson({
           config: c,
           adapter_config: ac,
+          runtime_paths: runtimePaths,
         });
         document.getElementById('networkStatsSnapshot').textContent = toPrettyJson({
           stats: s,
@@ -1404,6 +1416,35 @@
       document.getElementById('stopBroadcastBtn').addEventListener('click', () => runAction('/api/broadcast/stop', 'Stopping...', 'warn'));
       document.getElementById('broadcastNowBtn').addEventListener('click', () => runAction('/api/broadcast/now', 'Broadcasting now...'));
       document.getElementById('refreshCacheBtn').addEventListener('click', () => runAction('/api/cache/refresh', 'Refreshing cache...'));
+      document.getElementById('clearCacheBtn').addEventListener('click', async () => {
+        const ok = window.confirm('Clear discovered cache now?\n\nThis removes discovered peer profiles/presence/index references and keeps your self profile.');
+        if (!ok) return;
+        await runAction('/api/cache/clear', 'Clearing discovered cache...', 'warn');
+      });
+      document.getElementById('quickGlobalPreviewBtn').addEventListener('click', async () => {
+        const currentSignaling = window.prompt('Signaling URL (publicly reachable):', 'http://localhost:4510');
+        if (!currentSignaling) return;
+        const room = window.prompt('Room:', 'silicaclaw-demo') || 'silicaclaw-demo';
+        setFeedback('networkFeedback', 'Enabling cross-network preview...');
+        try {
+          const result = await api('/api/network/quick-connect-global-preview', {
+            method: 'POST',
+            body: JSON.stringify({
+              signaling_url: currentSignaling.trim(),
+              room: room.trim(),
+            }),
+          });
+          setFeedback('networkFeedback', result.meta?.message || 'Cross-network preview enabled');
+          toast('Cross-network preview enabled');
+          await refreshAll();
+        } catch (e) {
+          setFeedback('networkFeedback', e instanceof Error ? e.message : 'Enable cross-network preview failed', 'error');
+        }
+      });
+      document.getElementById('onlyOnlineToggle').addEventListener('change', async (event) => {
+        onlyShowOnline = Boolean(event.target?.checked);
+        await refreshOverview();
+      });
       document.getElementById('refreshLogsBtn').addEventListener('click', async () => {
         await refreshLogs();
         toast('Logs refreshed');

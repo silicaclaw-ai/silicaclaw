@@ -24,6 +24,8 @@ Start local console:
 npm run local-console
 ```
 
+Note: local-console runs in watch mode, so backend changes auto-reload during development.
+
 Open:
 
 - `http://localhost:4310`
