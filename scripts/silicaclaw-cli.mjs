@@ -35,7 +35,7 @@ function displayVersion(raw) {
 }
 
 function headline() {
-  console.log(`${paint("SilicaClaw", COLOR.bold, COLOR.orange)} ${paint(displayVersion(readVersion()), COLOR.dim)}`);
+  console.log(`${paint("🦀 SilicaClaw", COLOR.bold, COLOR.orange)} ${paint(displayVersion(readVersion()), COLOR.dim)}`);
   console.log(paint("Public identity and discovery for OpenClaw agents.", COLOR.dim));
 }
 
@@ -238,7 +238,7 @@ function installPersistentCommand() {
       "#!/usr/bin/env bash",
       "set -euo pipefail",
       'export npm_config_cache="${npm_config_cache:-$HOME/.silicaclaw/npm-cache}"',
-      'exec npx -y @silicaclaw/cli@latest "$@"',
+      'exec npx -y @silicaclaw/cli@beta "$@"',
       "",
     ].join("\n"),
     { encoding: "utf8", mode: 0o755 }
@@ -306,18 +306,19 @@ function canWriteGlobalPrefix() {
   }
 }
 
-function showUpdateGuide(current, latest) {
+function showUpdateGuide(current, targetVersion, channel = "beta") {
   headline();
   console.log("");
-  const upToDate = Boolean(latest) && current === latest;
+  const upToDate = Boolean(targetVersion) && current === targetVersion;
   if (upToDate) {
     kv("Status", `up to date (${current})`);
   } else {
-    kv("Status", `update available (${latest || "-"})`);
+    kv("Status", `update available (${targetVersion || "-"})`);
   }
   console.log("");
   kv("Start", "silicaclaw start");
   kv("Status", "silicaclaw status");
+  kv("Channel", channel);
 }
 
 function getGatewayStatus() {
@@ -417,8 +418,8 @@ function tryGlobalUpgrade(version) {
 
   const detail = compactOutput(`${exactResult.stdout || ""}\n${exactResult.stderr || ""}`);
   if (detail.includes("ETARGET") || detail.includes("No matching version found")) {
-    kv("Fallback", "registry metadata is still settling, retrying via @latest tag");
-    const fallbackResult = runInherit("npm", ["i", "-g", "@silicaclaw/cli@latest"]);
+    kv("Fallback", "registry metadata is still settling, retrying via @beta tag");
+    const fallbackResult = runInherit("npm", ["i", "-g", "@silicaclaw/cli@beta"]);
     return (fallbackResult.status ?? 1) === 0;
   }
 
@@ -444,18 +445,18 @@ function update() {
     }
     const text = String(result.stdout || "").trim();
     const tags = text ? JSON.parse(text) : {};
-    const latest = tags.latest ? String(tags.latest) : "";
-    showUpdateGuide(current, latest);
-    const hasNewLatest = Boolean(latest) && latest !== current;
+    const beta = tags.beta ? String(tags.beta) : "";
+    showUpdateGuide(current, beta, "beta");
+    const hasNewBeta = Boolean(beta) && beta !== current;
     const npxRuntime = isNpxRun();
 
-    if (hasNewLatest) {
+    if (hasNewBeta) {
       if (npxRuntime) {
-        kv("Update", `next run will use ${latest}`);
-      } else if (tryGlobalUpgrade(latest)) {
-        kv("Update", `installed ${latest}`);
+        kv("Update", `next run will use ${beta}`);
+      } else if (tryGlobalUpgrade(beta)) {
+        kv("Update", `installed ${beta}`);
       } else {
-        kv("Update", `install ${latest} manually if needed`);
+        kv("Update", `install ${beta} manually if needed`);
       }
     }
 
@@ -503,8 +504,8 @@ function help() {
   headline();
   console.log("");
   section("Commands");
-  kv("First Run", "npx -y @silicaclaw/cli@latest onboard");
-  kv("Install", "npx -y @silicaclaw/cli@latest install");
+  kv("First Run", "npx -y @silicaclaw/cli@beta onboard");
+  kv("Install", "npx -y @silicaclaw/cli@beta install");
   kv("Start", "silicaclaw start");
   kv("Status", "silicaclaw status");
   kv("Stop", "silicaclaw stop");

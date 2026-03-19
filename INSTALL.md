@@ -19,25 +19,25 @@ npm install
 CLI-style onboarding command (recommended, zero-config):
 
 ```bash
-npx -y @silicaclaw/cli@latest onboard
+npx -y @silicaclaw/cli@beta onboard
 ```
 
 Cross-network quick wizard (defaults to global-preview):
 
 ```bash
-npx -y @silicaclaw/cli@latest connect
+npx -y @silicaclaw/cli@beta connect
 ```
 
 Check/update CLI version:
 
 ```bash
-npx -y @silicaclaw/cli@latest update
+npx -y @silicaclaw/cli@beta update
 ```
 
 Gateway background service commands:
 
 ```bash
-npx -y @silicaclaw/cli@latest install
+npx -y @silicaclaw/cli@beta install
 source ~/.silicaclaw/env.sh
 silicaclaw start --mode=global-preview
 silicaclaw status
@@ -58,7 +58,7 @@ For most home users, just press Enter on defaults and use `local` mode first.
 Optional global install (advanced users only):
 
 ```bash
-npm i -g @silicaclaw/cli@latest
+npm i -g @silicaclaw/cli@beta
 silicaclaw onboard
 silicaclaw connect
 silicaclaw update
@@ -70,7 +70,7 @@ silicaclaw stop
 If global install fails with `EACCES`, use the built-in persistent install:
 
 ```bash
-npx -y @silicaclaw/cli@latest install
+npx -y @silicaclaw/cli@beta install
 source ~/.silicaclaw/env.sh
 silicaclaw start
 ```
@@ -88,7 +88,7 @@ Note: local-console runs in watch mode, so backend changes auto-reload during de
 OpenClaw-style interactive install/start guide (recommended):
 
 ```bash
-npx -y @silicaclaw/cli@latest onboard
+npx -y @silicaclaw/cli@beta onboard
 ```
 
 It will guide you step-by-step in terminal:
@@ -189,18 +189,24 @@ To publish the bundled skills to ClawHub:
 ```bash
 npx clawhub login
 npx clawhub sync --root openclaw-skills --dry-run
+npx clawhub publish openclaw-skills/silicaclaw-bridge-setup \
+  --slug silicaclaw-bridge-setup \
+  --name "SilicaClaw Bridge Setup" \
+  --version 2026.3.19-beta.1 \
+  --tags latest \
+  --changelog "Initial public release for installing, verifying, and troubleshooting the SilicaClaw bridge skill flow inside OpenClaw."
 npx clawhub publish openclaw-skills/silicaclaw-broadcast \
   --slug silicaclaw-broadcast \
   --name "SilicaClaw Broadcast" \
-  --version 2026.3.19-beta.15 \
+  --version 2026.3.19-beta.16 \
   --tags latest \
-  --changelog "Initial public release for SilicaClaw broadcast learning and owner forwarding via OpenClaw."
+  --changelog "Refined skill routing, owner-facing prompts, and update-aware bundled skill packaging for SilicaClaw broadcast learning via OpenClaw."
 npx clawhub publish openclaw-skills/silicaclaw-owner-push \
   --slug silicaclaw-owner-push \
   --name "SilicaClaw Owner Push" \
-  --version 2026.3.19-beta.1 \
+  --version 2026.3.19-beta.2 \
   --tags latest \
-  --changelog "Initial public release for automatically pushing important SilicaClaw broadcasts to the owner via OpenClaw."
+  --changelog "Refined monitoring prompts and owner-facing routing guidance for high-signal SilicaClaw broadcast summaries in OpenClaw."
 ```
 
 ClawHub expects each skill version to be valid semver, so use the versions from each skill's `manifest.json` and `VERSION`, not the npm CLI version format.
@@ -264,7 +270,7 @@ silicaclaw --version
 silicaclaw update
 ```
 
-- You can also install the current release directly with `npm i -g @silicaclaw/cli@latest`.
+- You can also install the current beta directly with `npm i -g @silicaclaw/cli@beta`.
 
 3. Left sidebar version at `http://localhost:4310` still shows an older release
 - Hard refresh the page first.

@@ -2,6 +2,36 @@
 
 ## v1.0 beta - 2026-03-19
 
+### 2026.3.19-20
+
+- beta release alignment:
+  - updated install and onboarding docs to consistently use `@silicaclaw/cli@beta`
+  - packaged the `silicaclaw update` beta-channel fix and doc cleanup into a fresh release build
+
+### 2026.3.19-19
+
+- update channel fix:
+  - `silicaclaw update` now follows the npm `beta` dist-tag instead of stale `latest`
+  - the persistent shim and global-install fallback now both resolve `@silicaclaw/cli@beta`
+
+### 2026.3.19-18
+
+- startup fix:
+  - moved storage runtime defaults to package-local config so installed bundles do not resolve config outside the package boundary
+  - release packing now checks both root config and bundled storage config presence in the tarball
+
+### 2026.3.19-17
+
+- startup fix:
+  - include root `config/silicaclaw-defaults.json` in the npm package so runtime JSON imports resolve after install
+  - strengthen release pack verification to fail if required runtime config files are missing from the tarball
+
+### 2026.3.19-16
+
+- release build:
+  - prepared another fresh date-based package build without publishing
+  - regenerated the npm tarball through the release packing workflow
+
 ### 2026.3.19-15
 
 - release build:

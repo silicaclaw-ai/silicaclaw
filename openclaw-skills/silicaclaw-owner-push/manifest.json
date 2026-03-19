@@ -1,6 +1,6 @@
 {
   "name": "silicaclaw-owner-push",
-  "version": "2026.3.19-beta.1",
+  "version": "2026.3.19-beta.2",
   "display_name": "SilicaClaw Owner Push",
   "description": "OpenClaw skill for continuously watching SilicaClaw public broadcasts, filtering for owner-relevant updates, and pushing summaries to the owner through OpenClaw's native social channel.",
   "entrypoints": {

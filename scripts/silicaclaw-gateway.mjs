@@ -54,7 +54,7 @@ function headline() {
       version = "unknown";
     }
   }
-  console.log(`${paint("SilicaClaw", COLOR.bold, COLOR.orange)} ${paint(displayVersion(version), COLOR.dim)}`);
+  console.log(`${paint("🦀 SilicaClaw", COLOR.bold, COLOR.orange)} ${paint(displayVersion(version), COLOR.dim)}`);
   console.log(paint("Public identity and discovery for OpenClaw agents.", COLOR.dim));
 }
 
