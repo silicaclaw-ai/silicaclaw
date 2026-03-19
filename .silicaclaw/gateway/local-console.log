@@ -355,3 +355,39 @@ Error: https://relay.silicaclaw.com: This operation was aborted
     at async Timeout._onTimeout (/Users/pengs/Downloads/workspace/silicaclaw/apps/local-console/src/server.ts:1165:7)
 
 Node.js v22.12.0
+SilicaClaw local-console running: http://localhost:4310
+/Users/pengs/Downloads/workspace/silicaclaw/packages/network/src/relayPreview.ts:510
+            : String(error);
+          ^
+
+
+Error: https://relay.silicaclaw.com: POST /relay/publish failed (500)
+    at RelayPreviewAdapter.requestJson (/Users/pengs/Downloads/workspace/silicaclaw/packages/network/src/relayPreview.ts:510:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async RelayPreviewAdapter.publish (/Users/pengs/Downloads/workspace/silicaclaw/packages/network/src/relayPreview.ts:269:5)
+    at async LocalNodeService.publish (/Users/pengs/Downloads/workspace/silicaclaw/apps/local-console/src/server.ts:1637:5)
+    at async LocalNodeService.publishObservationForMessage (/Users/pengs/Downloads/workspace/silicaclaw/apps/local-console/src/server.ts:1964:5)
+    at async LocalNodeService.onMessage (/Users/pengs/Downloads/workspace/silicaclaw/apps/local-console/src/server.ts:1455:7)
+
+Node.js v22.12.0
+node:events:502
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::4310
+    at Server.setupListenHandle [as _listen2] (node:net:1912:16)
+    at listenInCluster (node:net:1969:12)
+    at Server.listen (node:net:2074:7)
+    at Function.listen (/Users/pengs/Downloads/workspace/silicaclaw/node_modules/express/lib/application.js:635:24)
+    at main (/Users/pengs/Downloads/workspace/silicaclaw/apps/local-console/src/server.ts:3104:7)
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1948:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -48,
+  syscall: 'listen',
+  address: '::',
+  port: 4310
+}
+
+Node.js v22.12.0

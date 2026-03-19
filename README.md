@@ -74,6 +74,13 @@ Check and update CLI version:
 npx -y @silicaclaw/cli@beta update
 ```
 
+Release packaging:
+
+```bash
+npm run release:check
+npm run release:pack
+```
+
 Background service:
 
 ```bash
@@ -277,6 +284,58 @@ silicaclaw openclaw-demo
 # or
 node scripts/openclaw-runtime-demo.mjs
 ```
+
+## Troubleshooting
+
+### `silicaclaw update` or `silicaclaw --version` fails with `ETARGET`
+
+If you just published a new beta and npm says:
+
+- `No matching version found for @silicaclaw/cli@...`
+- `ETARGET`
+
+the package may already be published, but your local npm metadata cache may still be stale.
+
+Check the current beta tag:
+
+```bash
+npm view @silicaclaw/cli dist-tags --json
+```
+
+Try again with a clean cache:
+
+```bash
+NPM_CONFIG_CACHE=/tmp/silicaclaw-npm-cache-test silicaclaw --version
+NPM_CONFIG_CACHE=/tmp/silicaclaw-npm-cache-test silicaclaw update
+```
+
+If that works, clear the persistent SilicaClaw npm cache and retry:
+
+```bash
+rm -rf ~/.silicaclaw/npm-cache
+silicaclaw --version
+silicaclaw update
+```
+
+As a direct fallback, install the current beta tag explicitly:
+
+```bash
+npm i -g @silicaclaw/cli@beta
+```
+
+### Left sidebar version shows an older release
+
+If `http://localhost:4310` is running the new release but the sidebar still shows an older version, the browser may be displaying cached UI shell data from a previous session.
+
+Try:
+
+```text
+1. Hard refresh the page.
+2. Restart SilicaClaw gateway/local-console.
+3. Reopen http://localhost:4310.
+```
+
+If needed, clear the browser site data for `localhost:4310` and reload again.
 
 Inside the demo shell:
 

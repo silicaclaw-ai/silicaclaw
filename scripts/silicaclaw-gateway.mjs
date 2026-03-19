@@ -102,6 +102,10 @@ function detectAppDir() {
     return resolve(cwd);
   }
 
+  if (isSilicaClawDir(ROOT_DIR)) {
+    return resolve(ROOT_DIR);
+  }
+
   const homeCandidate = join(homedir(), "silicaclaw");
   if (isSilicaClawDir(homeCandidate)) {
     return resolve(homeCandidate);
@@ -486,6 +490,28 @@ async function waitForPort(port, timeoutMs = 5000) {
   return null;
 }
 
+async function waitForCurrentAppListener(port, kind, timeoutMs = 5000) {
+  const startedAt = Date.now();
+  let lastListener = null;
+  while (Date.now() - startedAt < timeoutMs) {
+    const listener = listeningProcessOnPort(port);
+    lastListener = listener;
+    if (listener && isCurrentAppListener(listener, kind)) return listener;
+    await sleep(200);
+  }
+  return lastListener;
+}
+
+async function waitForPortToClear(port, timeoutMs = 5000) {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    const listener = listeningProcessOnPort(port);
+    if (!listener) return true;
+    await sleep(200);
+  }
+  return false;
+}
+
 function tailText(file, lines = 20) {
   if (!existsSync(file)) return "";
   const text = String(readFileSync(file, "utf8"));
@@ -499,6 +525,25 @@ function isOwnedListener(listener, kind) {
   const rootDir = normalizePathForMatch(ROOT_DIR).toLowerCase();
   const inWorkspace = command.includes(appDir) || command.includes(rootDir);
   if (!inWorkspace) return false;
+  if (kind === "local-console") {
+    return (
+      command.includes("@silicaclaw/local-console") ||
+      command.includes("/apps/local-console/") ||
+      command.includes("src/server.ts") ||
+      command.includes("dist/server.js")
+    );
+  }
+  if (kind === "signaling") {
+    return command.includes("webrtc-signaling-server.mjs") || command.includes("npm run webrtc-signaling");
+  }
+  return false;
+}
+
+function isCurrentAppListener(listener, kind) {
+  if (!listener?.command) return false;
+  const command = normalizePathForMatch(listener.command).toLowerCase();
+  const appDir = normalizePathForMatch(APP_DIR).toLowerCase();
+  if (!command.includes(appDir)) return false;
   if (kind === "local-console") {
     return (
       command.includes("@silicaclaw/local-console") ||
@@ -528,6 +573,24 @@ async function stopOwnedListener(port, kind) {
   return true;
 }
 
+async function drainOwnedListener(port, kind, timeoutMs = 5000) {
+  const startedAt = Date.now();
+  let attempted = false;
+  while (Date.now() - startedAt < timeoutMs) {
+    const listener = listeningProcessOnPort(port);
+    if (!listener) return { cleared: true, attempted };
+    if (!isOwnedListener(listener, kind)) {
+      return { cleared: false, attempted };
+    }
+    attempted = true;
+    await stopOwnedListener(port, kind);
+    const cleared = await waitForPortToClear(port, 1200);
+    if (cleared) return { cleared: true, attempted };
+  }
+  const finalListener = listeningProcessOnPort(port);
+  return { cleared: !finalListener, attempted };
+}
+
 function printStopSummary() {
   const localListener = listeningProcessOnPort(4310);
   const signalingListener = listeningProcessOnPort(4510);
@@ -538,6 +601,9 @@ function printStopSummary() {
     kv("Console", paint("stopped", COLOR.green));
   } else {
     kv("Console", `${paint("still busy", COLOR.yellow)} (pid=${localListener.pid})`);
+    if (isOwnedListener(localListener, "local-console")) {
+      kv("Hint", "an older SilicaClaw local-console process is still holding port 4310");
+    }
     kv("Inspect", "lsof -nP -iTCP:4310 -sTCP:LISTEN");
     kv("Stop pid", `kill ${localListener.pid}`);
   }
@@ -570,8 +636,8 @@ async function stopAll() {
   if (isLaunchdPlatform()) {
     stopLaunchAgent(LOCAL_CONSOLE_LABEL);
     stopLaunchAgent(SIGNALING_LABEL);
-    await stopOwnedListener(4310, "local-console");
-    await stopOwnedListener(4510, "signaling");
+    await drainOwnedListener(4310, "local-console", 8000);
+    await drainOwnedListener(4510, "signaling", 5000);
     removeFileIfExists(CONSOLE_PID_FILE);
     removeFileIfExists(SIGNALING_PID_FILE);
     writeState({
@@ -584,8 +650,8 @@ async function stopAll() {
   const sigPid = readPid(SIGNALING_PID_FILE);
   await stopPid(localPid, "local-console");
   await stopPid(sigPid, "signaling");
-  await stopOwnedListener(4310, "local-console");
-  await stopOwnedListener(4510, "signaling");
+  await drainOwnedListener(4310, "local-console", 5000);
+  await drainOwnedListener(4510, "signaling", 5000);
   removeFileIfExists(CONSOLE_PID_FILE);
   removeFileIfExists(SIGNALING_PID_FILE);
   writeState({
@@ -603,32 +669,6 @@ async function startAll() {
   const room = parseFlag("room", process.env.WEBRTC_ROOM || "silicaclaw-global-preview");
   const shouldDisableSignaling = hasFlag("no-signaling");
 
-  const currentLocalPid = readPid(CONSOLE_PID_FILE);
-  const currentSigPid = readPid(SIGNALING_PID_FILE);
-  const currentListener = listeningProcessOnPort(4310);
-  if (currentListener && isOwnedListener(currentListener, "local-console") && !isRunning(currentLocalPid)) {
-    writeFileSync(CONSOLE_PID_FILE, String(currentListener.pid));
-  }
-
-  let localPid = readPid(CONSOLE_PID_FILE);
-  if (!isRunning(localPid)) {
-    removeFileIfExists(CONSOLE_PID_FILE);
-    const env = {
-      NETWORK_ADAPTER: adapter,
-      NETWORK_MODE: mode,
-      WEBRTC_SIGNALING_URL: signalingUrl,
-      WEBRTC_ROOM: room,
-    };
-    localPid = spawnBackground(
-      process.execPath,
-      ["--import", "tsx", "src/server.ts"],
-      env,
-      CONSOLE_LOG_FILE,
-      CONSOLE_PID_FILE,
-      LOCAL_CONSOLE_DIR,
-    );
-  }
-
   const { host, port } = parseUrlHostPort(signalingUrl);
   const shouldAutoStartSignaling =
     mode === "global-preview" &&
@@ -638,8 +678,8 @@ async function startAll() {
   if (isLaunchdPlatform()) {
     const npmPath = resolveCommandPath("npm");
     const signalingEntry = resolve(APP_DIR, "scripts", "webrtc-signaling-server.mjs");
-    await stopOwnedListener(4310, "local-console");
-    await stopOwnedListener(4510, "signaling");
+    await drainOwnedListener(4310, "local-console", 8000);
+    await drainOwnedListener(4510, "signaling", 5000);
     const baseEnv = {
       NETWORK_ADAPTER: adapter,
       NETWORK_MODE: mode,
@@ -684,6 +724,37 @@ async function startAll() {
     return { localPid: null, signalingPid: null };
   }
 
+  const currentLocalPid = readPid(CONSOLE_PID_FILE);
+  const currentSigPid = readPid(SIGNALING_PID_FILE);
+  const currentListener = listeningProcessOnPort(4310);
+  if (currentListener && isOwnedListener(currentListener, "local-console") && !isRunning(currentLocalPid)) {
+    writeFileSync(CONSOLE_PID_FILE, String(currentListener.pid));
+  }
+
+  let localPid = readPid(CONSOLE_PID_FILE);
+  if (!isRunning(localPid)) {
+    removeFileIfExists(CONSOLE_PID_FILE);
+    await drainOwnedListener(4310, "local-console", 8000);
+    const remainingLocalListener = listeningProcessOnPort(4310);
+    if (remainingLocalListener) {
+      throw new Error(`port 4310 is occupied by pid=${remainingLocalListener.pid}`);
+    }
+    const env = {
+      NETWORK_ADAPTER: adapter,
+      NETWORK_MODE: mode,
+      WEBRTC_SIGNALING_URL: signalingUrl,
+      WEBRTC_ROOM: room,
+    };
+    localPid = spawnBackground(
+      process.execPath,
+      ["dist/apps/local-console/src/server.js"],
+      env,
+      CONSOLE_LOG_FILE,
+      CONSOLE_PID_FILE,
+      LOCAL_CONSOLE_DIR,
+    );
+  }
+
   let signalingPid = currentSigPid;
   if (shouldAutoStartSignaling) {
     if (!isRunning(currentSigPid)) {
@@ -724,11 +795,15 @@ async function main() {
   }
   if (cmd === "start") {
     await startAll();
-    const listener = await waitForPort(4310, 15000);
-    if (!listener) {
+    const listener = await waitForCurrentAppListener(4310, "local-console", 15000);
+    if (!listener || !isCurrentAppListener(listener, "local-console")) {
       headline();
       console.log("");
       kv("Status", paint("failed to start", COLOR.red));
+      if (listener) {
+        kv("Conflict", `port 4310 is occupied by pid=${listener.pid}`);
+        kv("Inspect", "lsof -nP -iTCP:4310 -sTCP:LISTEN");
+      }
       const recent = tailText(CONSOLE_LOG_FILE, 18);
       if (recent) {
         console.log("");
@@ -749,11 +824,15 @@ async function main() {
   if (cmd === "restart") {
     await stopAll();
     await startAll();
-    const listener = await waitForPort(4310, 15000);
-    if (!listener) {
+    const listener = await waitForCurrentAppListener(4310, "local-console", 15000);
+    if (!listener || !isCurrentAppListener(listener, "local-console")) {
       headline();
       console.log("");
       kv("Status", paint("failed to restart", COLOR.red));
+      if (listener) {
+        kv("Conflict", `port 4310 is occupied by pid=${listener.pid}`);
+        kv("Inspect", "lsof -nP -iTCP:4310 -sTCP:LISTEN");
+      }
       const recent = tailText(CONSOLE_LOG_FILE, 18);
       if (recent) {
         console.log("");

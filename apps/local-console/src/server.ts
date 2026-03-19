@@ -2,7 +2,7 @@ import express, { NextFunction, Request, Response } from "express";
 import cors from "cors";
 import { execFile, spawnSync } from "child_process";
 import { resolve } from "path";
-import { accessSync, constants, copyFileSync, existsSync, mkdirSync, readFileSync } from "fs";
+import { accessSync, constants, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync } from "fs";
 import { createHash } from "crypto";
 import { hostname } from "os";
 import { promisify } from "util";
@@ -78,6 +78,9 @@ const NETWORK_MAX_FUTURE_DRIFT_MS = Number(process.env.NETWORK_MAX_FUTURE_DRIFT_
 const NETWORK_MAX_PAST_DRIFT_MS = Number(process.env.NETWORK_MAX_PAST_DRIFT_MS || 120_000);
 const NETWORK_HEARTBEAT_INTERVAL_MS = Number(process.env.NETWORK_HEARTBEAT_INTERVAL_MS || 12_000);
 const NETWORK_PEER_STALE_AFTER_MS = Number(process.env.NETWORK_PEER_STALE_AFTER_MS || 45_000);
+const OPENCLAW_GATEWAY_HOST = "127.0.0.1";
+const OPENCLAW_GATEWAY_PORT = 18_789;
+const OPENCLAW_GATEWAY_URL = `http://${OPENCLAW_GATEWAY_HOST}:${OPENCLAW_GATEWAY_PORT}/`;
 const NETWORK_PEER_REMOVE_AFTER_MS = Number(process.env.NETWORK_PEER_REMOVE_AFTER_MS || 180_000);
 const NETWORK_UDP_BIND_ADDRESS = process.env.NETWORK_UDP_BIND_ADDRESS || "0.0.0.0";
 const NETWORK_UDP_BROADCAST_ADDRESS = process.env.NETWORK_UDP_BROADCAST_ADDRESS || "255.255.255.255";
@@ -169,6 +172,47 @@ function existingPathOrNull(filePath: string): string | null {
   return existsSync(filePath) ? filePath : null;
 }
 
+function listDirectories(root: string) {
+  if (!root || !existsSync(root)) return [];
+  try {
+    return readdirSync(root)
+      .map((name) => {
+        const fullPath = resolve(root, name);
+        try {
+          return statSync(fullPath).isDirectory() ? { name, path: fullPath } : null;
+        } catch {
+          return null;
+        }
+      })
+      .filter((item): item is { name: string; path: string } => Boolean(item));
+  } catch {
+    return [];
+  }
+}
+
+function readJsonFileSafe(filePath: string) {
+  try {
+    return JSON.parse(readFileSync(filePath, "utf8")) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function summarizeSkillReadme(filePath: string) {
+  if (!filePath || !existsSync(filePath)) return "";
+  try {
+    const raw = readFileSync(filePath, "utf8");
+    const lines = raw
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .filter((line) => !line.startsWith("#"));
+    return String(lines[0] || "").slice(0, 220);
+  } catch {
+    return "";
+  }
+}
+
 function detectOpenClawInstallation(workspaceRoot: string) {
   const workspaceDir = resolve(workspaceRoot, ".openclaw");
   const homeDir = resolve(process.env.HOME || "", ".openclaw");
@@ -219,7 +263,52 @@ function detectOpenClawInstallation(workspaceRoot: string) {
   } as const;
 }
 
-function detectOpenClawRuntime() {
+function readOpenClawConfiguredGateway(workspaceRoot: string) {
+  const configuredSourceDir = String(process.env.OPENCLAW_SOURCE_DIR || "").trim();
+  const defaultSourceDir = resolve(workspaceRoot, "..", "openclaw");
+  const sourceDir = configuredSourceDir || defaultSourceDir;
+  const homeDir = resolve(process.env.HOME || "", ".openclaw");
+  const explicitConfigPath = String(process.env.OPENCLAW_CONFIG_PATH || "").trim();
+  const explicitStateDir = String(process.env.OPENCLAW_STATE_DIR || "").trim();
+  const candidates = dedupeStrings([
+    explicitConfigPath,
+    explicitStateDir ? resolve(explicitStateDir, "openclaw.json") : "",
+    resolve(homeDir, "openclaw.json"),
+    resolve(homeDir, "clawdbot.json"),
+    resolve(sourceDir, ".openclaw", "openclaw.json"),
+  ]);
+
+  for (const candidate of candidates) {
+    if (!candidate || !existsSync(candidate)) continue;
+    try {
+      const raw = readFileSync(candidate, "utf8");
+      const portMatch = raw.match(/["']?port["']?\s*:\s*(\d{2,5})/);
+      const bindMatch = raw.match(/["']?bind["']?\s*:\s*["']([^"']+)["']/);
+      const port = portMatch ? Number(portMatch[1]) : OPENCLAW_GATEWAY_PORT;
+      if (!Number.isFinite(port) || port <= 0) continue;
+      return {
+        config_path: candidate,
+        gateway_port: port,
+        gateway_host: OPENCLAW_GATEWAY_HOST,
+        gateway_bind: bindMatch?.[1] || null,
+        gateway_url: `http://${OPENCLAW_GATEWAY_HOST}:${port}/`,
+      } as const;
+    } catch {
+      continue;
+    }
+  }
+
+  return {
+    config_path: null,
+    gateway_port: OPENCLAW_GATEWAY_PORT,
+    gateway_host: OPENCLAW_GATEWAY_HOST,
+    gateway_bind: null,
+    gateway_url: OPENCLAW_GATEWAY_URL,
+  } as const;
+}
+
+function detectOpenClawRuntime(workspaceRoot: string) {
+  const configuredGateway = readOpenClawConfiguredGateway(workspaceRoot);
   const result = spawnSync("ps", ["-Ao", "pid=,ppid=,command="], {
     encoding: "utf8",
   });
@@ -252,11 +341,84 @@ function detectOpenClawRuntime() {
     })
     .filter((item): item is { pid: number; ppid: number; command: string } => Boolean(item));
 
+  const openclawPids = new Set(processes.map((item) => item.pid));
+  const gatewayProbe = spawnSync("lsof", ["-nP", "-iTCP", "-sTCP:LISTEN"], {
+    encoding: "utf8",
+  });
+  const gatewayLines = String(gatewayProbe.stdout || "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const gatewayListeners = gatewayLines
+    .slice(1)
+    .map((line) => {
+      const parts = line.split(/\s+/);
+      const pid = Number(parts[1] || 0);
+      const command = parts[0] || "";
+      const lowerCommand = command.toLowerCase();
+      const endpoint = parts[8] || parts[parts.length - 1] || "";
+      const portMatch = endpoint.match(/:(\d+)(?:\s*\(|$)/);
+      if (!pid || !command || !portMatch) return null;
+      const isOpenClawListener =
+        openclawPids.has(pid) ||
+        lowerCommand.includes("openclaw");
+      if (!isOpenClawListener) return null;
+      const port = Number(portMatch[1]);
+      if (!Number.isFinite(port) || port <= 0) return null;
+      return {
+        pid,
+        ppid: 0,
+        port,
+        command: `${command} listening on ${OPENCLAW_GATEWAY_HOST}:${port}`,
+      };
+    })
+    .filter((item): item is { pid: number; ppid: number; port: number; command: string } => Boolean(item));
+  const preferredListener =
+    gatewayListeners.find((item) => item.port === configuredGateway.gateway_port) ||
+    gatewayListeners[0] ||
+    null;
+
+  const combinedProcesses = new Map<number, { pid: number; ppid: number; command: string }>();
+  for (const process of [...processes, ...gatewayListeners]) {
+    if (!combinedProcesses.has(process.pid)) {
+      combinedProcesses.set(process.pid, process);
+      continue;
+    }
+    const current = combinedProcesses.get(process.pid);
+    if (current && current.command.length < process.command.length) {
+      combinedProcesses.set(process.pid, process);
+    }
+  }
+  const allProcesses = Array.from(combinedProcesses.values());
+  const gatewayReachable = gatewayListeners.length > 0;
+  const detectionNotes = [];
+  if (result.status !== 0) detectionNotes.push(String(result.stderr || "ps failed").trim());
+  if (gatewayProbe.status !== 0 && gatewayLines.length === 0) {
+    detectionNotes.push(String(gatewayProbe.stderr || "lsof failed").trim());
+  }
+  const gatewayPort = preferredListener?.port || configuredGateway.gateway_port;
+  const gatewayUrl = `http://${OPENCLAW_GATEWAY_HOST}:${gatewayPort}/`;
+
   return {
-    running: processes.length > 0,
-    process_count: processes.length,
-    processes: processes.slice(0, 10),
-    detection_error: result.status === 0 ? null : String(result.stderr || "ps failed"),
+    running: allProcesses.length > 0 || gatewayReachable,
+    process_count: allProcesses.length,
+    processes: allProcesses.slice(0, 10),
+    detection_error: detectionNotes.filter(Boolean).join(" | ") || null,
+    gateway_url: gatewayUrl,
+    gateway_port: gatewayPort,
+    gateway_reachable: gatewayReachable,
+    configured_gateway_url: configuredGateway.gateway_url,
+    configured_gateway_port: configuredGateway.gateway_port,
+    configured_gateway_bind: configuredGateway.gateway_bind,
+    configured_gateway_config_path: configuredGateway.config_path,
+    detection_mode:
+      processes.length > 0 && gatewayReachable
+        ? "process+gateway"
+        : gatewayReachable
+          ? "gateway"
+          : processes.length > 0
+            ? "process"
+            : "not_running",
   } as const;
 }
 
@@ -462,6 +624,14 @@ type OpenClawBridgeStatus = {
       command: string;
     }>;
     detection_error: string | null;
+    gateway_url: string;
+    gateway_port: number;
+    gateway_reachable: boolean;
+    configured_gateway_url: string;
+    configured_gateway_port: number;
+    configured_gateway_bind: string | null;
+    configured_gateway_config_path: string | null;
+    detection_mode: "process" | "gateway" | "process+gateway" | "not_running";
   };
   skill_learning: {
     available: boolean;
@@ -507,6 +677,10 @@ type OpenClawBridgeConfigView = {
   bridge_api_base: string;
   openclaw_detected: boolean;
   openclaw_running: boolean;
+  openclaw_gateway_host: string;
+  openclaw_gateway_port: number;
+  openclaw_gateway_url: string;
+  openclaw_gateway_config_path: string | null;
   openclaw_workspace_skill_dir: string;
   openclaw_legacy_skill_dir: string;
   silicaclaw_env_template_path: string;
@@ -1260,7 +1434,7 @@ export class LocalNodeService {
   getOpenClawBridgeStatus(): OpenClawBridgeStatus {
     const integration = this.getIntegrationStatus();
     const openclawInstallation = detectOpenClawInstallation(this.workspaceRoot);
-    const openclawRuntime = detectOpenClawRuntime();
+    const openclawRuntime = detectOpenClawRuntime(this.workspaceRoot);
     const skillInstallation = detectOpenClawSkillInstallation();
     const ownerDelivery = detectOwnerDeliveryStatus({
       workspaceRoot: this.workspaceRoot,
@@ -1355,11 +1529,16 @@ export class LocalNodeService {
     const workspaceSkillDir = resolve(homeDir, "workspace", "skills");
     const legacySkillDir = resolve(homeDir, "skills");
     const openclawSourceDir = resolve(this.workspaceRoot, "..", "openclaw");
+    const openclawRuntime = detectOpenClawRuntime(this.workspaceRoot);
 
     return {
       bridge_api_base: "http://localhost:4310",
       openclaw_detected: detectOpenClawInstallation(this.workspaceRoot).detected,
-      openclaw_running: detectOpenClawRuntime().running,
+      openclaw_running: openclawRuntime.running,
+      openclaw_gateway_host: OPENCLAW_GATEWAY_HOST,
+      openclaw_gateway_port: openclawRuntime.configured_gateway_port,
+      openclaw_gateway_url: openclawRuntime.configured_gateway_url,
+      openclaw_gateway_config_path: openclawRuntime.configured_gateway_config_path,
       openclaw_workspace_skill_dir: workspaceSkillDir,
       openclaw_legacy_skill_dir: legacySkillDir,
       silicaclaw_env_template_path: resolve(this.workspaceRoot, "openclaw-owner-forward.env.example"),
@@ -1382,9 +1561,89 @@ export class LocalNodeService {
       notes: [
         "Install and maintain the skill from SilicaClaw; do not edit OpenClaw core source for this integration.",
         "OpenClaw learns broadcasts via the installed skill under ~/.openclaw/workspace/skills/.",
+        "Runtime detection prefers the actual OpenClaw gateway listener port, then falls back to OpenClaw's own openclaw.json gateway.port.",
         "Owner delivery runs through OpenClaw's own message channel stack after the skill forwards a summary.",
         "Sensitive computer control still requires OpenClaw's own owner approval and node permission flow.",
       ],
+    };
+  }
+
+  getSkillsView() {
+    const bundledRoot = resolve(this.workspaceRoot, "openclaw-skills");
+    const openclawHome = resolve(process.env.HOME || "", ".openclaw");
+    const workspaceInstallRoot = resolve(openclawHome, "workspace", "skills");
+    const legacyInstallRoot = resolve(openclawHome, "skills");
+    const bridge = this.getOpenClawBridgeStatus();
+    const bundledSkills = listDirectories(bundledRoot).map((dir) => {
+      const manifestPath = resolve(dir.path, "manifest.json");
+      const skillPath = resolve(dir.path, "SKILL.md");
+      const versionPath = resolve(dir.path, "VERSION");
+      const manifest = readJsonFileSafe(manifestPath);
+      const name = String(manifest?.name || dir.name);
+      const capabilities = Array.isArray(manifest?.capabilities)
+        ? manifest.capabilities.map((item) => String(item))
+        : [];
+      const installedWorkspacePath = resolve(workspaceInstallRoot, name);
+      const installedLegacyPath = resolve(legacyInstallRoot, name);
+      const installedInWorkspace = existsSync(installedWorkspacePath);
+      const installedInLegacy = existsSync(installedLegacyPath);
+      return {
+        key: name,
+        name,
+        display_name: String(manifest?.display_name || name),
+        description: String(manifest?.description || summarizeSkillReadme(skillPath) || ""),
+        version: existsSync(versionPath) ? readFileSync(versionPath, "utf8").trim() : String(manifest?.version || ""),
+        source_path: dir.path,
+        manifest_path: existsSync(manifestPath) ? manifestPath : null,
+        skill_path: existsSync(skillPath) ? skillPath : null,
+        capabilities,
+        transport: manifest?.transport || null,
+        installed_in_openclaw: installedInWorkspace || installedInLegacy,
+        install_mode: installedInWorkspace ? "workspace" : installedInLegacy ? "legacy" : "not_installed",
+        installed_path: installedInWorkspace ? installedWorkspacePath : installedInLegacy ? installedLegacyPath : null,
+      };
+    });
+
+    const installedSkills = [
+      ...listDirectories(workspaceInstallRoot).map((dir) => ({ ...dir, install_mode: "workspace" as const })),
+      ...listDirectories(legacyInstallRoot).map((dir) => ({ ...dir, install_mode: "legacy" as const })),
+    ].map((dir) => {
+      const manifestPath = resolve(dir.path, "manifest.json");
+      const skillPath = resolve(dir.path, "SKILL.md");
+      const versionPath = resolve(dir.path, "VERSION");
+      const manifest = readJsonFileSafe(manifestPath);
+      return {
+        key: `${dir.install_mode}:${dir.name}`,
+        name: String(manifest?.name || dir.name),
+        display_name: String(manifest?.display_name || dir.name),
+        description: String(manifest?.description || summarizeSkillReadme(skillPath) || ""),
+        version: existsSync(versionPath) ? readFileSync(versionPath, "utf8").trim() : String(manifest?.version || ""),
+        install_mode: dir.install_mode,
+        installed_path: dir.path,
+        manifest_path: existsSync(manifestPath) ? manifestPath : null,
+        skill_path: existsSync(skillPath) ? skillPath : null,
+        capabilities: Array.isArray(manifest?.capabilities) ? manifest.capabilities.map((item) => String(item)) : [],
+        bundled_source_path: bundledSkills.find((item) => item.name === String(manifest?.name || dir.name))?.source_path || null,
+      };
+    });
+
+    return {
+      openclaw: {
+        detected: bridge.openclaw_installation.detected,
+        running: bridge.openclaw_runtime.running,
+        detection_mode: bridge.openclaw_runtime.detection_mode,
+        gateway_url: bridge.openclaw_runtime.gateway_url,
+        workspace_install_root: workspaceInstallRoot,
+        legacy_install_root: legacyInstallRoot,
+      },
+      summary: {
+        bundled_count: bundledSkills.length,
+        installed_count: installedSkills.length,
+        installed_bundled_count: bundledSkills.filter((item) => item.installed_in_openclaw).length,
+      },
+      install_action: bridge.skill_learning.install_action,
+      bundled_skills: bundledSkills,
+      installed_skills: installedSkills,
     };
   }
 
@@ -2689,6 +2948,10 @@ export async function main() {
 
   app.get("/api/network/stats", (_req, res) => {
     sendOk(res, node.getNetworkStats());
+  });
+
+  app.get("/api/skills", (_req, res) => {
+    sendOk(res, node.getSkillsView());
   });
 
   app.post(

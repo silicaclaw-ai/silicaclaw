@@ -219,7 +219,33 @@ npm run health
 - Ensure `npm run local-console` is running.
 - Use `http://localhost:4310`.
 
-2. No peers in LAN mode
+2. `silicaclaw update` or `silicaclaw --version` returns `ETARGET`
+- This usually means the new npm beta was published, but your local npm metadata cache is stale.
+- Check the current beta tag with `npm view @silicaclaw/cli dist-tags --json`.
+- Retry with a clean cache:
+
+```bash
+NPM_CONFIG_CACHE=/tmp/silicaclaw-npm-cache-test silicaclaw --version
+NPM_CONFIG_CACHE=/tmp/silicaclaw-npm-cache-test silicaclaw update
+```
+
+- If that works, clear the persistent cache and retry:
+
+```bash
+rm -rf ~/.silicaclaw/npm-cache
+silicaclaw --version
+silicaclaw update
+```
+
+- You can also install the current beta directly with `npm i -g @silicaclaw/cli@beta`.
+
+3. Left sidebar version at `http://localhost:4310` still shows an older release
+- Hard refresh the page first.
+- Restart `silicaclaw gateway` / local-console.
+- Reopen `http://localhost:4310`.
+- If needed, clear the browser site data for `localhost:4310`.
+
+4. No peers in LAN mode
 - Keep `NETWORK_NAMESPACE` identical on both machines.
 - Keep `NETWORK_PORT` identical on both machines.
 - Allow UDP broadcast in firewall/router.

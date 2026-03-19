@@ -398,8 +398,25 @@ function tryGlobalUpgrade(beta) {
   const writableGlobal = canWriteGlobalPrefix();
   if (!writableGlobal) return false;
   kv("Upgrade", `installing @silicaclaw/cli@${beta} globally`);
-  const result = runInherit("npm", ["i", "-g", `@silicaclaw/cli@${beta}`]);
-  return (result.status ?? 1) === 0;
+  const exactResult = runCapture("npm", ["i", "-g", `@silicaclaw/cli@${beta}`]);
+  if ((exactResult.status ?? 1) === 0) {
+    if (exactResult.stdout) process.stdout.write(exactResult.stdout);
+    if (exactResult.stderr) process.stderr.write(exactResult.stderr);
+    return true;
+  }
+
+  const detail = compactOutput(`${exactResult.stdout || ""}\n${exactResult.stderr || ""}`);
+  if (detail.includes("ETARGET") || detail.includes("No matching version found")) {
+    kv("Fallback", "registry metadata is still settling, retrying via @beta tag");
+    const fallbackResult = runInherit("npm", ["i", "-g", "@silicaclaw/cli@beta"]);
+    return (fallbackResult.status ?? 1) === 0;
+  }
+
+  if (detail) {
+    console.log("");
+    console.log(detail);
+  }
+  return false;
 }
 
 function update() {

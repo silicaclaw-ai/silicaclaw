@@ -1,16 +1,18 @@
 {
   "name": "@silicaclaw/cli",
-  "version": "2026.3.19-2",
+  "version": "2026.3.19-9",
   "private": false,
   "publishConfig": {
     "access": "public"
   },
   "files": [
     "apps/local-console/package.json",
+    "apps/local-console/dist/**",
     "apps/local-console/public/**",
     "apps/local-console/src/**",
     "apps/local-console/tsconfig.json",
     "apps/public-explorer/package.json",
+    "apps/public-explorer/dist/**",
     "apps/public-explorer/public/**",
     "apps/public-explorer/src/**",
     "apps/public-explorer/tsconfig.json",
@@ -51,18 +53,34 @@
   "scripts": {
     "prepack": "npm run build",
     "build": "npm run -ws build",
+    "release:check": "node scripts/release-pack.mjs --dry-run",
+    "release:pack": "node scripts/release-pack.mjs",
     "dev": "npm run --workspace @silicaclaw/local-console dev",
     "onboard": "node scripts/silicaclaw-cli.mjs onboard",
     "quickstart": "bash scripts/quickstart.sh",
     "gateway": "node scripts/silicaclaw-gateway.mjs",
     "local-console": "npm run --workspace @silicaclaw/local-console start",
-    "public-explorer": "npm run --workspace @silicaclaw/public-explorer dev",
+    "public-explorer": "npm run --workspace @silicaclaw/public-explorer start",
     "logo": "bash scripts/install-logo.sh",
     "webrtc-signaling": "node scripts/webrtc-signaling-server.mjs",
     "check": "npm run -ws check",
     "functional-check": "node scripts/functional-check.mjs",
     "health": "npm run check && npm run build && npm run functional-check"
   },
+  "dependencies": {
+    "@silicaclaw/core": "file:packages/core",
+    "@silicaclaw/network": "file:packages/network",
+    "@silicaclaw/storage": "file:packages/storage",
+    "cors": "^2.8.5",
+    "express": "^4.21.2"
+  },
+  "bundleDependencies": [
+    "@silicaclaw/core",
+    "@silicaclaw/network",
+    "@silicaclaw/storage",
+    "cors",
+    "express"
+  ],
   "devDependencies": {
     "@types/node": "^22.13.10",
     "typescript": "^5.8.2"

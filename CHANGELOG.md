@@ -2,7 +2,19 @@
 
 ## v1.0 beta - 2026-03-19
 
-### 2026.3.19-2
+### 2026.3.19-9
+
+- release packaging workflow:
+  - added a dedicated release pack script for version sync checks, workspace build, skill validation, and npm packing
+  - confirmed the date-based release flow can be repeated with a single command before publish
+
+### 2026.3.19-8
+
+- npm publish smoke test:
+  - synced root package version, VERSION file, and bundled OpenClaw skill metadata
+  - preparing a fresh npm publish validation run for the date-based release flow
+
+### 2026.3.19-7
 
 - local-console UI polish:
   - sidebar spacing, collapsed rail behavior, footer version card, and topbar shell now align more closely with OpenClaw
