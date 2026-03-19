@@ -113,6 +113,8 @@ const SOCIAL_MESSAGE_DUPLICATE_WINDOW_MS = Number(process.env.SOCIAL_MESSAGE_DUP
 const SOCIAL_MESSAGE_MAX_FUTURE_MS = Number(process.env.SOCIAL_MESSAGE_MAX_FUTURE_MS || 30_000);
 const SOCIAL_MESSAGE_MAX_AGE_MS = Number(process.env.SOCIAL_MESSAGE_MAX_AGE_MS || 15 * 60_000);
 const SOCIAL_MESSAGE_OBSERVATION_HISTORY_LIMIT = Number(process.env.SOCIAL_MESSAGE_OBSERVATION_HISTORY_LIMIT || 500);
+const SOCIAL_MESSAGE_REPLAY_WINDOW_MS = Number(process.env.SOCIAL_MESSAGE_REPLAY_WINDOW_MS || 10 * 60_000);
+const SOCIAL_MESSAGE_REPLAY_MAX_PER_BROADCAST = Number(process.env.SOCIAL_MESSAGE_REPLAY_MAX_PER_BROADCAST || 3);
 const SOCIAL_MESSAGE_BLOCKED_AGENT_IDS = new Set(
   dedupeStrings(parseListEnv(process.env.SOCIAL_MESSAGE_BLOCKED_AGENT_IDS || ""))
 );
@@ -2116,12 +2118,16 @@ export class LocalNodeService {
     };
     const presenceRecord = signPresence(this.identity, Date.now());
     const indexRecords = buildIndexRecords(this.profile);
+    const replayMessages = this.getReplayableSelfSocialMessages();
 
     try {
       await this.publish("profile", profileRecord);
       await this.publish("presence", presenceRecord);
       for (const record of indexRecords) {
         await this.publish("index", record);
+      }
+      for (const message of replayMessages) {
+        await this.publish(SOCIAL_MESSAGE_TOPIC, message);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -2145,7 +2151,10 @@ export class LocalNodeService {
     this.compactCacheInMemory();
     await this.persistCache();
 
-    await this.log("info", `Broadcast sent (${indexRecords.length} index refs, reason=${reason})`);
+    await this.log(
+      "info",
+      `Broadcast sent (${indexRecords.length} index refs, replayed_messages=${replayMessages.length}, reason=${reason})`
+    );
     return { sent: true, reason };
   }
 
@@ -2334,6 +2343,10 @@ export class LocalNodeService {
       }
       if (!verifySocialMessage(record)) {
         await this.log("warn", `Rejected social message with invalid signature (${record.message_id.slice(0, 10)})`);
+        return;
+      }
+      if (this.hasSocialMessage(record.message_id)) {
+        await this.publishObservationForMessage(record);
         return;
       }
       const governanceReason = this.getIncomingSocialMessageRejectionReason(record);
@@ -2890,6 +2903,24 @@ export class LocalNodeService {
   private containsBlockedMessageTerm(body: string): boolean {
     const normalized = String(body || "").toLowerCase();
     return this.messageGovernance.blocked_terms.some((term) => normalized.includes(term));
+  }
+
+  private hasSocialMessage(messageId: string): boolean {
+    return this.socialMessages.some((item) => item.message_id === messageId);
+  }
+
+  private getReplayableSelfSocialMessages(now = Date.now()): SocialMessageRecord[] {
+    const maxCount = Math.max(0, SOCIAL_MESSAGE_REPLAY_MAX_PER_BROADCAST);
+    if (!this.identity || maxCount === 0) {
+      return [];
+    }
+    return this.socialMessages
+      .filter((item) => (
+        item.agent_id === this.identity?.agent_id &&
+        now - item.created_at <= SOCIAL_MESSAGE_REPLAY_WINDOW_MS
+      ))
+      .sort((a, b) => a.created_at - b.created_at)
+      .slice(-maxCount);
   }
 
   private hasRecentDuplicateMessage(agentId: string, body: string, topic: string, now = Date.now()): boolean {

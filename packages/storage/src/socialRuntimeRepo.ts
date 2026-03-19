@@ -1,7 +1,7 @@
 import { resolve } from "path";
 import { SocialRuntimeConfig } from "@silicaclaw/core";
 import { JsonFileRepo } from "./jsonRepo";
-import defaults from "../../../config/silicaclaw-defaults.json";
+import defaults from "../config/silicaclaw-defaults.json";
 
 function emptyRuntime(): SocialRuntimeConfig {
   return {

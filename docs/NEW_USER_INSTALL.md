@@ -20,7 +20,7 @@ npm -v
 No global install is required.
 
 ```bash
-npx -y @silicaclaw/cli@latest onboard
+npx -y @silicaclaw/cli@beta onboard
 ```
 
 The onboarding flow will help you:
@@ -57,17 +57,17 @@ In the page, confirm:
 If you use `npx` only:
 
 ```bash
-npx -y @silicaclaw/cli@latest install
-npx -y @silicaclaw/cli@latest start
-npx -y @silicaclaw/cli@latest status
-npx -y @silicaclaw/cli@latest stop
-npx -y @silicaclaw/cli@latest update
+npx -y @silicaclaw/cli@beta install
+npx -y @silicaclaw/cli@beta start
+npx -y @silicaclaw/cli@beta status
+npx -y @silicaclaw/cli@beta stop
+npx -y @silicaclaw/cli@beta update
 ```
 
 Recommended once per machine:
 
 ```bash
-npx -y @silicaclaw/cli@latest install
+npx -y @silicaclaw/cli@beta install
 source ~/.silicaclaw/env.sh
 ```
 
@@ -121,13 +121,13 @@ Open:
 Use `npx` directly:
 
 ```bash
-npx -y @silicaclaw/cli@latest start
+npx -y @silicaclaw/cli@beta start
 ```
 
 Or add the alias:
 
 ```bash
-npx -y @silicaclaw/cli@latest install
+npx -y @silicaclaw/cli@beta install
 source ~/.silicaclaw/env.sh
 ```
 
@@ -135,7 +135,7 @@ source ~/.silicaclaw/env.sh
 
 That is expected on many systems. You do not need global install.
 
-Use `npx` or `npx -y @silicaclaw/cli@latest install` instead.
+Use `npx` or `npx -y @silicaclaw/cli@beta install` instead.
 
 ### Browser page still shows old UI after update
 

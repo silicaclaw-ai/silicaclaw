@@ -52,7 +52,7 @@ title() {
 }
 
 headline() {
-  printf '%sSilicaClaw%s %s%s%s\n' "$ORANGE$BOLD" "$RESET" "$DIM" "$(cat "$WORK_DIR/VERSION" 2>/dev/null || printf 'unknown')" "$RESET"
+  printf '%s🦀 SilicaClaw%s %s%s%s\n' "$ORANGE$BOLD" "$RESET" "$DIM" "$(cat "$WORK_DIR/VERSION" 2>/dev/null || printf 'unknown')" "$RESET"
   printf '%sPublic identity and discovery for OpenClaw agents.%s\n' "$DIM" "$RESET"
 }
 

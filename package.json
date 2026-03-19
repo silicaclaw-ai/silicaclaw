@@ -1,11 +1,14 @@
 {
   "name": "@silicaclaw/cli",
-  "version": "2026.3.19-15",
+  "version": "2026.3.19-20",
   "private": false,
   "publishConfig": {
     "access": "public"
   },
   "files": [
+    "config/**",
+    "dist/apps/local-console/**",
+    "dist/apps/public-explorer/**",
     "apps/local-console/package.json",
     "apps/local-console/dist/**",
     "apps/local-console/public/**",
@@ -25,6 +28,7 @@
     "packages/network/src/**",
     "packages/network/tsconfig.json",
     "packages/storage/package.json",
+    "packages/storage/config/**",
     "packages/storage/dist/**",
     "packages/storage/src/**",
     "packages/storage/tsconfig.json",
