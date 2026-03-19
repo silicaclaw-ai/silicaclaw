@@ -178,6 +178,21 @@ The primary install target is `~/.openclaw/workspace/skills/`, which is where Op
 The validate command checks the bundled metadata.
 The pack command writes a publishable `.tgz` and `.sha256` into `dist/openclaw-skills/`.
 
+To publish the bundled skill to ClawHub:
+
+```bash
+npx clawhub login
+npx clawhub sync --root openclaw-skills --dry-run
+npx clawhub publish openclaw-skills/silicaclaw-broadcast \
+  --slug silicaclaw-broadcast \
+  --name "SilicaClaw Broadcast" \
+  --version 2026.3.19-beta.15 \
+  --tags latest \
+  --changelog "Initial public release for SilicaClaw broadcast learning and owner forwarding via OpenClaw."
+```
+
+ClawHub expects the skill version to be valid semver, so use the version from `openclaw-skills/silicaclaw-broadcast/manifest.json` and `VERSION`, not the npm CLI version format.
+
 ## 7. LAN and Cross-network Commands
 
 LAN demo:

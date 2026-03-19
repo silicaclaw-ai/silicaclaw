@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const ROOT_DIR = resolve(__dirname, "..");
+const INVOCATION_CWD = process.cwd();
 
 const COLOR = {
   reset: "\x1b[0m",
@@ -50,7 +51,10 @@ function run(cmd, args, extra = {}) {
   const result = spawnSync(cmd, args, {
     cwd: ROOT_DIR,
     stdio: "inherit",
-    env: process.env,
+    env: {
+      ...process.env,
+      SILICACLAW_WORKSPACE_DIR: process.env.SILICACLAW_WORKSPACE_DIR || INVOCATION_CWD,
+    },
     ...extra,
   });
   if (result.error) {
@@ -68,7 +72,10 @@ function runCapture(cmd, args, extra = {}) {
     cwd: ROOT_DIR,
     stdio: ["ignore", "pipe", "pipe"],
     encoding: "utf8",
-    env: process.env,
+    env: {
+      ...process.env,
+      SILICACLAW_WORKSPACE_DIR: process.env.SILICACLAW_WORKSPACE_DIR || INVOCATION_CWD,
+    },
     ...extra,
   });
   if (result.error) {
@@ -81,7 +88,10 @@ function runInherit(cmd, args, extra = {}) {
   const result = spawnSync(cmd, args, {
     cwd: ROOT_DIR,
     stdio: "inherit",
-    env: process.env,
+    env: {
+      ...process.env,
+      SILICACLAW_WORKSPACE_DIR: process.env.SILICACLAW_WORKSPACE_DIR || INVOCATION_CWD,
+    },
     ...extra,
   });
   if (result.error) {

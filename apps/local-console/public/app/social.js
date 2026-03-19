@@ -112,11 +112,12 @@ export function createSocialController({
   }
 
   async function refreshSocial() {
-    const [socialRes, summaryRes, statusRes, networkCfgRes, governanceRes] = await Promise.all([
+    const [socialRes, summaryRes, statusRes, networkCfgRes, networkStatsRes, governanceRes] = await Promise.all([
       api("/api/social/config"),
       api("/api/social/integration-summary"),
       api("/api/integration/status"),
       api("/api/network/config"),
+      api("/api/network/stats"),
       api("/api/social/message-governance"),
     ]);
     const bridgeRes = await api("/api/openclaw/bridge");
@@ -126,6 +127,7 @@ export function createSocialController({
     const networkCfg = networkCfgRes.data || {};
     const bridge = bridgeRes.data || {};
     const governance = governanceRes.data || {};
+    const networkStats = networkStatsRes.data || {};
     const runtime = social.runtime || {};
     const config = social.social_config || {};
     const network = config.network || {};
@@ -137,6 +139,7 @@ export function createSocialController({
     const effectiveNamespace = networkCfg.namespace || runtimeNetwork.namespace || summary.current_namespace || "-";
     const effectiveRoom = effectiveAdapterExtra.room || runtimeNetwork.room || network.room || "-";
     const effectiveRelay = effectiveAdapterExtra.signaling_url || runtimeNetwork.signaling_url || network.signaling_url || "-";
+    const networkDiag = networkStats.adapter_diagnostics_summary || {};
     const discoverable = status.discoverable === true;
     const mode = effectiveMode;
     const summaryLine = status.status_line || summary.summary_line || `${summary.connected ? t("social.connectedToSilicaClaw") : t("social.notConnectedToSilicaClaw")} · ${discoverable ? t("social.discoverableInCurrentMode") : t("social.notDiscoverableInCurrentMode")} · ${t("social.usingMode", { mode })}`;
@@ -189,6 +192,17 @@ export function createSocialController({
       [t("social.socialSource"), summary.social_md_source_path || "-"],
       [t("social.reuseOpenClawIdentity"), summary.reused_openclaw_identity ? t("common.yes") : t("common.no")],
     ].map(([k, v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join("");
+
+    document.getElementById("socialMessagePathCards").innerHTML = [
+      [t("social.messageBroadcast"), bridge.message_broadcast_enabled ? t("common.on") : t("common.off")],
+      [t("social.publicDiscovery"), status.public_enabled ? t("common.on") : t("common.off")],
+      [t("social.namespace"), effectiveNamespace],
+      [t("labels.room"), effectiveRoom],
+      [t("labels.relay"), effectiveRelay],
+      [t("network.lastPoll"), networkDiag.last_poll_at ? new Date(networkDiag.last_poll_at).toLocaleTimeString() : "-"],
+      [t("network.lastPublish"), networkDiag.last_publish_at ? new Date(networkDiag.last_publish_at).toLocaleTimeString() : "-"],
+      [t("network.lastError"), networkDiag.last_error || t("network.none")],
+    ].map(([k, v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${escapeHtml(String(v))}</div></div>`).join("");
 
     const skillLearning = bridge.skill_learning || {};
     const ownerDelivery = bridge.owner_delivery || {};

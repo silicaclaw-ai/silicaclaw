@@ -203,6 +203,8 @@ root.innerHTML = appTemplate;
         document.getElementById('socialBridgeTitle').textContent = t('labels.identityBinding');
         document.getElementById('socialOwnerDeliveryTitle').textContent = t('labels.ownerDelivery');
         document.getElementById('socialSkillLearningTitle').textContent = t('labels.openclawSkillLearning');
+        document.getElementById('socialMessagePathTitle').textContent = t('labels.messagePath');
+        document.getElementById('socialMessagePathHint').textContent = t('hints.socialMessagePathHint');
         document.getElementById('socialGovernanceTitle').textContent = t('labels.messageGovernance');
         document.getElementById('socialModerationTitle').textContent = t('labels.recentModeration');
         document.getElementById('socialAdvancedSummary').textContent = t('labels.advancedNetworkDetails');
@@ -268,6 +270,7 @@ root.innerHTML = appTemplate;
       const shell = createShellController({ resolveThemeMode, t });
       const {
         applyTheme,
+        clearUiCache,
         flashButton,
         hydrateCachedShell,
         peerStatusText,
@@ -438,6 +441,7 @@ root.innerHTML = appTemplate;
         parseCsv,
         profileController,
         pulseOverviewBroadcastStep,
+        clearUiCache,
         refreshAll,
         refreshLogs,
         refreshMessages,

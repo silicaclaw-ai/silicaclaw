@@ -2,6 +2,42 @@
 
 ## v1.0 beta - 2026-03-19
 
+### 2026.3.19-15
+
+- release build:
+  - prepared another fresh date-based package build without publishing
+  - regenerated the npm tarball through the release packing workflow
+
+### 2026.3.19-14
+
+- release build:
+  - prepared another fresh date-based package build without publishing
+  - regenerated the npm tarball through the release packing workflow
+
+### 2026.3.19-13
+
+- release build:
+  - prepared another fresh date-based package build without publishing
+  - regenerated the npm tarball through the release packing workflow
+
+### 2026.3.19-12
+
+- release build:
+  - prepared another fresh date-based package build without publishing
+  - regenerated the npm tarball through the release packing workflow
+
+### 2026.3.19-11
+
+- release build:
+  - prepared another fresh date-based package build without publishing
+  - regenerated the npm tarball through the release packing workflow
+
+### 2026.3.19-10
+
+- release build:
+  - prepared a fresh date-based package build without publishing
+  - regenerated the npm tarball through the release packing workflow
+
 ### 2026.3.19-9
 
 - release packaging workflow:

@@ -114,9 +114,16 @@ function detectAppDir() {
   return ROOT_DIR;
 }
 
+function detectWorkspaceDir() {
+  const envDir = process.env.SILICACLAW_WORKSPACE_DIR;
+  if (envDir) return resolve(envDir);
+  return resolve(process.cwd());
+}
+
 const APP_DIR = detectAppDir();
+const WORKSPACE_DIR = detectWorkspaceDir();
 const LOCAL_CONSOLE_DIR = join(APP_DIR, "apps", "local-console");
-const STATE_DIR = join(APP_DIR, ".silicaclaw", "gateway");
+const STATE_DIR = join(homedir(), ".silicaclaw", "gateway");
 const CONSOLE_PID_FILE = join(STATE_DIR, "local-console.pid");
 const CONSOLE_LOG_FILE = join(STATE_DIR, "local-console.log");
 const SIGNALING_PID_FILE = join(STATE_DIR, "signaling.pid");
@@ -361,6 +368,7 @@ function launchdStatusPayload() {
   const signalingListener = listeningProcessOnPort(4510);
   return {
     app_dir: APP_DIR,
+    workspace_dir: WORKSPACE_DIR,
     mode: state?.mode || "unknown",
     adapter: state?.adapter || "unknown",
     service_manager: "launchd",
@@ -395,6 +403,7 @@ function buildStatusPayload() {
   const signalingListener = listeningProcessOnPort(4510);
   return {
     app_dir: APP_DIR,
+    workspace_dir: state?.workspace_dir || WORKSPACE_DIR,
     mode: state?.mode || "unknown",
     adapter: state?.adapter || "unknown",
     local_console: {
@@ -476,6 +485,22 @@ function normalizePathForMatch(value) {
   return String(value || "").replace(/\\/g, "/");
 }
 
+function isLocalConsoleCommand(command) {
+  const text = normalizePathForMatch(command).toLowerCase();
+  return (
+    text.includes("@silicaclaw/local-console") ||
+    text.includes("npm run --workspace @silicaclaw/local-console start") ||
+    text.includes("/apps/local-console/") ||
+    text.includes("dist/apps/local-console/src/server.js") ||
+    text.includes("src/server.ts")
+  );
+}
+
+function isSignalingCommand(command) {
+  const text = normalizePathForMatch(command).toLowerCase();
+  return text.includes("webrtc-signaling-server.mjs") || text.includes("npm run webrtc-signaling");
+}
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -520,40 +545,24 @@ function tailText(file, lines = 20) {
 
 function isOwnedListener(listener, kind) {
   if (!listener?.command) return false;
-  const command = normalizePathForMatch(listener.command).toLowerCase();
-  const appDir = normalizePathForMatch(APP_DIR).toLowerCase();
-  const rootDir = normalizePathForMatch(ROOT_DIR).toLowerCase();
-  const inWorkspace = command.includes(appDir) || command.includes(rootDir);
-  if (!inWorkspace) return false;
+  const command = listener.command;
   if (kind === "local-console") {
-    return (
-      command.includes("@silicaclaw/local-console") ||
-      command.includes("/apps/local-console/") ||
-      command.includes("src/server.ts") ||
-      command.includes("dist/server.js")
-    );
+    return isLocalConsoleCommand(command);
   }
   if (kind === "signaling") {
-    return command.includes("webrtc-signaling-server.mjs") || command.includes("npm run webrtc-signaling");
+    return isSignalingCommand(command);
   }
   return false;
 }
 
 function isCurrentAppListener(listener, kind) {
   if (!listener?.command) return false;
-  const command = normalizePathForMatch(listener.command).toLowerCase();
-  const appDir = normalizePathForMatch(APP_DIR).toLowerCase();
-  if (!command.includes(appDir)) return false;
+  const command = listener.command;
   if (kind === "local-console") {
-    return (
-      command.includes("@silicaclaw/local-console") ||
-      command.includes("/apps/local-console/") ||
-      command.includes("src/server.ts") ||
-      command.includes("dist/server.js")
-    );
+    return isLocalConsoleCommand(command);
   }
   if (kind === "signaling") {
-    return command.includes("webrtc-signaling-server.mjs") || command.includes("npm run webrtc-signaling");
+    return isSignalingCommand(command);
   }
   return false;
 }
@@ -685,6 +694,7 @@ async function startAll() {
       NETWORK_MODE: mode,
       WEBRTC_SIGNALING_URL: signalingUrl,
       WEBRTC_ROOM: room,
+      SILICACLAW_WORKSPACE_DIR: WORKSPACE_DIR,
       PATH: process.env.PATH || "/usr/bin:/bin:/usr/sbin:/sbin",
       HOME: process.env.HOME || homedir(),
     };
@@ -715,6 +725,7 @@ async function startAll() {
 
     writeState({
       app_dir: APP_DIR,
+      workspace_dir: WORKSPACE_DIR,
       mode,
       adapter,
       signaling_url: signalingUrl,
@@ -744,6 +755,7 @@ async function startAll() {
       NETWORK_MODE: mode,
       WEBRTC_SIGNALING_URL: signalingUrl,
       WEBRTC_ROOM: room,
+      SILICACLAW_WORKSPACE_DIR: WORKSPACE_DIR,
     };
     localPid = spawnBackground(
       process.execPath,
@@ -771,6 +783,7 @@ async function startAll() {
 
   writeState({
     app_dir: APP_DIR,
+    workspace_dir: WORKSPACE_DIR,
     mode,
     adapter,
     signaling_url: signalingUrl,

@@ -7,6 +7,7 @@ export function bindAppEvents({
   parseCsv,
   profileController,
   pulseOverviewBroadcastStep,
+  clearUiCache,
   refreshAll,
   refreshLogs,
   refreshMessages,
@@ -223,6 +224,7 @@ export function bindAppEvents({
   document.getElementById("clearDiscoveryCacheBtn").addEventListener("click", async () => {
     try {
       await api("/api/cache/clear", { method: "POST" });
+      clearUiCache(["silicaclaw_ui_overview", "silicaclaw_ui_network", "silicaclaw_ui_social"]);
       setFeedback("networkFeedback", t("feedback.discoveryCacheCleared"));
       toast(t("feedback.discoveryCacheCleared"));
       setAgentsPage(1);

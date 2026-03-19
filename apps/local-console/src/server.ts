@@ -4,7 +4,7 @@ import { execFile, spawnSync } from "child_process";
 import { resolve } from "path";
 import { accessSync, constants, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync } from "fs";
 import { createHash } from "crypto";
-import { hostname } from "os";
+import { homedir, hostname } from "os";
 import { promisify } from "util";
 import {
   AgentIdentity,
@@ -27,6 +27,7 @@ import {
   ingestPresenceRecord,
   ingestProfileRecord,
   isAgentOnline,
+  rebuildIndexForProfile,
   loadSocialConfig,
   getSocialConfigSearchPaths,
   resolveIdentityWithSocial,
@@ -143,12 +144,34 @@ function resolveWorkspaceRoot(cwd = process.cwd()): string {
   return cwd;
 }
 
+function resolveProjectRoot(appRoot: string, cwd = process.cwd()): string {
+  const envRoot = String(process.env.SILICACLAW_WORKSPACE_DIR || "").trim();
+  if (envRoot) {
+    return resolve(envRoot);
+  }
+  if (!existsSync(resolve(cwd, "apps", "local-console", "package.json"))) {
+    return resolve(cwd);
+  }
+  return appRoot;
+}
+
 function resolveStorageRoot(workspaceRoot: string, cwd = process.cwd()): string {
+  const home = process.env.HOME || homedir();
+  if (home) {
+    return resolve(home, ".silicaclaw", "local-console");
+  }
   const appRoot = resolve(workspaceRoot, "apps", "local-console");
   if (existsSync(resolve(appRoot, "package.json"))) {
     return appRoot;
   }
   return cwd;
+}
+
+function defaultOpenClawSourceDir(rootDir: string): string {
+  if (existsSync(resolve(rootDir, "openclaw.mjs")) || existsSync(resolve(rootDir, "package.json"))) {
+    return rootDir;
+  }
+  return resolve(rootDir, "..", "openclaw");
 }
 
 function resolveExecutableInPath(binName: string): string | null {
@@ -265,7 +288,7 @@ function detectOpenClawInstallation(workspaceRoot: string) {
 
 function readOpenClawConfiguredGateway(workspaceRoot: string) {
   const configuredSourceDir = String(process.env.OPENCLAW_SOURCE_DIR || "").trim();
-  const defaultSourceDir = resolve(workspaceRoot, "..", "openclaw");
+  const defaultSourceDir = defaultOpenClawSourceDir(workspaceRoot);
   const sourceDir = configuredSourceDir || defaultSourceDir;
   const homeDir = resolve(process.env.HOME || "", ".openclaw");
   const explicitConfigPath = String(process.env.OPENCLAW_CONFIG_PATH || "").trim();
@@ -453,7 +476,7 @@ function detectOwnerDeliveryStatus(params: {
   const ownerAccount = String(process.env.OPENCLAW_OWNER_ACCOUNT || "").trim();
   const explicitOpenClawBin = String(process.env.OPENCLAW_BIN || "").trim();
   const configuredSourceDir = String(process.env.OPENCLAW_SOURCE_DIR || "").trim();
-  const defaultSourceDir = resolve(params.workspaceRoot, "..", "openclaw");
+  const defaultSourceDir = defaultOpenClawSourceDir(params.workspaceRoot);
   const openclawSourceDir = configuredSourceDir || defaultSourceDir;
   const openclawSourceEntry = existingPathOrNull(resolve(openclawSourceDir, "openclaw.mjs"));
   const openclawCommandResolvable = Boolean(explicitOpenClawBin || resolveExecutableInPath("openclaw") || openclawSourceEntry);
@@ -512,10 +535,15 @@ function hasMeaningfulJson(filePath: string): boolean {
   }
 }
 
-function migrateLegacyDataIfNeeded(workspaceRoot: string, storageRoot: string): void {
-  const legacyDataDir = resolve(workspaceRoot, "data");
+function migrateLegacyDataIfNeeded(appRoot: string, projectRoot: string, storageRoot: string): void {
   const targetDataDir = resolve(storageRoot, "data");
-  if (legacyDataDir === targetDataDir) return;
+  const legacyDataDirs = [
+    resolve(appRoot, "data"),
+    resolve(appRoot, "apps", "local-console", "data"),
+    resolve(projectRoot, "data"),
+    resolve(projectRoot, "apps", "local-console", "data"),
+    resolve(process.cwd(), "data"),
+  ].filter((dir, index, list) => list.indexOf(dir) === index && dir !== targetDataDir);
   const files = [
     "identity.json",
     "profile.json",
@@ -525,13 +553,38 @@ function migrateLegacyDataIfNeeded(workspaceRoot: string, storageRoot: string): 
     "social-message-observations.json",
   ];
   for (const file of files) {
-    const src = resolve(legacyDataDir, file);
     const dst = resolve(targetDataDir, file);
-    if (!existsSync(src)) continue;
     if (hasMeaningfulJson(dst)) continue;
-    if (!hasMeaningfulJson(src)) continue;
-    mkdirSync(targetDataDir, { recursive: true });
-    copyFileSync(src, dst);
+    for (const legacyDataDir of legacyDataDirs) {
+      const src = resolve(legacyDataDir, file);
+      if (!existsSync(src)) continue;
+      if (!hasMeaningfulJson(src)) continue;
+      mkdirSync(targetDataDir, { recursive: true });
+      copyFileSync(src, dst);
+      break;
+    }
+  }
+
+  const targetDotDir = resolve(storageRoot, ".silicaclaw");
+  const legacyDotDirs = [
+    resolve(appRoot, ".silicaclaw"),
+    resolve(appRoot, "apps", "local-console", ".silicaclaw"),
+    resolve(projectRoot, ".silicaclaw"),
+    resolve(projectRoot, "apps", "local-console", ".silicaclaw"),
+    resolve(process.cwd(), ".silicaclaw"),
+  ].filter((dir, index, list) => list.indexOf(dir) === index && dir !== targetDotDir);
+  const dotFiles = ["social.runtime.json", "social.message-governance.json"];
+  for (const file of dotFiles) {
+    const dst = resolve(targetDotDir, file);
+    if (hasMeaningfulJson(dst)) continue;
+    for (const legacyDotDir of legacyDotDirs) {
+      const src = resolve(legacyDotDir, file);
+      if (!existsSync(src)) continue;
+      if (!hasMeaningfulJson(src)) continue;
+      mkdirSync(targetDotDir, { recursive: true });
+      copyFileSync(src, dst);
+      break;
+    }
   }
 }
 
@@ -699,6 +752,7 @@ type OpenClawBridgeConfigView = {
 
 export class LocalNodeService {
   private workspaceRoot: string;
+  private projectRoot: string;
   private storageRoot: string;
   private identityRepo: IdentityRepo;
   private profileRepo: ProfileRepo;
@@ -761,11 +815,12 @@ export class LocalNodeService {
   private webrtcBootstrapSources: string[] = [];
   private appVersion = "unknown";
 
-  constructor(options?: { workspaceRoot?: string; storageRoot?: string }) {
+  constructor(options?: { workspaceRoot?: string; projectRoot?: string; storageRoot?: string }) {
     this.workspaceRoot = options?.workspaceRoot || resolveWorkspaceRoot();
+    this.projectRoot = options?.projectRoot || resolveProjectRoot(this.workspaceRoot);
     this.storageRoot = options?.storageRoot || resolveStorageRoot(this.workspaceRoot);
     this.appVersion = readWorkspaceVersion(this.workspaceRoot);
-    migrateLegacyDataIfNeeded(this.workspaceRoot, this.storageRoot);
+    migrateLegacyDataIfNeeded(this.workspaceRoot, this.projectRoot, this.storageRoot);
 
     this.identityRepo = new IdentityRepo(this.storageRoot);
     this.profileRepo = new ProfileRepo(this.storageRoot);
@@ -777,16 +832,16 @@ export class LocalNodeService {
     this.socialRuntimeRepo = new SocialRuntimeRepo(this.storageRoot);
     this.messageGovernance = this.defaultMessageGovernance();
 
-    let loadedSocial = loadSocialConfig(this.workspaceRoot);
+    let loadedSocial = loadSocialConfig(this.projectRoot);
     if (!loadedSocial.meta.found) {
-      ensureDefaultSocialMd(this.workspaceRoot, {
+      ensureDefaultSocialMd(this.projectRoot, {
         display_name: this.getDefaultDisplayName(),
         bio: "Local AI agent connected to SilicaClaw",
         tags: ["openclaw", "local-first"],
         mode: "global-preview",
         public_enabled: false,
       });
-      loadedSocial = loadSocialConfig(this.workspaceRoot);
+      loadedSocial = loadSocialConfig(this.projectRoot);
       this.initState.social_auto_created = true;
     }
     this.socialConfig = loadedSocial.config;
@@ -888,7 +943,9 @@ export class LocalNodeService {
   }
 
   getNetworkSummary() {
-    const diagnostics = this.getAdapterDiagnostics();
+    const network = this.getResolvedRealtimeNetworkSummary();
+    const diagnostics = network.diagnostics;
+    const relayCapable = this.adapterMode === "webrtc-preview" || this.adapterMode === "relay-preview";
     const peerCount = diagnostics?.peers.total ?? 0;
 
     return {
@@ -916,30 +973,32 @@ export class LocalNodeService {
       real_preview_stats: diagnostics?.stats ?? null,
       real_preview_transport_stats: diagnostics?.transport_stats ?? null,
       real_preview_discovery_stats: diagnostics?.discovery_stats ?? null,
-      webrtc_preview: diagnostics && (diagnostics.adapter === "webrtc-preview" || diagnostics.adapter === "relay-preview")
+      webrtc_preview: relayCapable
         ? {
-            signaling_url: diagnostics.signaling_url ?? null,
-            signaling_endpoints: diagnostics.signaling_endpoints ?? [],
-            room: diagnostics.room ?? null,
-            bootstrap_sources: diagnostics.bootstrap_sources ?? [],
-            seed_peers_count: diagnostics.seed_peers_count ?? 0,
-            discovery_events_total: diagnostics.discovery_events_total ?? 0,
-            last_discovery_event_at: diagnostics.last_discovery_event_at ?? 0,
-            active_webrtc_peers: diagnostics.active_webrtc_peers ?? 0,
-            reconnect_attempts_total: diagnostics.reconnect_attempts_total ?? 0,
-            last_join_at: diagnostics.last_join_at ?? 0,
-            last_poll_at: diagnostics.last_poll_at ?? 0,
-            last_publish_at: diagnostics.last_publish_at ?? 0,
-            last_peer_refresh_at: diagnostics.last_peer_refresh_at ?? 0,
-            last_error_at: diagnostics.last_error_at ?? 0,
-            last_error: diagnostics.last_error ?? null,
+            signaling_url: network.signaling_url,
+            signaling_endpoints: network.signaling_endpoints,
+            room: network.room,
+            bootstrap_sources: network.bootstrap_sources,
+            seed_peers_count: network.seed_peers_count,
+            discovery_events_total: diagnostics?.discovery_events_total ?? 0,
+            last_discovery_event_at: diagnostics?.last_discovery_event_at ?? 0,
+            active_webrtc_peers: diagnostics?.active_webrtc_peers ?? 0,
+            reconnect_attempts_total: diagnostics?.reconnect_attempts_total ?? 0,
+            last_join_at: diagnostics?.last_join_at ?? 0,
+            last_poll_at: diagnostics?.last_poll_at ?? 0,
+            last_publish_at: diagnostics?.last_publish_at ?? 0,
+            last_peer_refresh_at: diagnostics?.last_peer_refresh_at ?? 0,
+            last_error_at: diagnostics?.last_error_at ?? 0,
+            last_error: diagnostics?.last_error ?? null,
           }
         : null,
     };
   }
 
   getNetworkConfig() {
-    const diagnostics = this.getAdapterDiagnostics();
+    const network = this.getResolvedRealtimeNetworkSummary();
+    const diagnostics = network.diagnostics;
+    const relayCapable = this.adapterMode === "webrtc-preview" || this.adapterMode === "relay-preview";
     return {
       adapter: this.adapterMode,
       mode: this.networkMode,
@@ -953,23 +1012,23 @@ export class LocalNodeService {
       },
       limits: diagnostics?.limits ?? null,
       adapter_config: diagnostics?.config ?? null,
-      adapter_extra: diagnostics && (diagnostics.adapter === "webrtc-preview" || diagnostics.adapter === "relay-preview")
+      adapter_extra: relayCapable
         ? {
-            signaling_url: diagnostics.signaling_url ?? null,
-            signaling_endpoints: diagnostics.signaling_endpoints ?? [],
-            room: diagnostics.room ?? null,
-            bootstrap_sources: diagnostics.bootstrap_sources ?? [],
-            seed_peers_count: diagnostics.seed_peers_count ?? 0,
-            discovery_events_total: diagnostics.discovery_events_total ?? 0,
-            last_discovery_event_at: diagnostics.last_discovery_event_at ?? 0,
-            connection_states_summary: diagnostics.connection_states_summary ?? null,
-            datachannel_states_summary: diagnostics.datachannel_states_summary ?? null,
-            last_join_at: diagnostics.last_join_at ?? 0,
-            last_poll_at: diagnostics.last_poll_at ?? 0,
-            last_publish_at: diagnostics.last_publish_at ?? 0,
-            last_peer_refresh_at: diagnostics.last_peer_refresh_at ?? 0,
-            last_error_at: diagnostics.last_error_at ?? 0,
-            last_error: diagnostics.last_error ?? null,
+            signaling_url: network.signaling_url,
+            signaling_endpoints: network.signaling_endpoints,
+            room: network.room,
+            bootstrap_sources: network.bootstrap_sources,
+            seed_peers_count: network.seed_peers_count,
+            discovery_events_total: diagnostics?.discovery_events_total ?? 0,
+            last_discovery_event_at: diagnostics?.last_discovery_event_at ?? 0,
+            connection_states_summary: diagnostics?.connection_states_summary ?? null,
+            datachannel_states_summary: diagnostics?.datachannel_states_summary ?? null,
+            last_join_at: diagnostics?.last_join_at ?? 0,
+            last_poll_at: diagnostics?.last_poll_at ?? 0,
+            last_publish_at: diagnostics?.last_publish_at ?? 0,
+            last_peer_refresh_at: diagnostics?.last_peer_refresh_at ?? 0,
+            last_error_at: diagnostics?.last_error_at ?? 0,
+            last_error: diagnostics?.last_error ?? null,
           }
         : null,
       env: {
@@ -1004,7 +1063,9 @@ export class LocalNodeService {
   }
 
   getNetworkStats() {
-    const diagnostics = this.getAdapterDiagnostics();
+    const network = this.getResolvedRealtimeNetworkSummary();
+    const diagnostics = network.diagnostics;
+    const relayCapable = this.adapterMode === "webrtc-preview" || this.adapterMode === "relay-preview";
     const peers: Array<{ status?: string }> = diagnostics?.peers?.items ?? [];
     const online = peers.filter((peer: { status?: string }) => peer.status === "online").length;
 
@@ -1031,34 +1092,35 @@ export class LocalNodeService {
       adapter_stats: diagnostics?.stats ?? null,
       adapter_transport_stats: diagnostics?.transport_stats ?? null,
       adapter_discovery_stats: diagnostics?.discovery_stats ?? null,
-      adapter_diagnostics_summary: diagnostics
+      adapter_diagnostics_summary: relayCapable || diagnostics
         ? {
-            signaling_url: diagnostics.signaling_url ?? null,
-            signaling_endpoints: diagnostics.signaling_endpoints ?? [],
-            room: diagnostics.room ?? null,
-            bootstrap_sources: diagnostics.bootstrap_sources ?? [],
-            seed_peers_count: diagnostics.seed_peers_count ?? 0,
-            discovery_events_total: diagnostics.discovery_events_total ?? 0,
-            last_discovery_event_at: diagnostics.last_discovery_event_at ?? 0,
-            connection_states_summary: diagnostics.connection_states_summary ?? null,
-            datachannel_states_summary: diagnostics.datachannel_states_summary ?? null,
-            signaling_messages_sent_total: diagnostics.signaling_messages_sent_total ?? null,
-            signaling_messages_received_total: diagnostics.signaling_messages_received_total ?? null,
-            reconnect_attempts_total: diagnostics.reconnect_attempts_total ?? null,
-            active_webrtc_peers: diagnostics.active_webrtc_peers ?? null,
-            last_join_at: diagnostics.last_join_at ?? 0,
-            last_poll_at: diagnostics.last_poll_at ?? 0,
-            last_publish_at: diagnostics.last_publish_at ?? 0,
-            last_peer_refresh_at: diagnostics.last_peer_refresh_at ?? 0,
-            last_error_at: diagnostics.last_error_at ?? 0,
-            last_error: diagnostics.last_error ?? null,
+            signaling_url: network.signaling_url,
+            signaling_endpoints: network.signaling_endpoints,
+            room: network.room,
+            bootstrap_sources: network.bootstrap_sources,
+            seed_peers_count: network.seed_peers_count,
+            discovery_events_total: diagnostics?.discovery_events_total ?? 0,
+            last_discovery_event_at: diagnostics?.last_discovery_event_at ?? 0,
+            connection_states_summary: diagnostics?.connection_states_summary ?? null,
+            datachannel_states_summary: diagnostics?.datachannel_states_summary ?? null,
+            signaling_messages_sent_total: diagnostics?.signaling_messages_sent_total ?? null,
+            signaling_messages_received_total: diagnostics?.signaling_messages_received_total ?? null,
+            reconnect_attempts_total: diagnostics?.reconnect_attempts_total ?? null,
+            active_webrtc_peers: diagnostics?.active_webrtc_peers ?? null,
+            last_join_at: diagnostics?.last_join_at ?? 0,
+            last_poll_at: diagnostics?.last_poll_at ?? 0,
+            last_publish_at: diagnostics?.last_publish_at ?? 0,
+            last_peer_refresh_at: diagnostics?.last_peer_refresh_at ?? 0,
+            last_error_at: diagnostics?.last_error_at ?? 0,
+            last_error: diagnostics?.last_error ?? null,
           }
         : null,
     };
   }
 
   getPeersSummary() {
-    const diagnostics = this.getAdapterDiagnostics();
+    const network = this.getResolvedRealtimeNetworkSummary();
+    const diagnostics = network.diagnostics;
     if (!diagnostics) {
       return {
         adapter: this.adapterMode,
@@ -1081,11 +1143,11 @@ export class LocalNodeService {
       components: diagnostics.components,
       limits: diagnostics.limits,
       diagnostics_summary: {
-        signaling_url: diagnostics.signaling_url ?? null,
-        signaling_endpoints: diagnostics.signaling_endpoints ?? [],
-        room: diagnostics.room ?? null,
-        bootstrap_sources: diagnostics.bootstrap_sources ?? [],
-        seed_peers_count: diagnostics.seed_peers_count ?? 0,
+        signaling_url: network.signaling_url,
+        signaling_endpoints: network.signaling_endpoints,
+        room: network.room,
+        bootstrap_sources: network.bootstrap_sources,
+        seed_peers_count: network.seed_peers_count,
         discovery_events_total: diagnostics.discovery_events_total ?? 0,
         last_discovery_event_at: diagnostics.last_discovery_event_at ?? 0,
         connection_states_summary: diagnostics.connection_states_summary ?? null,
@@ -1132,11 +1194,12 @@ export class LocalNodeService {
   getRuntimePaths() {
     return {
       workspace_root: this.workspaceRoot,
+      project_root: this.projectRoot,
       storage_root: this.storageRoot,
       data_dir: resolve(this.storageRoot, "data"),
       social_runtime_path: resolve(this.storageRoot, ".silicaclaw", "social.runtime.json"),
       local_console_public_dir: resolve(this.workspaceRoot, "apps", "local-console", "public"),
-      social_lookup_paths: getSocialConfigSearchPaths(this.workspaceRoot),
+      social_lookup_paths: getSocialConfigSearchPaths(this.projectRoot),
       social_source_path: this.socialSourcePath,
     };
   }
@@ -1297,7 +1360,7 @@ export class LocalNodeService {
       port: this.networkPort,
     };
 
-    const loaded = loadSocialConfig(this.workspaceRoot);
+    const loaded = loadSocialConfig(this.projectRoot);
     this.socialConfig = loaded.config;
     this.socialSourcePath = loaded.meta.source_path;
     this.socialFound = loaded.meta.found;
@@ -1325,7 +1388,7 @@ export class LocalNodeService {
   }
 
   async generateDefaultSocialMd() {
-    const result = ensureDefaultSocialMd(this.workspaceRoot, {
+    const result = ensureDefaultSocialMd(this.projectRoot, {
       display_name: this.getDefaultDisplayName(),
       bio: "Local AI agent connected to SilicaClaw",
       tags: ["openclaw", "local-first"],
@@ -1433,11 +1496,11 @@ export class LocalNodeService {
 
   getOpenClawBridgeStatus(): OpenClawBridgeStatus {
     const integration = this.getIntegrationStatus();
-    const openclawInstallation = detectOpenClawInstallation(this.workspaceRoot);
-    const openclawRuntime = detectOpenClawRuntime(this.workspaceRoot);
+    const openclawInstallation = detectOpenClawInstallation(this.projectRoot);
+    const openclawRuntime = detectOpenClawRuntime(this.projectRoot);
     const skillInstallation = detectOpenClawSkillInstallation();
     const ownerDelivery = detectOwnerDeliveryStatus({
-      workspaceRoot: this.workspaceRoot,
+      workspaceRoot: this.projectRoot,
       connectedToSilicaclaw: integration.connected_to_silicaclaw,
       openclawRunning: openclawRuntime.running,
       skillInstalled: skillInstallation.installed,
@@ -1504,7 +1567,7 @@ export class LocalNodeService {
     const scriptPath = resolve(this.workspaceRoot, "scripts", "install-openclaw-skill.mjs");
     const { stdout } = await execFileAsync(process.execPath, [scriptPath], {
       cwd: this.workspaceRoot,
-      env: process.env,
+      env: { ...process.env, SILICACLAW_WORKSPACE_DIR: this.projectRoot },
       maxBuffer: 1024 * 1024,
     });
     const parsed = JSON.parse(String(stdout || "{}"));
@@ -1528,12 +1591,12 @@ export class LocalNodeService {
     const homeDir = resolve(process.env.HOME || "", ".openclaw");
     const workspaceSkillDir = resolve(homeDir, "workspace", "skills");
     const legacySkillDir = resolve(homeDir, "skills");
-    const openclawSourceDir = resolve(this.workspaceRoot, "..", "openclaw");
-    const openclawRuntime = detectOpenClawRuntime(this.workspaceRoot);
+    const openclawSourceDir = defaultOpenClawSourceDir(this.projectRoot);
+    const openclawRuntime = detectOpenClawRuntime(this.projectRoot);
 
     return {
       bridge_api_base: "http://localhost:4310",
-      openclaw_detected: detectOpenClawInstallation(this.workspaceRoot).detected,
+      openclaw_detected: detectOpenClawInstallation(this.projectRoot).detected,
       openclaw_running: openclawRuntime.running,
       openclaw_gateway_host: OPENCLAW_GATEWAY_HOST,
       openclaw_gateway_port: openclawRuntime.configured_gateway_port,
@@ -1939,7 +2002,7 @@ export class LocalNodeService {
       socialConfig: this.socialConfig,
       existingIdentity,
       generatedIdentity: createIdentity(),
-      rootDir: this.workspaceRoot,
+      rootDir: this.projectRoot,
     });
     this.identity = resolvedIdentity.identity;
     this.resolvedIdentitySource = resolvedIdentity.source;
@@ -1958,7 +2021,7 @@ export class LocalNodeService {
       socialConfig: this.socialConfig,
       agentId: this.identity.agent_id,
       existingProfile: existingProfile && existingProfile.agent_id === this.identity.agent_id ? existingProfile : null,
-      rootDir: this.workspaceRoot,
+      rootDir: this.projectRoot,
     });
     this.profile = signProfile(profileInput, this.identity);
     if (!existingProfile || existingProfile.agent_id !== this.identity.agent_id) {
@@ -1967,7 +2030,7 @@ export class LocalNodeService {
     }
     await this.profileRepo.set(this.profile);
 
-    this.directory = dedupeIndex(await this.cacheRepo.get());
+    this.directory = createEmptyDirectoryState();
     this.messageGovernance = {
       ...this.defaultMessageGovernance(),
       ...(await this.socialMessageGovernanceRepo.get()),
@@ -1990,7 +2053,7 @@ export class LocalNodeService {
       socialConfig: this.socialConfig,
       agentId: this.identity.agent_id,
       existingProfile: this.profile,
-      rootDir: this.workspaceRoot,
+      rootDir: this.projectRoot,
     });
     const nextProfile = signProfile(nextProfileInput, this.identity);
     this.profile = nextProfile;
@@ -2304,7 +2367,22 @@ export class LocalNodeService {
   }
 
   private async persistCache(): Promise<void> {
-    await this.cacheRepo.set(this.directory);
+    const persisted = createEmptyDirectoryState();
+    if (this.profile) {
+      const selfProfileRecord: SignedProfileRecord = {
+        type: "profile",
+        profile: this.profile,
+      };
+      this.directory = ingestProfileRecord(this.directory, selfProfileRecord);
+      persisted.profiles[this.profile.agent_id] = this.profile;
+      const selfLastSeenAt = this.directory.presence[this.profile.agent_id];
+      if (typeof selfLastSeenAt === "number" && Number.isFinite(selfLastSeenAt)) {
+        persisted.presence[this.profile.agent_id] = selfLastSeenAt;
+      }
+      const indexed = rebuildIndexForProfile(persisted, this.profile);
+      persisted.index = indexed.index;
+    }
+    await this.cacheRepo.set(persisted);
   }
 
   private async persistSocialMessages(): Promise<void> {
@@ -2328,6 +2406,19 @@ export class LocalNodeService {
       return null;
     }
     return (this.network as any).getDiagnostics();
+  }
+
+  private getResolvedRealtimeNetworkSummary() {
+    const diagnostics = this.getAdapterDiagnostics();
+    const relayCapable = this.adapterMode === "webrtc-preview" || this.adapterMode === "relay-preview";
+    return {
+      diagnostics,
+      signaling_url: diagnostics?.signaling_url ?? (relayCapable ? this.webrtcSignalingUrls[0] ?? null : null),
+      signaling_endpoints: diagnostics?.signaling_endpoints ?? (relayCapable ? this.webrtcSignalingUrls : []),
+      room: diagnostics?.room ?? (relayCapable ? this.webrtcRoom : null),
+      bootstrap_sources: diagnostics?.bootstrap_sources ?? (relayCapable ? this.webrtcBootstrapSources : []),
+      seed_peers_count: diagnostics?.seed_peers_count ?? this.webrtcSeedPeers.length,
+    };
   }
 
   private toPublicProfileSummary(
@@ -2381,6 +2472,22 @@ export class LocalNodeService {
   private getOnboardingSummary() {
     const summary = this.getIntegrationSummary();
     const publicEnabled = Boolean(this.profile?.public_enabled);
+    const nextSteps: string[] = [];
+    if (!String(this.profile?.display_name || "").trim()) {
+      nextSteps.push("Update display name in Profile page");
+    }
+    if (!publicEnabled) {
+      nextSteps.push("Enable Public Enabled in Profile");
+    }
+    if (!summary.running) {
+      nextSteps.push("Start broadcast in Network");
+    }
+    if (!summary.discoverable) {
+      nextSteps.push("Announce node once after the network is running");
+    }
+    if (nextSteps.length === 0) {
+      nextSteps.push("Node is public and discoverable");
+    }
     return {
       first_run: Boolean(
         this.initState.social_auto_created ||
@@ -2392,10 +2499,7 @@ export class LocalNodeService {
       mode: this.networkMode,
       public_enabled: publicEnabled,
       can_enable_public_discovery: !publicEnabled,
-      next_steps: [
-        "Update display name in Profile page",
-        "Export social.md from Social Config",
-      ],
+      next_steps: nextSteps,
     };
   }
 

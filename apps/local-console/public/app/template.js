@@ -217,7 +217,6 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
               </div>
             </div>
             </div>
-            <div class="grid" id="overviewCards"></div>
             <div class="page-section-grid two-col">
               <div class="card">
                 <h3 class="title-sm" id="agentSnapshotTitle">Local Node Snapshot</h3>
@@ -288,6 +287,7 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
               </div>
             </div>
           </div>
+          <div class="grid" id="overviewCards"></div>
           <div class="card">
             <div class="overview-panel-header">
               <div class="overview-panel-title">
@@ -688,6 +688,11 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
                   <h3 class="title-sm" id="socialBridgeTitle">OpenClaw Bridge</h3>
                   <div class="grid" id="socialIntegrationCards"></div>
                 </div>
+              </div>
+              <div class="card">
+                <h3 class="title-sm" id="socialMessagePathTitle">Message Path</h3>
+                <div class="field-hint" id="socialMessagePathHint">Check this block first when public messages are not showing up on another node.</div>
+                <div class="grid" id="socialMessagePathCards"></div>
               </div>
             </div>
             <div class="page-column">

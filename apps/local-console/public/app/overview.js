@@ -143,9 +143,16 @@ export function createOverviewController({
       </div>
     `;
     document.getElementById("snapshot").innerHTML = snapshotHtml;
+    const networkDiag = networkStats.adapter_diagnostics_summary || {};
     const heroModeText = o.social?.network_mode || "-";
+    const heroAdapterText = networkCfg.adapter || "-";
+    const heroRelayText = String(networkDiag.signaling_url || networkCfg.adapter_extra?.signaling_url || "-");
+    const heroRoomText = String(networkDiag.room || networkCfg.adapter_extra?.room || "-");
     setOverviewMode(heroModeText);
     document.getElementById("heroMode").textContent = heroModeText;
+    document.getElementById("heroAdapter").textContent = heroAdapterText;
+    document.getElementById("heroRelay").textContent = heroRelayText;
+    document.getElementById("heroRoom").textContent = heroRoomText;
     document.getElementById("overviewModeHint").textContent = t("overview.modeCurrentSource", {
       mode: describeCurrentMode(t, heroModeText),
       hint: t("overview.modeCacheHint"),
@@ -160,7 +167,6 @@ export function createOverviewController({
     const openclawDetected = !!bridge.openclaw_installation?.detected || openclawRunning || !!bridge.openclaw_runtime?.gateway_reachable;
     const skillInstalled = !!bridge.skill_learning?.installed;
     const globalMode = heroModeText === "global-preview";
-    const networkDiag = networkStats.adapter_diagnostics_summary || {};
     const lastNetworkError = String(networkDiag.last_error || o.last_broadcast_error || "").trim();
     const broadcastHealthy = o.broadcast_enabled && !lastNetworkError;
     const roleKey = openclawRunning
@@ -242,6 +248,9 @@ export function createOverviewController({
         brandVersionText,
         snapshotText: snapshotHtml,
         heroModeText,
+        heroAdapterText,
+        heroRelayText,
+        heroRoomText,
         pillBroadcastText,
         pillBroadcastClassName,
         agentsCountHintText,
@@ -312,6 +321,9 @@ export function createOverviewController({
       brandVersionText,
       snapshotText: snapshotHtml,
       heroModeText,
+      heroAdapterText,
+      heroRelayText,
+      heroRoomText,
       pillBroadcastText,
       pillBroadcastClassName,
       agentsCountHintText,

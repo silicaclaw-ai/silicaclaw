@@ -1,4 +1,10 @@
 export function createShellController({ t, resolveThemeMode }) {
+  const REALTIME_UI_CACHE_KEYS = [
+    "silicaclaw_ui_overview",
+    "silicaclaw_ui_network",
+    "silicaclaw_ui_social",
+  ];
+
   function peerStatusText(status) {
     if (status === "online") return t("overview.online");
     if (status === "offline") return t("overview.offline");
@@ -6,48 +12,25 @@ export function createShellController({ t, resolveThemeMode }) {
     return status || "-";
   }
 
-  function readUiCache(key) {
-    try {
-      const raw = localStorage.getItem(key);
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
+  function writeUiCache(key, value) {
+    void key;
+    void value;
   }
 
-  function writeUiCache(key, value) {
+  function clearUiCache(keys) {
+    const values = Array.isArray(keys) ? keys : keys ? [keys] : REALTIME_UI_CACHE_KEYS;
     try {
-      localStorage.setItem(key, JSON.stringify(value));
+      for (const key of values) {
+        if (!key) continue;
+        localStorage.removeItem(key);
+      }
     } catch {
-      // ignore cache write failures
+      // ignore cache removal failures
     }
   }
 
   function hydrateCachedShell() {
-    const overview = readUiCache("silicaclaw_ui_overview");
-    if (overview) {
-      if (overview.overviewCardsHtml) document.getElementById("overviewCards").innerHTML = overview.overviewCardsHtml;
-      if (overview.snapshotText) document.getElementById("snapshot").innerHTML = overview.snapshotText;
-      if (overview.heroModeText) document.getElementById("heroMode").textContent = overview.heroModeText;
-      if (overview.pillBroadcastText) document.getElementById("pillBroadcast").textContent = overview.pillBroadcastText;
-      if (overview.pillBroadcastClassName) document.getElementById("pillBroadcast").className = overview.pillBroadcastClassName;
-      if (overview.agentsCountHintText) document.getElementById("agentsCountHint").textContent = overview.agentsCountHintText;
-      if (overview.agentsWrapHtml) document.getElementById("agentsWrap").innerHTML = overview.agentsWrapHtml;
-    }
-    const network = readUiCache("silicaclaw_ui_network");
-    if (network) {
-      if (network.heroAdapterText) document.getElementById("heroAdapter").textContent = network.heroAdapterText;
-      if (network.heroRelayText) document.getElementById("heroRelay").textContent = network.heroRelayText;
-      if (network.heroRoomText) document.getElementById("heroRoom").textContent = network.heroRoomText;
-      if (network.pillAdapterText) document.getElementById("pillAdapter").textContent = network.pillAdapterText;
-    }
-    const social = readUiCache("silicaclaw_ui_social");
-    if (social) {
-      if (social.integrationStatusText) document.getElementById("integrationStatusBar").textContent = social.integrationStatusText;
-      if (social.integrationStatusClassName) document.getElementById("integrationStatusBar").className = social.integrationStatusClassName;
-      if (social.socialStatusLineText) document.getElementById("socialStatusLine").textContent = social.socialStatusLineText;
-      if (social.socialStatusSublineText) document.getElementById("socialStatusSubline").textContent = social.socialStatusSublineText;
-    }
+    clearUiCache(REALTIME_UI_CACHE_KEYS);
   }
 
   function toast(msg) {
@@ -130,6 +113,7 @@ export function createShellController({ t, resolveThemeMode }) {
 
   return {
     applyTheme,
+    clearUiCache,
     flashButton,
     hydrateCachedShell,
     peerStatusText,

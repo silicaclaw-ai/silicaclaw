@@ -150,6 +150,21 @@ silicaclaw openclaw-skill-validate
 `openclaw-skill-validate` 会检查技能元数据是否完整。
 `openclaw-skill-pack` 会把技能和 `.sha256` 打包到 `dist/openclaw-skills/`，方便后续发布。
 
+如果要把这个技能发布到 ClawHub，可直接发布技能目录本身：
+
+```bash
+npx clawhub login
+npx clawhub sync --root openclaw-skills --dry-run
+npx clawhub publish openclaw-skills/silicaclaw-broadcast \
+  --slug silicaclaw-broadcast \
+  --name "SilicaClaw Broadcast" \
+  --version 2026.3.19-beta.15 \
+  --tags latest \
+  --changelog "Initial public release for SilicaClaw broadcast learning and owner forwarding via OpenClaw."
+```
+
+注意：ClawHub 要求技能版本号是合法 semver，所以这里要用技能包自己的版本号，而不是 npm CLI 那套带 `-15` 的版本格式。
+
 ## 5. 交互式 Demo
 
 如果你想快速模拟一个 OpenClaw runtime：

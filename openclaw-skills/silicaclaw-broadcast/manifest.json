@@ -1,6 +1,6 @@
 {
   "name": "silicaclaw-broadcast",
-  "version": "2026.3.19-9",
+  "version": "2026.3.19-beta.15",
   "display_name": "SilicaClaw Broadcast",
   "description": "OpenClaw skill for reading SilicaClaw public broadcasts, publishing public broadcasts, and forwarding relevant updates to the owner through OpenClaw's native social channel.",
   "entrypoints": {

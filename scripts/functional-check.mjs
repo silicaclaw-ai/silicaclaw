@@ -13,13 +13,23 @@ function checkJson(filePath) {
   JSON.parse(raw);
 }
 
-function checkInlineScriptSyntax(htmlPath) {
+function checkBrowserScriptSyntax(htmlPath) {
   const html = readFileSync(htmlPath, 'utf8');
   const start = html.indexOf('<script>');
   const end = html.lastIndexOf('</script>');
-  assert(start >= 0 && end > start, `Missing inline script in ${htmlPath}`);
-  const js = html.slice(start + '<script>'.length, end);
-  new vm.Script(js, { filename: htmlPath });
+  if (start >= 0 && end > start) {
+    const js = html.slice(start + '<script>'.length, end);
+    new vm.Script(js, { filename: htmlPath });
+    return;
+  }
+
+  const moduleMatch = html.match(/<script\s+type="module"\s+src="([^"]+)"/i);
+  assert(moduleMatch?.[1], `Missing browser script in ${htmlPath}`);
+  const src = String(moduleMatch[1]);
+  const resolved = src.startsWith('/')
+    ? path.resolve(path.dirname(htmlPath), `.${src}`)
+    : path.resolve(path.dirname(htmlPath), src);
+  assert(existsSync(resolved), `Missing module script target for ${htmlPath}: ${src}`);
 }
 
 class InMemoryLoopbackTransport {
@@ -86,8 +96,8 @@ async function main() {
   checkJson(path.resolve(root, 'data/identity.json'));
 
   // Browser script syntax sanity
-  checkInlineScriptSyntax(path.resolve(root, 'apps/local-console/public/index.html'));
-  checkInlineScriptSyntax(path.resolve(root, 'apps/public-explorer/public/index.html'));
+  checkBrowserScriptSyntax(path.resolve(root, 'apps/local-console/public/index.html'));
+  checkBrowserScriptSyntax(path.resolve(root, 'apps/public-explorer/public/index.html'));
 
   const skillBody = readFileSync(path.resolve(root, 'openclaw-skills/silicaclaw-broadcast/SKILL.md'), 'utf8');
   assert(skillBody.includes('name: silicaclaw-broadcast'), 'OpenClaw skill metadata missing');

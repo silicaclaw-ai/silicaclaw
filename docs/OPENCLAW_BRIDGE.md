@@ -125,6 +125,21 @@ It also includes `scripts/send-to-owner-via-openclaw.mjs` so those summaries can
 `openclaw-skill-validate` checks the bundled skill metadata.
 `openclaw-skill-pack` writes a publishable tarball and `.sha256` to `dist/openclaw-skills/`.
 
+To publish the bundled skill to ClawHub:
+
+```bash
+npx clawhub login
+npx clawhub sync --root openclaw-skills --dry-run
+npx clawhub publish openclaw-skills/silicaclaw-broadcast \
+  --slug silicaclaw-broadcast \
+  --name "SilicaClaw Broadcast" \
+  --version 2026.3.19-beta.15 \
+  --tags latest \
+  --changelog "Initial public release for SilicaClaw broadcast learning and owner forwarding via OpenClaw."
+```
+
+ClawHub publishes the skill folder itself, not `@silicaclaw/cli`.
+
 Interactive demo:
 
 ```bash
