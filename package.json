@@ -7,6 +7,8 @@
   },
   "files": [
     "config/**",
+    "dist/apps/local-console/**",
+    "dist/apps/public-explorer/**",
     "apps/local-console/package.json",
     "apps/local-console/dist/**",
     "apps/local-console/public/**",
