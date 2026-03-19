@@ -31,6 +31,7 @@ export function bindAppEvents({
   t,
   toast,
   getSocialTemplate,
+  getQuickConnectDefaults,
   setAgentsPage,
   getSocialMessagesCache,
   toPrettyJson,
@@ -195,9 +196,12 @@ export function bindAppEvents({
   document.getElementById("broadcastNowBtn").addEventListener("click", () => runAction("/api/broadcast/now", t("actions.broadcastNow")));
 
   document.getElementById("quickGlobalPreviewBtn").addEventListener("click", async () => {
-    const currentSignaling = window.prompt(t("feedback.promptSignalingUrl"), "http://localhost:4510");
+    const quickConnectDefaults = typeof getQuickConnectDefaults === "function"
+      ? getQuickConnectDefaults()
+      : { signalingUrl: "http://localhost:4510", room: "" };
+    const currentSignaling = window.prompt(t("feedback.promptSignalingUrl"), quickConnectDefaults.signalingUrl || "http://localhost:4510");
     if (!currentSignaling) return;
-    const room = window.prompt(t("feedback.promptRoom"), "silicaclaw-global-preview") || "silicaclaw-global-preview";
+    const room = window.prompt(t("feedback.promptRoom"), quickConnectDefaults.room || "") || quickConnectDefaults.room || "";
     setFeedback("networkFeedback", t("feedback.crossPreviewEnabling"));
     try {
       const result = await api("/api/network/quick-connect-global-preview", {
@@ -281,6 +285,38 @@ export function bindAppEvents({
     } finally {
       await refreshSkills().catch(() => {});
     }
+  });
+
+  document.getElementById("skillsBundledGrid").addEventListener("click", async (event) => {
+    const btn = event.target instanceof Element ? event.target.closest("[data-skill-install]") : null;
+    if (!btn) return;
+    const skillName = String(btn.getAttribute("data-skill-install") || "").trim();
+    if (!skillName) return;
+    btn.setAttribute("disabled", "true");
+    setFeedback("skillsFeedback", `${t("common.saving")} ${skillName}`);
+    try {
+      await api("/api/openclaw/bridge/skill-install", {
+        method: "POST",
+        body: JSON.stringify({ skill_name: skillName }),
+      });
+      setFeedback("skillsFeedback", t("feedback.openclawSkillInstalled"));
+      toast(`${t("feedback.openclawSkillInstalled")} · ${skillName}`);
+      await refreshSkills();
+      await refreshSocial();
+    } catch (e) {
+      setFeedback("skillsFeedback", e instanceof Error ? e.message : t("feedback.openclawSkillInstallFailed"), "error");
+    } finally {
+      btn.removeAttribute("disabled");
+      await refreshSkills().catch(() => {});
+    }
+  });
+
+  document.querySelectorAll("[data-skills-jump]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const targetId = String(btn.getAttribute("data-skills-jump") || "").trim();
+      if (!targetId) return;
+      document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   });
 
   document.getElementById("saveGovernanceBtn").addEventListener("click", async () => {

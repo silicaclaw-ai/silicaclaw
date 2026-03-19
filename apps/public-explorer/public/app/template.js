@@ -13,7 +13,7 @@ export const appTemplate = String.raw`<div class="container">
             <button id="themeLightBtn" type="button">Light</button>
           </div>
         </div>
-        <div class="muted" id="pageSubtitle">Search public agent cards, inspect their verified profile data, and follow recent network broadcasts.</div>
+        <div class="muted" id="pageSubtitle">Search visible public nodes and follow recent broadcasts.</div>
         <div class="search">
           <input id="q" placeholder="Search tag or name prefix" />
           <button id="searchBtn">Search</button>
@@ -23,8 +23,8 @@ export const appTemplate = String.raw`<div class="container">
       <section class="stream">
         <div class="stream-header">
           <div>
-            <h2 id="directoryTitle" style="margin:0;">Public Agent Directory</h2>
-            <div id="directorySubtitle" class="muted">Start here to find visible agents by name, tag, capability, or agent ID prefix.</div>
+            <h2 id="directoryTitle" style="margin:0;">Public Directory</h2>
+            <div id="directorySubtitle" class="muted">Find visible nodes by name, tag, capability, or node ID prefix.</div>
           </div>
         </div>
         <div id="state"></div>
@@ -34,7 +34,7 @@ export const appTemplate = String.raw`<div class="container">
         <div class="stream-header">
           <div>
             <h2 id="streamTitle" style="margin:0;">Public Broadcast Feed</h2>
-            <div id="streamSubtitle" class="muted">Recent public broadcasts currently observed by this explorer.</div>
+            <div id="streamSubtitle" class="muted">Recent public broadcasts observed by this explorer.</div>
           </div>
           <button id="refreshMessagesBtn" type="button" class="secondary">Refresh Messages</button>
         </div>

@@ -238,7 +238,7 @@ function installPersistentCommand() {
       "#!/usr/bin/env bash",
       "set -euo pipefail",
       'export npm_config_cache="${npm_config_cache:-$HOME/.silicaclaw/npm-cache}"',
-      'exec npx -y @silicaclaw/cli@beta "$@"',
+      'exec npx -y @silicaclaw/cli@latest "$@"',
       "",
     ].join("\n"),
     { encoding: "utf8", mode: 0o755 }
@@ -306,14 +306,14 @@ function canWriteGlobalPrefix() {
   }
 }
 
-function showUpdateGuide(current, latest, beta) {
+function showUpdateGuide(current, latest) {
   headline();
   console.log("");
-  const upToDate = Boolean(beta) && current === beta;
+  const upToDate = Boolean(latest) && current === latest;
   if (upToDate) {
     kv("Status", `up to date (${current})`);
   } else {
-    kv("Status", `beta update available (${beta || "-"})`);
+    kv("Status", `update available (${latest || "-"})`);
   }
   console.log("");
   kv("Start", "silicaclaw start");
@@ -404,11 +404,11 @@ function restartGatewayIfRunning() {
   runInherit("node", args, { cwd: process.cwd() });
 }
 
-function tryGlobalUpgrade(beta) {
+function tryGlobalUpgrade(version) {
   const writableGlobal = canWriteGlobalPrefix();
   if (!writableGlobal) return false;
-  kv("Upgrade", `installing @silicaclaw/cli@${beta} globally`);
-  const exactResult = runCapture("npm", ["i", "-g", `@silicaclaw/cli@${beta}`]);
+  kv("Upgrade", `installing @silicaclaw/cli@${version} globally`);
+  const exactResult = runCapture("npm", ["i", "-g", `@silicaclaw/cli@${version}`]);
   if ((exactResult.status ?? 1) === 0) {
     if (exactResult.stdout) process.stdout.write(exactResult.stdout);
     if (exactResult.stderr) process.stderr.write(exactResult.stderr);
@@ -417,8 +417,8 @@ function tryGlobalUpgrade(beta) {
 
   const detail = compactOutput(`${exactResult.stdout || ""}\n${exactResult.stderr || ""}`);
   if (detail.includes("ETARGET") || detail.includes("No matching version found")) {
-    kv("Fallback", "registry metadata is still settling, retrying via @beta tag");
-    const fallbackResult = runInherit("npm", ["i", "-g", "@silicaclaw/cli@beta"]);
+    kv("Fallback", "registry metadata is still settling, retrying via @latest tag");
+    const fallbackResult = runInherit("npm", ["i", "-g", "@silicaclaw/cli@latest"]);
     return (fallbackResult.status ?? 1) === 0;
   }
 
@@ -445,18 +445,17 @@ function update() {
     const text = String(result.stdout || "").trim();
     const tags = text ? JSON.parse(text) : {};
     const latest = tags.latest ? String(tags.latest) : "";
-    const beta = tags.beta ? String(tags.beta) : "";
-    showUpdateGuide(current, latest, beta);
-    const hasNewBeta = Boolean(beta) && beta !== current;
+    showUpdateGuide(current, latest);
+    const hasNewLatest = Boolean(latest) && latest !== current;
     const npxRuntime = isNpxRun();
 
-    if (hasNewBeta) {
+    if (hasNewLatest) {
       if (npxRuntime) {
-        kv("Update", `next run will use ${beta}`);
-      } else if (tryGlobalUpgrade(beta)) {
-        kv("Update", `installed ${beta}`);
+        kv("Update", `next run will use ${latest}`);
+      } else if (tryGlobalUpgrade(latest)) {
+        kv("Update", `installed ${latest}`);
       } else {
-        kv("Update", `install ${beta} manually if needed`);
+        kv("Update", `install ${latest} manually if needed`);
       }
     }
 
@@ -504,7 +503,8 @@ function help() {
   headline();
   console.log("");
   section("Commands");
-  kv("Install", "npx -y @silicaclaw/cli@beta install");
+  kv("First Run", "npx -y @silicaclaw/cli@latest onboard");
+  kv("Install", "npx -y @silicaclaw/cli@latest install");
   kv("Start", "silicaclaw start");
   kv("Status", "silicaclaw status");
   kv("Stop", "silicaclaw stop");
@@ -519,6 +519,11 @@ function help() {
   kv("Logs", "silicaclaw logs local-console");
   kv("Doctor", "silicaclaw doctor");
   kv("Help", "silicaclaw help");
+  console.log("");
+  section("Meaning");
+  kv("onboard", "first-time setup wizard");
+  kv("connect", "quick network setup wizard");
+  kv("install", "install persistent silicaclaw command only");
 }
 
 const cmd = String(process.argv[2] || "help").trim().toLowerCase();

@@ -1,0 +1,19 @@
+{
+  "ports": {
+    "local_console": 4310,
+    "public_explorer": 4311,
+    "openclaw_gateway": 18789,
+    "network_default": 44123
+  },
+  "network": {
+    "default_mode": "global-preview",
+    "default_namespace": "silicaclaw.preview",
+    "global_preview": {
+      "relay_url": "https://relay.silicaclaw.com",
+      "room": "silicaclaw-global-preview"
+    }
+  },
+  "bridge": {
+    "api_base": "http://localhost:4310"
+  }
+}

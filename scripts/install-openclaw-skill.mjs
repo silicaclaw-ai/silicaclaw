@@ -26,10 +26,16 @@ function main() {
   const sourceRoot = resolve(ROOT_DIR, "openclaw-skills");
   const targetRoot = resolve(homedir(), ".openclaw", "workspace", "skills");
   const legacyTargetRoot = resolve(homedir(), ".openclaw", "skills");
-  const skills = listSkillDirs(sourceRoot);
+  const requestedSkill = String(process.argv.find((arg) => arg.startsWith("--skill=")) || "")
+    .replace(/^--skill=/, "")
+    .trim();
+  const allSkills = listSkillDirs(sourceRoot);
+  const skills = requestedSkill
+    ? allSkills.filter((skill) => skill.name === requestedSkill)
+    : allSkills;
 
   if (!skills.length) {
-    throw new Error("No bundled OpenClaw skills found.");
+    throw new Error(requestedSkill ? `Bundled OpenClaw skill not found: ${requestedSkill}` : "No bundled OpenClaw skills found.");
   }
 
   mkdirSync(targetRoot, { recursive: true });
@@ -41,6 +47,7 @@ function main() {
   }
 
   console.log(JSON.stringify({
+    requested_skill: requestedSkill || null,
     installed: skills.map((skill) => ({
       name: skill.name,
       target_path: resolve(targetRoot, skill.name),

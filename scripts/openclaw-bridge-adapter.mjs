@@ -1,4 +1,6 @@
-const DEFAULT_API_BASE = "http://localhost:4310";
+import defaults from "../config/silicaclaw-defaults.json" with { type: "json" };
+
+const DEFAULT_API_BASE = defaults.bridge.api_base;
 
 function normalizeApiBase(value) {
   return String(value || DEFAULT_API_BASE).replace(/\/+$/, "");

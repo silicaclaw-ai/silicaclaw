@@ -6,6 +6,7 @@ import { accessSync, constants, copyFileSync, existsSync, mkdirSync, readFileSyn
 import { createHash } from "crypto";
 import { homedir, hostname } from "os";
 import { promisify } from "util";
+import defaults from "../../../config/silicaclaw-defaults.json";
 import {
   AgentIdentity,
   DirectoryState,
@@ -80,16 +81,22 @@ const NETWORK_MAX_PAST_DRIFT_MS = Number(process.env.NETWORK_MAX_PAST_DRIFT_MS |
 const NETWORK_HEARTBEAT_INTERVAL_MS = Number(process.env.NETWORK_HEARTBEAT_INTERVAL_MS || 12_000);
 const NETWORK_PEER_STALE_AFTER_MS = Number(process.env.NETWORK_PEER_STALE_AFTER_MS || 45_000);
 const OPENCLAW_GATEWAY_HOST = "127.0.0.1";
-const OPENCLAW_GATEWAY_PORT = 18_789;
+const DEFAULT_NETWORK_MODE = defaults.network.default_mode as "global-preview";
+const DEFAULT_NETWORK_NAMESPACE = defaults.network.default_namespace;
+const DEFAULT_NETWORK_PORT = defaults.ports.network_default;
+const DEFAULT_GLOBAL_SIGNALING_URL = defaults.network.global_preview.relay_url;
+const DEFAULT_GLOBAL_ROOM = defaults.network.global_preview.room;
+const DEFAULT_BRIDGE_API_BASE = defaults.bridge.api_base;
+const OPENCLAW_GATEWAY_PORT = defaults.ports.openclaw_gateway;
 const OPENCLAW_GATEWAY_URL = `http://${OPENCLAW_GATEWAY_HOST}:${OPENCLAW_GATEWAY_PORT}/`;
 const NETWORK_PEER_REMOVE_AFTER_MS = Number(process.env.NETWORK_PEER_REMOVE_AFTER_MS || 180_000);
 const NETWORK_UDP_BIND_ADDRESS = process.env.NETWORK_UDP_BIND_ADDRESS || "0.0.0.0";
 const NETWORK_UDP_BROADCAST_ADDRESS = process.env.NETWORK_UDP_BROADCAST_ADDRESS || "255.255.255.255";
 const NETWORK_PEER_ID = process.env.NETWORK_PEER_ID;
 const NETWORK_MODE = process.env.NETWORK_MODE || "";
-const WEBRTC_SIGNALING_URL = process.env.WEBRTC_SIGNALING_URL || "https://relay.silicaclaw.com";
+const WEBRTC_SIGNALING_URL = process.env.WEBRTC_SIGNALING_URL || DEFAULT_GLOBAL_SIGNALING_URL;
 const WEBRTC_SIGNALING_URLS = process.env.WEBRTC_SIGNALING_URLS || "";
-const WEBRTC_ROOM = process.env.WEBRTC_ROOM || "silicaclaw-global-preview";
+const WEBRTC_ROOM = process.env.WEBRTC_ROOM || DEFAULT_GLOBAL_ROOM;
 const WEBRTC_SEED_PEERS = process.env.WEBRTC_SEED_PEERS || "";
 const WEBRTC_BOOTSTRAP_HINTS = process.env.WEBRTC_BOOTSTRAP_HINTS || "";
 const PROFILE_VERSION = "v0.9";
@@ -133,6 +140,40 @@ function readWorkspaceVersion(workspaceRoot: string): string {
   return "unknown";
 }
 
+function normalizeVersionText(value: unknown): string {
+  const text = String(value || "").trim();
+  return text.startsWith("v") ? text.slice(1) : text;
+}
+
+function tokenizeVersion(value: unknown): Array<number | string> {
+  return normalizeVersionText(value)
+    .split(/[^0-9A-Za-z]+/)
+    .map((token) => token.trim())
+    .filter(Boolean)
+    .map((token) => (/^\d+$/.test(token) ? Number(token) : token.toLowerCase()));
+}
+
+function compareVersionTokens(left: unknown, right: unknown): number {
+  const leftTokens = tokenizeVersion(left);
+  const rightTokens = tokenizeVersion(right);
+  const maxLength = Math.max(leftTokens.length, rightTokens.length);
+  for (let index = 0; index < maxLength; index += 1) {
+    const leftToken = leftTokens[index];
+    const rightToken = rightTokens[index];
+    if (leftToken === undefined && rightToken === undefined) return 0;
+    if (leftToken === undefined) return -1;
+    if (rightToken === undefined) return 1;
+    if (typeof leftToken === "number" && typeof rightToken === "number") {
+      if (leftToken !== rightToken) return leftToken > rightToken ? 1 : -1;
+      continue;
+    }
+    const leftText = String(leftToken);
+    const rightText = String(rightToken);
+    if (leftText !== rightText) return leftText.localeCompare(rightText);
+  }
+  return 0;
+}
+
 function resolveWorkspaceRoot(cwd = process.cwd()): string {
   if (existsSync(resolve(cwd, "apps", "local-console", "package.json"))) {
     return cwd;
@@ -148,6 +189,12 @@ function resolveProjectRoot(appRoot: string, cwd = process.cwd()): string {
   const envRoot = String(process.env.SILICACLAW_WORKSPACE_DIR || "").trim();
   if (envRoot) {
     return resolve(envRoot);
+  }
+  if (
+    existsSync(resolve(appRoot, "apps", "local-console", "package.json")) &&
+    existsSync(resolve(appRoot, "package.json"))
+  ) {
+    return appRoot;
   }
   if (!existsSync(resolve(cwd, "apps", "local-console", "package.json"))) {
     return resolve(cwd);
@@ -233,6 +280,50 @@ function summarizeSkillReadme(filePath: string) {
     return String(lines[0] || "").slice(0, 220);
   } catch {
     return "";
+  }
+}
+
+function readDialogueCheatsheetPreview(filePath: string, limit = 6) {
+  if (!filePath || !existsSync(filePath)) return [];
+  try {
+    return readFileSync(filePath, "utf8")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.startsWith("- "))
+      .map((line) => line.slice(2).trim())
+      .filter(Boolean)
+      .slice(0, limit);
+  } catch {
+    return [];
+  }
+}
+
+function readDialogueCheatsheetSections(filePath: string, maxSections = 3, maxItemsPerSection = 5) {
+  if (!filePath || !existsSync(filePath)) return [];
+  try {
+    const lines = readFileSync(filePath, "utf8").split(/\r?\n/);
+    const sections: Array<{ title: string; items: string[] }> = [];
+    let current: { title: string; items: string[] } | null = null;
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (line.startsWith("## ")) {
+        if (current && current.items.length) sections.push(current);
+        current = { title: line.slice(3).trim(), items: [] };
+        continue;
+      }
+      if (line.startsWith("- ")) {
+        if (!current) {
+          current = { title: "Examples", items: [] };
+        }
+        if (current.items.length < maxItemsPerSection) {
+          current.items.push(line.slice(2).trim());
+        }
+      }
+    }
+    if (current && current.items.length) sections.push(current);
+    return sections.slice(0, maxSections);
+  } catch {
+    return [];
   }
 }
 
@@ -795,7 +886,7 @@ export class LocalNodeService {
 
   private network: NetworkAdapter;
   private adapterMode: "mock" | "local-event-bus" | "real-preview" | "webrtc-preview" | "relay-preview";
-  private networkMode: "local" | "lan" | "global-preview" = "global-preview";
+  private networkMode: "local" | "lan" | "global-preview" = DEFAULT_NETWORK_MODE;
   private networkNamespace: string;
   private networkPort: number | null;
   private socialConfig: SocialConfig;
@@ -809,7 +900,7 @@ export class LocalNodeService {
     "silicaclaw-existing";
   private resolvedOpenClawIdentityPath: string | null = null;
   private webrtcSignalingUrls: string[] = [];
-  private webrtcRoom = "silicaclaw-global-preview";
+  private webrtcRoom = DEFAULT_GLOBAL_ROOM;
   private webrtcSeedPeers: string[] = [];
   private webrtcBootstrapHints: string[] = [];
   private webrtcBootstrapSources: string[] = [];
@@ -838,7 +929,7 @@ export class LocalNodeService {
         display_name: this.getDefaultDisplayName(),
         bio: "Local AI agent connected to SilicaClaw",
         tags: ["openclaw", "local-first"],
-        mode: "global-preview",
+        mode: DEFAULT_NETWORK_MODE,
         public_enabled: false,
       });
       loadedSocial = loadSocialConfig(this.projectRoot);
@@ -850,8 +941,8 @@ export class LocalNodeService {
     this.socialParseError = loadedSocial.meta.parse_error;
     this.socialRawFrontmatter = loadedSocial.raw_frontmatter;
 
-    this.networkNamespace = this.socialConfig.network.namespace || process.env.NETWORK_NAMESPACE || "silicaclaw.preview";
-    this.networkPort = Number(this.socialConfig.network.port || process.env.NETWORK_PORT || 44123);
+    this.networkNamespace = this.socialConfig.network.namespace || process.env.NETWORK_NAMESPACE || DEFAULT_NETWORK_NAMESPACE;
+    this.networkPort = Number(this.socialConfig.network.port || process.env.NETWORK_PORT || DEFAULT_NETWORK_PORT);
     this.applyResolvedNetworkConfig();
     const resolved = this.buildNetworkAdapter();
     this.network = resolved.adapter;
@@ -903,12 +994,8 @@ export class LocalNodeService {
   }
 
   getOverview() {
-    this.ensureLocalDirectoryBaseline();
-    this.compactCacheInMemory();
-    const profiles = Object.values(this.directory.profiles);
-    const onlineCount = profiles.filter((profile) =>
-      isAgentOnline(this.directory.presence[profile.agent_id], Date.now(), PRESENCE_TTL_MS)
-    ).length;
+    const discovered = this.search("");
+    const onlineCount = discovered.filter((profile) => profile.online).length;
 
     return {
       app_version: this.appVersion,
@@ -919,9 +1006,9 @@ export class LocalNodeService {
       last_broadcast_error_at: this.lastBroadcastErrorAt,
       last_broadcast_error: this.lastBroadcastError,
       broadcast_failure_count: this.broadcastFailureCount,
-      discovered_count: profiles.length,
+      discovered_count: discovered.length,
       online_count: onlineCount,
-      offline_count: Math.max(0, profiles.length - onlineCount),
+      offline_count: Math.max(0, discovered.length - onlineCount),
       init_state: this.initState,
       presence_ttl_ms: PRESENCE_TTL_MS,
       onboarding: this.getOnboardingSummary(),
@@ -1307,20 +1394,36 @@ export class LocalNodeService {
   }
 
   async setNetworkModeRuntime(mode: "local" | "lan" | "global-preview") {
-    const currentMode = this.networkMode;
+    const before = {
+      mode: this.networkMode,
+      adapter: this.adapterMode,
+      namespace: this.networkNamespace,
+      port: this.networkPort,
+    };
     if (mode !== "local" && mode !== "lan" && mode !== "global-preview") {
       throw new Error("invalid_network_mode");
     }
     this.socialConfig.network.mode = mode;
     this.socialConfig.network.adapter = this.adapterForMode(mode);
     this.applyResolvedNetworkConfig();
-    this.socialNetworkRequiresRestart = currentMode !== mode || this.adapterMode !== this.socialConfig.network.adapter;
+
+    const needsRestart =
+      before.mode !== this.networkMode ||
+      before.adapter !== this.socialConfig.network.adapter ||
+      before.namespace !== this.networkNamespace ||
+      (before.port ?? null) !== (this.networkPort ?? null);
+
+    if (needsRestart) {
+      await this.restartNetworkAdapter("set_network_mode_runtime");
+    }
+
+    this.socialNetworkRequiresRestart = false;
     await this.writeSocialRuntime();
     return {
       mode: this.networkMode,
-      adapter: this.socialConfig.network.adapter,
-      network_requires_restart: this.socialNetworkRequiresRestart,
-      note: "Runtime mode updated. Existing social.md is unchanged.",
+      adapter: this.adapterMode,
+      network_requires_restart: false,
+      note: "Runtime mode updated and adapter restarted. Existing social.md is unchanged.",
     };
   }
 
@@ -1335,7 +1438,7 @@ export class LocalNodeService {
     this.socialConfig.network.adapter = "relay-preview";
     this.socialConfig.network.signaling_url = signalingUrl;
     this.socialConfig.network.signaling_urls = [signalingUrl];
-    this.socialConfig.network.room = room || "silicaclaw-global-preview";
+    this.socialConfig.network.room = room || DEFAULT_GLOBAL_ROOM;
     this.applyResolvedNetworkConfig();
     await this.restartNetworkAdapter("quick_connect_global_preview");
     this.socialNetworkRequiresRestart = false;
@@ -1382,6 +1485,11 @@ export class LocalNodeService {
       before.namespace !== after.namespace ||
       (before.port ?? null) !== (after.port ?? null);
 
+    if (this.socialNetworkRequiresRestart) {
+      await this.restartNetworkAdapter("reload_social_config");
+      this.socialNetworkRequiresRestart = false;
+    }
+
     await this.writeSocialRuntime();
 
     return this.getSocialConfigView();
@@ -1415,10 +1523,11 @@ export class LocalNodeService {
   search(keyword: string): PublicProfileSummary[] {
     this.ensureLocalDirectoryBaseline();
     this.compactCacheInMemory();
-    return searchDirectory(this.directory, keyword, { presenceTTLms: PRESENCE_TTL_MS }).map((profile) => {
+    const directMatches = searchDirectory(this.directory, keyword, { presenceTTLms: PRESENCE_TTL_MS }).map((profile) => {
       const lastSeenAt = this.directory.presence[profile.agent_id] ?? 0;
       return this.toPublicProfileSummary(profile, { last_seen_at: lastSeenAt });
     });
+    return this.mergeMessageOnlyAgentSummaries(directMatches, keyword);
   }
 
   getPublicProfilePreview(): PublicProfileSummary | null {
@@ -1563,9 +1672,13 @@ export class LocalNodeService {
     };
   }
 
-  async installOpenClawSkill() {
+  async installOpenClawSkill(skillName?: string) {
     const scriptPath = resolve(this.workspaceRoot, "scripts", "install-openclaw-skill.mjs");
-    const { stdout } = await execFileAsync(process.execPath, [scriptPath], {
+    const args = [scriptPath];
+    if (skillName) {
+      args.push(`--skill=${skillName}`);
+    }
+    const { stdout } = await execFileAsync(process.execPath, args, {
       cwd: this.workspaceRoot,
       env: { ...process.env, SILICACLAW_WORKSPACE_DIR: this.projectRoot },
       maxBuffer: 1024 * 1024,
@@ -1595,7 +1708,7 @@ export class LocalNodeService {
     const openclawRuntime = detectOpenClawRuntime(this.projectRoot);
 
     return {
-      bridge_api_base: "http://localhost:4310",
+      bridge_api_base: DEFAULT_BRIDGE_API_BASE,
       openclaw_detected: detectOpenClawInstallation(this.projectRoot).detected,
       openclaw_running: openclawRuntime.running,
       openclaw_gateway_host: OPENCLAW_GATEWAY_HOST,
@@ -1605,7 +1718,7 @@ export class LocalNodeService {
       openclaw_workspace_skill_dir: workspaceSkillDir,
       openclaw_legacy_skill_dir: legacySkillDir,
       silicaclaw_env_template_path: resolve(this.workspaceRoot, "openclaw-owner-forward.env.example"),
-      recommended_skill_name: "silicaclaw-broadcast",
+      recommended_skill_name: "silicaclaw-bridge-setup",
       recommended_install_command: "silicaclaw openclaw-skill-install",
       recommended_owner_forward_env: {
         OPENCLAW_SOURCE_DIR: openclawSourceDir,
@@ -1623,6 +1736,7 @@ export class LocalNodeService {
       ].join(" "),
       notes: [
         "Install and maintain the skill from SilicaClaw; do not edit OpenClaw core source for this integration.",
+        "Use silicaclaw-bridge-setup first when OpenClaw still needs local install, readiness checks, or troubleshooting guidance.",
         "OpenClaw learns broadcasts via the installed skill under ~/.openclaw/workspace/skills/.",
         "Runtime detection prefers the actual OpenClaw gateway listener port, then falls back to OpenClaw's own openclaw.json gateway.port.",
         "Owner delivery runs through OpenClaw's own message channel stack after the skill forwards a summary.",
@@ -1642,6 +1756,12 @@ export class LocalNodeService {
       const skillPath = resolve(dir.path, "SKILL.md");
       const versionPath = resolve(dir.path, "VERSION");
       const manifest = readJsonFileSafe(manifestPath);
+      const references = (manifest?.references && typeof manifest.references === "object")
+        ? manifest.references as Record<string, unknown>
+        : null;
+      const ownerDialogueCheatsheetPath = references?.owner_dialogue_cheatsheet_zh
+        ? resolve(dir.path, String(references.owner_dialogue_cheatsheet_zh))
+        : null;
       const name = String(manifest?.name || dir.name);
       const capabilities = Array.isArray(manifest?.capabilities)
         ? manifest.capabilities.map((item) => String(item))
@@ -1661,6 +1781,9 @@ export class LocalNodeService {
         skill_path: existsSync(skillPath) ? skillPath : null,
         capabilities,
         transport: manifest?.transport || null,
+        owner_dialogue_cheatsheet_path: ownerDialogueCheatsheetPath && existsSync(ownerDialogueCheatsheetPath) ? ownerDialogueCheatsheetPath : null,
+        owner_dialogue_examples_zh: ownerDialogueCheatsheetPath ? readDialogueCheatsheetPreview(ownerDialogueCheatsheetPath) : [],
+        owner_dialogue_sections_zh: ownerDialogueCheatsheetPath ? readDialogueCheatsheetSections(ownerDialogueCheatsheetPath) : [],
         installed_in_openclaw: installedInWorkspace || installedInLegacy,
         install_mode: installedInWorkspace ? "workspace" : installedInLegacy ? "legacy" : "not_installed",
         installed_path: installedInWorkspace ? installedWorkspacePath : installedInLegacy ? installedLegacyPath : null,
@@ -1675,6 +1798,12 @@ export class LocalNodeService {
       const skillPath = resolve(dir.path, "SKILL.md");
       const versionPath = resolve(dir.path, "VERSION");
       const manifest = readJsonFileSafe(manifestPath);
+      const references = (manifest?.references && typeof manifest.references === "object")
+        ? manifest.references as Record<string, unknown>
+        : null;
+      const ownerDialogueCheatsheetPath = references?.owner_dialogue_cheatsheet_zh
+        ? resolve(dir.path, String(references.owner_dialogue_cheatsheet_zh))
+        : null;
       return {
         key: `${dir.install_mode}:${dir.name}`,
         name: String(manifest?.name || dir.name),
@@ -1686,7 +1815,40 @@ export class LocalNodeService {
         manifest_path: existsSync(manifestPath) ? manifestPath : null,
         skill_path: existsSync(skillPath) ? skillPath : null,
         capabilities: Array.isArray(manifest?.capabilities) ? manifest.capabilities.map((item) => String(item)) : [],
+        owner_dialogue_cheatsheet_path: ownerDialogueCheatsheetPath && existsSync(ownerDialogueCheatsheetPath) ? ownerDialogueCheatsheetPath : null,
+        owner_dialogue_examples_zh: ownerDialogueCheatsheetPath ? readDialogueCheatsheetPreview(ownerDialogueCheatsheetPath) : [],
+        owner_dialogue_sections_zh: ownerDialogueCheatsheetPath ? readDialogueCheatsheetSections(ownerDialogueCheatsheetPath) : [],
         bundled_source_path: bundledSkills.find((item) => item.name === String(manifest?.name || dir.name))?.source_path || null,
+      };
+    });
+
+    const installedSkillVersions = new Map(installedSkills.map((item) => [item.name, item.version]));
+    const bundledSkillsWithUpdateState = bundledSkills.map((skill) => {
+      const installedVersion = installedSkillVersions.get(skill.name) || "";
+      const updateAvailable = Boolean(
+        skill.installed_in_openclaw &&
+        installedVersion &&
+        skill.version &&
+        compareVersionTokens(installedVersion, skill.version) < 0
+      );
+      return {
+        ...skill,
+        installed_version: installedVersion || null,
+        update_available: updateAvailable,
+      };
+    });
+    const bundledSkillVersions = new Map(bundledSkillsWithUpdateState.map((item) => [item.name, item.version]));
+    const installedSkillsWithUpdateState = installedSkills.map((skill) => {
+      const bundledVersion = bundledSkillVersions.get(skill.name) || "";
+      const updateAvailable = Boolean(
+        bundledVersion &&
+        skill.version &&
+        compareVersionTokens(skill.version, bundledVersion) < 0
+      );
+      return {
+        ...skill,
+        bundled_version: bundledVersion || null,
+        update_available: updateAvailable,
       };
     });
 
@@ -1700,13 +1862,14 @@ export class LocalNodeService {
         legacy_install_root: legacyInstallRoot,
       },
       summary: {
-        bundled_count: bundledSkills.length,
-        installed_count: installedSkills.length,
-        installed_bundled_count: bundledSkills.filter((item) => item.installed_in_openclaw).length,
+        bundled_count: bundledSkillsWithUpdateState.length,
+        installed_count: installedSkillsWithUpdateState.length,
+        installed_bundled_count: bundledSkillsWithUpdateState.filter((item) => item.installed_in_openclaw).length,
+        update_available_count: bundledSkillsWithUpdateState.filter((item) => item.update_available).length,
       },
       install_action: bridge.skill_learning.install_action,
-      bundled_skills: bundledSkills,
-      installed_skills: installedSkills,
+      bundled_skills: bundledSkillsWithUpdateState,
+      installed_skills: installedSkillsWithUpdateState,
     };
   }
 
@@ -2345,6 +2508,7 @@ export class LocalNodeService {
     this.network = next.adapter;
     this.adapterMode = next.mode;
     this.networkPort = next.port;
+    this.subscriptionsBound = false;
 
     await this.network.start();
     this.bindNetworkSubscriptions();
@@ -2464,6 +2628,72 @@ export class LocalNodeService {
     });
   }
 
+  private mergeMessageOnlyAgentSummaries(
+    summaries: PublicProfileSummary[],
+    keyword: string
+  ): PublicProfileSummary[] {
+    const normalizedKeyword = String(keyword || "").trim().toLowerCase();
+    const knownAgentIds = new Set(summaries.map((item) => item.agent_id));
+    const messageOnly: PublicProfileSummary[] = [];
+
+    for (const message of this.socialMessages) {
+      if (!message?.agent_id || knownAgentIds.has(message.agent_id)) {
+        continue;
+      }
+
+      const displayName = String(message.display_name || "Unnamed").trim() || "Unnamed";
+      if (normalizedKeyword) {
+        const haystacks = [
+          displayName.toLowerCase(),
+          message.agent_id.toLowerCase(),
+          String(message.topic || "").toLowerCase(),
+        ];
+        if (!haystacks.some((value) => value.includes(normalizedKeyword))) {
+          continue;
+        }
+      }
+
+      knownAgentIds.add(message.agent_id);
+      messageOnly.push(
+        buildPublicProfileSummary({
+          profile: {
+            agent_id: message.agent_id,
+            display_name: displayName,
+            bio: "Seen from signed public message. Profile/presence not synced yet.",
+            tags: ["message-only"],
+            avatar_url: "",
+            public_enabled: true,
+            updated_at: message.created_at,
+            signature: "",
+          },
+          online: false,
+          last_seen_at: null,
+          network_mode: "unknown",
+          openclaw_bound: false,
+          profile_version: PROFILE_VERSION,
+          public_key_fingerprint: null,
+          verified_profile: false,
+          now: Date.now(),
+          presence_ttl_ms: PRESENCE_TTL_MS,
+        })
+      );
+    }
+
+    return [...summaries, ...messageOnly].sort((a, b) => {
+      if (a.online !== b.online) {
+        return a.online ? -1 : 1;
+      }
+      if (a.updated_at !== b.updated_at) {
+        return b.updated_at - a.updated_at;
+      }
+      const byName = a.display_name.localeCompare(b.display_name);
+      if (byName !== 0) {
+        return byName;
+      }
+      return a.agent_id.localeCompare(b.agent_id);
+    });
+  }
+
   private fingerprintPublicKey(publicKey: string): string {
     const digest = createHash("sha256").update(publicKey, "utf8").digest("hex");
     return `${digest.slice(0, 12)}:${digest.slice(-8)}`;
@@ -2524,7 +2754,7 @@ export class LocalNodeService {
       };
     }
     return {
-      mode: "global-preview",
+      mode: DEFAULT_NETWORK_MODE,
       short_label: "Relay preview",
       summary: "Uses the public relay preview room so public nodes can find each other across the internet.",
     };
@@ -2554,14 +2784,14 @@ export class LocalNodeService {
       this.socialConfig.network.mode ||
       (modeEnv === "local" || modeEnv === "lan" || modeEnv === "global-preview"
         ? modeEnv
-        : "global-preview");
+        : DEFAULT_NETWORK_MODE);
 
     this.networkMode = resolvedMode;
-    this.networkNamespace = this.socialConfig.network.namespace || process.env.NETWORK_NAMESPACE || "silicaclaw.preview";
-    this.networkPort = Number(this.socialConfig.network.port || process.env.NETWORK_PORT || 44123);
+    this.networkNamespace = this.socialConfig.network.namespace || process.env.NETWORK_NAMESPACE || DEFAULT_NETWORK_NAMESPACE;
+    this.networkPort = Number(this.socialConfig.network.port || process.env.NETWORK_PORT || DEFAULT_NETWORK_PORT);
 
-    const builtInGlobalSignalingUrls = ["https://relay.silicaclaw.com"];
-    const builtInGlobalRoom = "silicaclaw-global-preview";
+    const builtInGlobalSignalingUrls = [DEFAULT_GLOBAL_SIGNALING_URL];
+    const builtInGlobalRoom = DEFAULT_GLOBAL_ROOM;
 
     const signalingUrlsSocial = dedupeStrings(this.socialConfig.network.signaling_urls || []);
     const signalingUrlSocial = String(this.socialConfig.network.signaling_url || "").trim();
@@ -2586,8 +2816,8 @@ export class LocalNodeService {
       signalingUrls = builtInGlobalSignalingUrls;
       signalingSource = "built-in-defaults:global-preview.signaling_urls";
     } else {
-      signalingUrls = ["https://relay.silicaclaw.com"];
-      signalingSource = "default:https://relay.silicaclaw.com";
+      signalingUrls = [DEFAULT_GLOBAL_SIGNALING_URL];
+      signalingSource = `default:${DEFAULT_GLOBAL_SIGNALING_URL}`;
     }
 
     const roomSocial = String(this.socialConfig.network.room || "").trim();
@@ -2596,14 +2826,14 @@ export class LocalNodeService {
       roomSocial ||
       roomEnv ||
       (this.networkMode === "global-preview" ? builtInGlobalRoom : "") ||
-      "silicaclaw-global-preview";
+      DEFAULT_GLOBAL_ROOM;
     const roomSource = roomSocial
       ? "social.md:network.room"
       : roomEnv
           ? "env:WEBRTC_ROOM"
           : this.networkMode === "global-preview"
         ? "built-in-defaults:global-preview.room"
-          : "default:silicaclaw-global-preview";
+          : `default:${DEFAULT_GLOBAL_ROOM}`;
 
     const seedPeersSocial = dedupeStrings(this.socialConfig.network.seed_peers || []);
     const seedPeersEnv = dedupeStrings(parseListEnv(WEBRTC_SEED_PEERS));
@@ -2971,15 +3201,15 @@ function renderBootstrapScript(payload: unknown): string {
     if (data.pillBroadcastClassName) pillBroadcast.className = data.pillBroadcastClassName;
   }
   setHtml('overviewCards', data.overviewCardsHtml || '');
-  setText('agentsCountHint', data.agentsCountHintText || '0 agents');
-  setHtml('agentsWrap', data.agentsWrapHtml || '<div class="label">No discovered agents yet.</div>');
+  setText('agentsCountHint', data.agentsCountHintText || '0 nodes');
+  setHtml('agentsWrap', data.agentsWrapHtml || '<div class="label">No discovered nodes yet.</div>');
 })();
 </script>`;
 }
 
 export async function main() {
   const app = express();
-  const port = Number(process.env.PORT || 4310);
+  const port = Number(process.env.PORT || defaults.ports.local_console);
   const staticDir = resolveLocalConsoleStaticDir();
   const staticIndexFile = resolve(staticDir, "index.html");
 
@@ -3187,9 +3417,10 @@ export async function main() {
 
   app.post(
     "/api/openclaw/bridge/skill-install",
-    asyncRoute(async (_req, res) => {
+    asyncRoute(async (req, res) => {
       try {
-        const result = await node.installOpenClawSkill();
+        const skillName = String(req.body?.skill_name || "").trim();
+        const result = await node.installOpenClawSkill(skillName || undefined);
         sendOk(res, result, {
           message: "OpenClaw skill installed",
         });
@@ -3237,7 +3468,7 @@ export async function main() {
     const agentId = req.params.agentId;
     const profile = state.profiles[agentId];
     if (!profile) {
-      sendError(res, 404, "AGENT_NOT_FOUND", "Agent not found", { agent_id: agentId });
+      sendError(res, 404, "AGENT_NOT_FOUND", "Node not found", { agent_id: agentId });
       return;
     }
 
@@ -3273,7 +3504,7 @@ export async function main() {
       .join("");
     const agentsWrapHtml =
       discovered.length === 0
-        ? `<div class="label">No discovered agents yet.</div>`
+        ? `<div class="label">No discovered nodes yet.</div>`
         : `
             <table class="table">
               <thead><tr><th>Name</th><th>Agent ID</th><th>Status</th><th>Updated</th></tr></thead>
@@ -3309,7 +3540,7 @@ export async function main() {
       pillBroadcastText: overview.broadcast_enabled ? "broadcast: running" : "broadcast: paused",
       pillBroadcastClassName: `pill ${overview.broadcast_enabled ? "ok" : "warn"}`,
       overviewCardsHtml,
-      agentsCountHintText: `${discovered.length} agents discovered`,
+      agentsCountHintText: `${discovered.length} nodes discovered`,
       agentsWrapHtml,
       integrationStatusText: `Connected to SilicaClaw: ${integration.connected_to_silicaclaw ? "yes" : "no"} · Network mode: ${integration.network_mode || "-"} · Public discovery: ${integration.public_enabled ? "enabled" : "disabled"}`,
       integrationStatusClassName: `integration-strip ${integration.connected_to_silicaclaw && integration.public_enabled ? "ok" : "warn"}`,

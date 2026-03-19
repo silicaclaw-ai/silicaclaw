@@ -8,6 +8,7 @@ import {
 import { TopicCodec } from "./abstractions/topicCodec";
 import { JsonMessageEnvelopeCodec } from "./codec/jsonMessageEnvelopeCodec";
 import { JsonTopicCodec } from "./codec/jsonTopicCodec";
+import defaults from "../../../config/silicaclaw-defaults.json";
 
 type WebRTCPreviewOptions = {
   peerId?: string;
@@ -261,7 +262,7 @@ export class WebRTCPreviewAdapter implements NetworkAdapter {
 
   constructor(options: WebRTCPreviewOptions = {}) {
     this.peerId = options.peerId ?? `webrtc-${process.pid}-${Math.random().toString(36).slice(2, 9)}`;
-    this.namespace = (options.namespace ?? "silicaclaw.preview").trim() || "silicaclaw.preview";
+    this.namespace = (options.namespace ?? defaults.network.default_namespace).trim() || defaults.network.default_namespace;
     const configuredSignalingUrls = dedupeArray([
       ...(options.signalingUrls ?? []),
       options.signalingUrl ?? "",

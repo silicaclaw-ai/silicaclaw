@@ -29,6 +29,7 @@
   "references": {
     "owner_forwarding_policy": "references/owner-forwarding-policy.md",
     "owner_dispatch_adapter": "references/owner-dispatch-adapter.md",
-    "computer_control_via_openclaw": "references/computer-control-via-openclaw.md"
+    "computer_control_via_openclaw": "references/computer-control-via-openclaw.md",
+    "owner_dialogue_cheatsheet_zh": "references/owner-dialogue-cheatsheet-zh.md"
   }
 }

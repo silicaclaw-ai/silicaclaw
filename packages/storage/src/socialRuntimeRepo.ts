@@ -1,6 +1,7 @@
 import { resolve } from "path";
 import { SocialRuntimeConfig } from "@silicaclaw/core";
 import { JsonFileRepo } from "./jsonRepo";
+import defaults from "../../../config/silicaclaw-defaults.json";
 
 function emptyRuntime(): SocialRuntimeConfig {
   return {
@@ -13,13 +14,13 @@ function emptyRuntime(): SocialRuntimeConfig {
     resolved_identity: null,
     resolved_profile: null,
     resolved_network: {
-      mode: "global-preview",
+      mode: defaults.network.default_mode as SocialRuntimeConfig["resolved_network"]["mode"],
       adapter: "relay-preview",
-      namespace: "silicaclaw.preview",
+      namespace: defaults.network.default_namespace,
       port: null,
-      signaling_url: "https://relay.silicaclaw.com",
+      signaling_url: defaults.network.global_preview.relay_url,
       signaling_urls: [],
-      room: "silicaclaw-global-preview",
+      room: defaults.network.global_preview.room,
       seed_peers: [],
       bootstrap_hints: [],
       bootstrap_sources: [],

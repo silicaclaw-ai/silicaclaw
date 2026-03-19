@@ -76,6 +76,14 @@ async function main() {
     'openclaw-skills/silicaclaw-broadcast/scripts/owner-dispatch-adapter-demo.mjs',
     'openclaw-skills/silicaclaw-broadcast/scripts/send-to-owner-via-openclaw.mjs',
     'openclaw-skills/silicaclaw-broadcast/scripts/owner-forwarder-demo.mjs',
+    'openclaw-skills/silicaclaw-owner-push/SKILL.md',
+    'openclaw-skills/silicaclaw-owner-push/VERSION',
+    'openclaw-skills/silicaclaw-owner-push/manifest.json',
+    'openclaw-skills/silicaclaw-owner-push/agents/openai.yaml',
+    'openclaw-skills/silicaclaw-owner-push/references/push-routing-policy.md',
+    'openclaw-skills/silicaclaw-owner-push/references/runtime-setup.md',
+    'openclaw-skills/silicaclaw-owner-push/scripts/owner-push-forwarder.mjs',
+    'openclaw-skills/silicaclaw-owner-push/scripts/send-to-owner-via-openclaw.mjs',
     'apps/local-console/public/index.html',
     'apps/public-explorer/public/index.html',
     'data/cache.json',
@@ -111,6 +119,17 @@ async function main() {
   assert(skillManifest.entrypoints?.owner_send_via_openclaw === 'scripts/send-to-owner-via-openclaw.mjs', 'OpenClaw skill manifest missing owner send via openclaw entrypoint');
   const skillUi = readFileSync(path.resolve(root, 'openclaw-skills/silicaclaw-broadcast/agents/openai.yaml'), 'utf8');
   assert(skillUi.includes('display_name: "SilicaClaw Broadcast"'), 'OpenClaw skill UI metadata missing');
+
+  const ownerPushBody = readFileSync(path.resolve(root, 'openclaw-skills/silicaclaw-owner-push/SKILL.md'), 'utf8');
+  assert(ownerPushBody.includes('name: silicaclaw-owner-push'), 'Owner push skill metadata missing');
+  const ownerPushManifest = JSON.parse(readFileSync(path.resolve(root, 'openclaw-skills/silicaclaw-owner-push/manifest.json'), 'utf8'));
+  assert(ownerPushManifest.name === 'silicaclaw-owner-push', 'Owner push skill manifest missing name');
+  assert(ownerPushManifest.references?.push_routing_policy === 'references/push-routing-policy.md', 'Owner push skill manifest missing push routing policy reference');
+  assert(ownerPushManifest.references?.runtime_setup === 'references/runtime-setup.md', 'Owner push skill manifest missing runtime setup reference');
+  assert(ownerPushManifest.entrypoints?.owner_push_forwarder === 'scripts/owner-push-forwarder.mjs', 'Owner push skill manifest missing owner push forwarder entrypoint');
+  assert(ownerPushManifest.entrypoints?.owner_send_via_openclaw === 'scripts/send-to-owner-via-openclaw.mjs', 'Owner push skill manifest missing owner send via openclaw entrypoint');
+  const ownerPushUi = readFileSync(path.resolve(root, 'openclaw-skills/silicaclaw-owner-push/agents/openai.yaml'), 'utf8');
+  assert(ownerPushUi.includes('display_name: "SilicaClaw Owner Push"'), 'Owner push skill UI metadata missing');
 
   // Import built modules (requires npm run build)
   const core = await import(pathToFileURL(path.resolve(root, 'packages/core/dist/index.js')).href);

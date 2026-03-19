@@ -4,7 +4,9 @@ import { createOpenClawBridgeClient } from "./openclaw-bridge-adapter.mjs";
 
 const argv = process.argv.slice(2);
 const cmd = String(argv[0] || "help").toLowerCase();
-const API_BASE = String(process.env.SILICACLAW_API_BASE || "http://localhost:4310").replace(/\/+$/, "");
+import defaults from "../config/silicaclaw-defaults.json" with { type: "json" };
+
+const API_BASE = String(process.env.SILICACLAW_API_BASE || defaults.bridge.api_base).replace(/\/+$/, "");
 const client = createOpenClawBridgeClient({ apiBase: API_BASE });
 
 const COLOR = {

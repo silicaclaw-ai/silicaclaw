@@ -8,6 +8,12 @@ export function createNetworkController({
   toPrettyJson,
   writeUiCache,
 }) {
+  const fallbackQuickConnectDefaults = {
+    signalingUrl: "http://localhost:4510",
+    room: "",
+  };
+  let quickConnectDefaults = { ...fallbackQuickConnectDefaults };
+
   async function refreshNetwork() {
     const [cfg, sts, rtp] = await Promise.all([api("/api/network/config"), api("/api/network/stats"), api("/api/runtime/paths")]);
     const c = cfg.data;
@@ -20,9 +26,31 @@ export function createNetworkController({
     const d = s.adapter_discovery_stats || {};
     const dx = s.adapter_diagnostics_summary || {};
     const ac = s.adapter_config || c.adapter_config || {};
+    quickConnectDefaults = {
+      signalingUrl: String(
+        dx.signaling_url ||
+        c.signaling_url ||
+        c.adapter_extra?.signaling_url ||
+        quickConnectDefaults.signalingUrl ||
+        fallbackQuickConnectDefaults.signalingUrl
+      ),
+      room: String(
+        dx.room ||
+        c.room ||
+        c.adapter_extra?.room ||
+        quickConnectDefaults.room ||
+        fallbackQuickConnectDefaults.room
+      ),
+    };
+    const relayCapable = c.adapter === "relay-preview" || c.adapter === "webrtc-preview";
+    const relayHealth = relayCapable
+      ? (dx.last_error ? t("network.degraded") : t("network.connected"))
+      : "-";
     document.getElementById("heroAdapter").textContent = c.adapter || "-";
-    document.getElementById("heroRelay").textContent = dx.signaling_url || "-";
-    document.getElementById("heroRoom").textContent = dx.room || "-";
+    const heroRelayEl = document.getElementById("heroRelay");
+    const heroRoomEl = document.getElementById("heroRoom");
+    if (heroRelayEl) heroRelayEl.textContent = dx.signaling_url || "-";
+    if (heroRoomEl) heroRoomEl.textContent = dx.room || "-";
 
     document.getElementById("pillAdapter").textContent = `${t("labels.adapter")}: ${c.adapter || "-"}`;
     writeUiCache("silicaclaw_ui_network", {
@@ -54,7 +82,7 @@ export function createNetworkController({
     ].map(([k, v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join("");
     document.getElementById("networkSummaryList").innerHTML = [
       [t("labels.mode"), describeCurrentMode(t, c.mode || "lan")],
-      [t("network.relayHealth"), dx.last_error ? t("network.degraded") : t("network.connected")],
+      [t("network.relayHealth"), relayHealth],
       [t("network.currentRelay"), dx.signaling_url || "-"],
       [t("network.currentRoom"), dx.room || "-"],
       [t("network.lastJoin"), ago(dx.last_join_at)],
@@ -205,6 +233,7 @@ export function createNetworkController({
   }
 
   return {
+    getQuickConnectDefaults: () => ({ ...quickConnectDefaults }),
     refreshDiscovery,
     refreshNetwork,
     refreshPeers,

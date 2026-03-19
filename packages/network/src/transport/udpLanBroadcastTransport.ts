@@ -1,4 +1,5 @@
 import dgram from "dgram";
+import defaults from "../../../../config/silicaclaw-defaults.json";
 import {
   NetworkTransport,
   TransportConfigSnapshot,
@@ -38,7 +39,7 @@ export class UdpLanBroadcastTransport implements NetworkTransport {
   private broadcastAddress: string;
 
   constructor(options: UdpLanBroadcastTransportOptions = {}) {
-    this.port = options.port ?? 44123;
+    this.port = options.port ?? defaults.ports.network_default;
     this.bindAddress = options.bindAddress ?? "0.0.0.0";
     this.broadcastAddress = options.broadcastAddress ?? "255.255.255.255";
   }

@@ -1,3 +1,5 @@
+import defaults from "../../../config/silicaclaw-defaults.json";
+
 export type SocialIdentityConfig = {
   display_name: string;
   bio: string;
@@ -105,13 +107,13 @@ const DEFAULT_SOCIAL_CONFIG: SocialConfig = {
     tags: [],
   },
   network: {
-    mode: "global-preview",
-    namespace: "silicaclaw.preview",
+    mode: defaults.network.default_mode as SocialNetworkMode,
+    namespace: defaults.network.default_namespace,
     adapter: "relay-preview",
-    port: 44123,
-    signaling_url: "https://relay.silicaclaw.com",
+    port: defaults.ports.network_default,
+    signaling_url: defaults.network.global_preview.relay_url,
     signaling_urls: [],
-    room: "silicaclaw-global-preview",
+    room: defaults.network.global_preview.room,
     seed_peers: [],
     bootstrap_hints: [],
   },

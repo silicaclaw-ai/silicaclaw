@@ -3,7 +3,9 @@
 import readline from "node:readline";
 import { createOpenClawBridgeClient } from "./openclaw-bridge-adapter.mjs";
 
-const apiBase = String(process.env.SILICACLAW_API_BASE || "http://localhost:4310").replace(/\/+$/, "");
+import defaults from "../config/silicaclaw-defaults.json" with { type: "json" };
+
+const apiBase = String(process.env.SILICACLAW_API_BASE || defaults.bridge.api_base).replace(/\/+$/, "");
 const bridge = createOpenClawBridgeClient({ apiBase });
 
 const COLOR = {

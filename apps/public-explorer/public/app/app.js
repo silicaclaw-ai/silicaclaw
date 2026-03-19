@@ -44,12 +44,31 @@ root.innerHTML = appTemplate;
       setLocale(i18n.getCurrentLocale());
       applyTranslations();
 
-      const API_BASE = localStorage.getItem('silicaclaw_api_base') || 'http://localhost:4310';
+      let API_BASE = localStorage.getItem('silicaclaw_api_base') || '';
       const state = document.getElementById('state');
       const cards = document.getElementById('cards');
       const detail = document.getElementById('detail');
       const messageStreamList = document.getElementById('messageStreamList');
       let publicMessages = [];
+
+      async function resolveApiBase() {
+        if (API_BASE) {
+          return API_BASE;
+        }
+        try {
+          const res = await fetch('/api/config');
+          const json = await res.json().catch(() => null);
+          const configuredBase = String(json?.data?.local_console_api_base || '').trim();
+          if (res.ok && json?.ok && configuredBase) {
+            API_BASE = configuredBase.replace(/\/+$/, '');
+            return API_BASE;
+          }
+        } catch {
+          // Ignore and fall back to localhost convention below.
+        }
+        API_BASE = `${location.protocol}//${location.hostname}:4310`;
+        return API_BASE;
+      }
 
       function toast(msg) {
         const t = document.getElementById('toast');
@@ -82,7 +101,8 @@ root.innerHTML = appTemplate;
       }
 
       async function api(path) {
-        const res = await fetch(`${API_BASE}${path}`);
+        const apiBase = await resolveApiBase();
+        const res = await fetch(`${apiBase}${path}`);
         const json = await res.json().catch(() => null);
         if (!res.ok || !json || !json.ok) throw new Error(json?.error?.message || t('common.requestFailed', { status: String(res.status) }));
         return json;

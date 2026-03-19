@@ -238,6 +238,12 @@ export function createSocialController({
       `${t("social.ownerForwardReady")}: ${ownerDelivery.ready ? t("common.yes") : t("common.no")}`,
     ].join(" · ");
     document.getElementById("socialOwnerDeliveryReason").textContent = ownerDeliveryBody;
+    document.getElementById("socialCapabilityCards").innerHTML = [
+      [t("socialCapability.publicBroadcast"), bridge.message_broadcast_enabled ? t("common.yes") : t("common.no")],
+      [t("socialCapability.monitorBroadcasts"), ownerDelivery.bridge_messages_readable ? t("common.yes") : t("common.no")],
+      [t("socialCapability.autoPushToOwner"), ownerDelivery.ready ? t("common.yes") : t("common.no")],
+      [t("socialCapability.ownerPrivateBoundary"), t("socialCapability.ownerPrivateBoundaryValue")],
+    ].map(([k, v]) => `<div class="card"><div class="label">${escapeHtml(String(k))}</div><div class="value" style="font-size:17px;">${escapeHtml(String(v))}</div></div>`).join("");
     document.getElementById("openclawSkillCards").innerHTML = [
       [t("social.openclawInstalled"), openclawDetected ? t("common.yes") : t("common.no")],
       [t("social.running"), openclawRunning ? t("common.yes") : t("common.no")],
@@ -384,12 +390,19 @@ export function createSocialController({
 
   function renderSkillCard(skill, options = {}) {
     const capabilities = Array.isArray(skill.capabilities) ? skill.capabilities.slice(0, 6) : [];
+    const updateAvailable = options.updateAvailable === true;
     const statusText = options.statusText || (skill.installed_in_openclaw ? t("common.yes") : t("hints.skillsNotInstalled"));
     const versionText = String(skill.version || "-");
     const bodyText = escapeHtml(String(skill.description || "-"));
-    const installTone = skill.installed_in_openclaw || skill.install_mode === "workspace" || skill.install_mode === "legacy"
-      ? "tag-chip emphasis"
-      : "tag-chip muted";
+    const skillName = String(skill.name || "").trim();
+    const installable = options.installable === true && Boolean(skillName) && (!skill.installed_in_openclaw || updateAvailable);
+    const installedVersionText = escapeHtml(String(options.installedVersion || skill.installed_version || "-"));
+    const bundledVersionText = escapeHtml(String(options.bundledVersion || skill.bundled_version || skill.version || "-"));
+    const installTone = updateAvailable
+      ? "tag-chip warn"
+      : skill.installed_in_openclaw || skill.install_mode === "workspace" || skill.install_mode === "legacy"
+        ? "tag-chip emphasis"
+        : "tag-chip muted";
     const sourceText = escapeHtml(String(skill.source_path || skill.bundled_source_path || skill.installed_path || "-"));
     const locationText = escapeHtml(String(skill.installed_path || skill.manifest_path || "-"));
     return `
@@ -404,9 +417,18 @@ export function createSocialController({
         <div class="skill-card__body">${bodyText}</div>
         <div class="skill-card__tags">
           <span class="${installTone}">${escapeHtml(statusText)}</span>
+          ${updateAvailable ? `<span class="tag-chip warn">${t("labels.skillsUpdateAvailable")}</span>` : ""}
           ${capabilities.map((item) => `<span class="tag-chip">${escapeHtml(String(item))}</span>`).join("")}
         </div>
         <div class="skill-card__meta">
+          <div class="skill-card__meta-item">
+            <div class="skill-card__meta-label">${t("labels.skillsInstalledVersion")}</div>
+            <div class="skill-card__meta-value mono">${installedVersionText}</div>
+          </div>
+          <div class="skill-card__meta-item">
+            <div class="skill-card__meta-label">${t("labels.skillsBundledVersion")}</div>
+            <div class="skill-card__meta-value mono">${bundledVersionText}</div>
+          </div>
           <div class="skill-card__meta-item">
             <div class="skill-card__meta-label">${t("labels.skillsSource")}</div>
             <div class="skill-card__meta-value mono">${sourceText}</div>
@@ -415,6 +437,50 @@ export function createSocialController({
             <div class="skill-card__meta-label">${t("labels.skillsLocation")}</div>
             <div class="skill-card__meta-value mono">${locationText}</div>
           </div>
+        </div>
+        ${installable ? `
+          <div class="actions">
+            <button class="secondary skill-install-btn" type="button" data-skill-install="${escapeHtml(skillName)}">${updateAvailable ? t("actions.updateThisSkill") : t("actions.installThisSkill")}</button>
+          </div>
+        ` : ""}
+      </div>
+    `;
+  }
+
+  function setSkillActionCopy({ title, body, state }) {
+    document.getElementById("skillsActionTitle").textContent = title;
+    document.getElementById("skillsActionBody").textContent = body;
+    document.getElementById("skillsActionState").textContent = state;
+  }
+
+  function renderDialogueCard(skill) {
+    const sections = Array.isArray(skill.owner_dialogue_sections_zh) ? skill.owner_dialogue_sections_zh : [];
+    const examples = Array.isArray(skill.owner_dialogue_examples_zh) ? skill.owner_dialogue_examples_zh : [];
+    return `
+      <div class="skill-card">
+        <div class="skill-card__top">
+          <div>
+            <div class="skill-card__eyebrow">${escapeHtml(skill.display_name || skill.name || "Skill")}</div>
+            <div class="skill-card__title">${escapeHtml(t("labels.skillsDialogueExamples"))}</div>
+          </div>
+          <div class="skill-card__version mono">${escapeHtml(skill.version || "-")}</div>
+        </div>
+        <div class="skill-card__body">${escapeHtml(skill.description || "-")}</div>
+        <div class="skills-dialogue-list">
+          ${sections.length
+            ? sections.map((section) => `
+                <div class="skills-dialogue-group">
+                  <div class="skills-dialogue-group__title">${escapeHtml(String(section.title || "-"))}</div>
+                  <div class="skills-dialogue-group__items">
+                    ${Array.isArray(section.items)
+                      ? section.items.map((item) => `<div class="skills-dialogue-item">"${escapeHtml(String(item))}"</div>`).join("")
+                      : ""}
+                  </div>
+                </div>
+              `).join("")
+            : examples.length
+              ? examples.map((item) => `<div class="skills-dialogue-item">"${escapeHtml(String(item))}"</div>`).join("")
+            : `<div class="skills-empty">${t("hints.skillsNoDialogueExamples")}</div>`}
         </div>
       </div>
     `;
@@ -427,9 +493,29 @@ export function createSocialController({
     const openclaw = payload.openclaw || {};
     const summary = payload.summary || {};
     const installAction = payload.install_action || {};
-    const featured = bundled[0] || null;
+    const broadcastSkill = bundled.find((item) => item.name === "silicaclaw-broadcast") || bundled[0] || null;
+    const ownerPushSkill = bundled.find((item) => item.name === "silicaclaw-owner-push") || null;
+    const featuredSkills = [broadcastSkill, ownerPushSkill].filter(Boolean);
     const openclawDetected = !!openclaw.detected;
     const openclawRunning = !!openclaw.running;
+    const allFeaturedInstalled = featuredSkills.length > 0 && featuredSkills.every((item) => item.installed_in_openclaw);
+    const installedFeaturedCount = featuredSkills.filter((item) => item.installed_in_openclaw).length;
+    const bundledUpdateCount = bundled.filter((item) => item.update_available).length;
+    const bundledSorted = [...bundled].sort((left, right) => {
+      const featuredLeft = featuredSkills.some((item) => item?.name === left.name) ? 1 : 0;
+      const featuredRight = featuredSkills.some((item) => item?.name === right.name) ? 1 : 0;
+      if (featuredLeft !== featuredRight) return featuredRight - featuredLeft;
+      const updateLeft = left.update_available ? 1 : 0;
+      const updateRight = right.update_available ? 1 : 0;
+      if (updateLeft !== updateRight) return updateRight - updateLeft;
+      const installLeft = left.installed_in_openclaw ? 1 : 0;
+      const installRight = right.installed_in_openclaw ? 1 : 0;
+      if (installLeft !== installRight) return installLeft - installRight;
+      return String(left.display_name || left.name || "").localeCompare(String(right.display_name || right.name || ""));
+    });
+    const installedSorted = [...installed].sort((left, right) =>
+      String(left.display_name || left.name || "").localeCompare(String(right.display_name || right.name || ""))
+    );
 
     document.getElementById("skillsBannerRuntimeValue").textContent = t("hints.skillsRuntimeSummary", {
       runtime: openclawRunning ? t("common.yes") : t("common.no"),
@@ -437,51 +523,114 @@ export function createSocialController({
       installed: String(summary.installed_count || 0),
     });
 
+    if (!openclawDetected) {
+      setSkillActionCopy({
+        title: t("hints.skillsActionMissingTitle"),
+        body: t("hints.skillsActionMissingBody"),
+        state: t("labels.skillsStateAttention"),
+      });
+    } else if (!openclawRunning) {
+      setSkillActionCopy({
+        title: t("hints.skillsActionStoppedTitle"),
+        body: t("hints.skillsActionStoppedBody"),
+        state: t("labels.skillsStateAttention"),
+      });
+    } else if (bundledUpdateCount > 0) {
+      setSkillActionCopy({
+        title: t("hints.skillsActionUpdateTitle", { count: String(bundledUpdateCount) }),
+        body: t("hints.skillsActionUpdateBody", { count: String(bundledUpdateCount) }),
+        state: t("labels.skillsStateAttention"),
+      });
+    } else if (allFeaturedInstalled) {
+      setSkillActionCopy({
+        title: t("hints.skillsActionCompleteTitle"),
+        body: t("hints.skillsActionCompleteBody"),
+        state: t("labels.skillsStateComplete"),
+      });
+    } else if (installedFeaturedCount > 0) {
+      setSkillActionCopy({
+        title: t("hints.skillsActionPartialTitle"),
+        body: t("hints.skillsActionPartialBody"),
+        state: t("labels.skillsStateInProgress"),
+      });
+    } else {
+      setSkillActionCopy({
+        title: t("hints.skillsActionInstallTitle"),
+        body: t("hints.skillsActionInstallBody"),
+        state: t("labels.skillsStateReady"),
+      });
+    }
+
     document.getElementById("skillsSummaryCards").innerHTML = [
       [t("labels.skillsBundled"), String(summary.bundled_count || 0)],
       [t("labels.skillsInstalled"), String(summary.installed_count || 0)],
-      [t("social.openclawInstalled"), openclawDetected ? t("common.yes") : t("common.no")],
-      [t("social.running"), openclawRunning ? t("common.yes") : t("common.no")],
-    ].map(([k, v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${escapeHtml(v)}</div></div>`).join("");
+      [t("labels.skillsUpdates"), String(summary.update_available_count || 0)],
+      [t("labels.skillsBroadcastLearning"), broadcastSkill?.installed_in_openclaw ? t("common.yes") : t("common.no")],
+      [t("labels.skillsAutoPush"), ownerPushSkill?.installed_in_openclaw ? t("common.yes") : t("common.no")],
+    ].map(([k, v]) => `<div class="skills-summary-card"><div class="label">${k}</div><div class="value">${escapeHtml(v)}</div></div>`).join("");
 
-    document.getElementById("skillsFeaturedSpotlight").innerHTML = featured
-      ? `
+    document.getElementById("skillsFeaturedCount").textContent = `${featuredSkills.length}`;
+    document.getElementById("skillsBundledCount").textContent = `${bundled.length}`;
+    document.getElementById("skillsInstalledCount").textContent = `${installed.length}`;
+    document.getElementById("skillsDialogueCount").textContent = `${featuredSkills.length}`;
+
+    document.getElementById("skillsFeaturedSpotlights").innerHTML = featuredSkills.length
+      ? featuredSkills.map((skill) => `
         <div class="skills-spotlight">
-          <div class="skill-card__eyebrow">${escapeHtml(openclaw.gateway_url || "OpenClaw skill")}</div>
-          <div class="skills-spotlight__title">${escapeHtml(featured.display_name || featured.name)}</div>
-          <div class="skills-spotlight__body">${escapeHtml(featured.description || "-")}</div>
+          <div class="skill-card__eyebrow">${escapeHtml(skill.name === "silicaclaw-owner-push" ? t("labels.skillsAutoPush") : t("labels.skillsBroadcastLearning"))}</div>
+          <div class="skills-spotlight__title">${escapeHtml(skill.display_name || skill.name)}</div>
+          <div class="skills-spotlight__body">${escapeHtml(skill.description || "-")}</div>
           <div class="skill-card__tags">
-            <span class="${featured.installed_in_openclaw ? "tag-chip emphasis" : "tag-chip muted"}">${featured.installed_in_openclaw ? t("common.yes") : t("hints.skillsNotInstalled")}</span>
-            ${(featured.capabilities || []).slice(0, 8).map((item) => `<span class="tag-chip">${escapeHtml(String(item))}</span>`).join("")}
+            <span class="${skill.update_available ? "tag-chip warn" : skill.installed_in_openclaw ? "tag-chip emphasis" : "tag-chip muted"}">${skill.update_available ? t("labels.skillsUpdateAvailable") : skill.installed_in_openclaw ? `${t("labels.skillsStatus")}: ${t("common.yes")}` : t("hints.skillsNotInstalled")}</span>
+            ${(skill.capabilities || []).slice(0, 8).map((item) => `<span class="tag-chip">${escapeHtml(String(item))}</span>`).join("")}
           </div>
         </div>
-      `
+      `).join("")
       : `<div class="skills-empty">${t("hints.skillsNoBundled")}</div>`;
 
-    document.getElementById("skillsBundledGrid").innerHTML = bundled.length
-      ? bundled.map((skill) => renderSkillCard(skill, {
+    document.getElementById("skillsBundledGrid").innerHTML = bundledSorted.length
+      ? bundledSorted.map((skill) => renderSkillCard(skill, {
           eyebrow: skill.install_mode === "workspace" || skill.install_mode === "legacy" ? skill.install_mode : "bundled",
-          statusText: skill.installed_in_openclaw ? `${t("labels.skillsStatus")}: ${t("common.yes")}` : t("hints.skillsNotInstalled"),
+          statusText: skill.update_available
+            ? t("labels.skillsUpdateAvailable")
+            : skill.installed_in_openclaw
+              ? `${t("labels.skillsStatus")}: ${t("common.yes")}`
+              : t("hints.skillsNotInstalled"),
+          installable: true,
+          updateAvailable: skill.update_available,
+          installedVersion: skill.installed_version,
+          bundledVersion: skill.version,
         })).join("")
       : `<div class="skills-empty">${t("hints.skillsNoBundled")}</div>`;
 
-    document.getElementById("skillsInstalledGrid").innerHTML = installed.length
-      ? installed.map((skill) => renderSkillCard(skill, {
+    document.getElementById("skillsInstalledGrid").innerHTML = installedSorted.length
+      ? installedSorted.map((skill) => renderSkillCard(skill, {
           eyebrow: skill.install_mode || "installed",
-          statusText: `${t("labels.skillsStatus")}: ${escapeHtml(String(skill.install_mode || "-"))}`,
+          statusText: skill.update_available
+            ? t("labels.skillsUpdateAvailable")
+            : `${t("labels.skillsStatus")}: ${escapeHtml(String(skill.install_mode || "-"))}`,
+          updateAvailable: skill.update_available,
+          installedVersion: skill.version,
+          bundledVersion: skill.bundled_version,
         })).join("")
       : `<div class="skills-empty">${t("hints.skillsNoInstalled")}</div>`;
+
+    document.getElementById("skillsDialogueGrid").innerHTML = featuredSkills.length
+      ? featuredSkills.map((skill) => renderDialogueCard(skill)).join("")
+      : `<div class="skills-empty">${t("hints.skillsNoDialogueExamples")}</div>`;
 
     const installBtn = document.getElementById("skillsInstallBtn");
     installBtn.textContent = !openclawDetected
       ? t("actions.openclawNotInstalled")
       : !openclawRunning
         ? t("actions.openclawNotRunning")
-        : featured?.installed_in_openclaw
-          ? t("actions.openclawSkillLearned")
-          : t("actions.learnOpenClawSkill");
-    installBtn.disabled = !openclawDetected || !openclawRunning || !!featured?.installed_in_openclaw;
-    document.getElementById("skillsFeedback").textContent = featured?.installed_in_openclaw
+        : bundledUpdateCount > 0
+          ? t("actions.updateSilicaClawSkills")
+        : allFeaturedInstalled
+          ? t("actions.silicaClawSkillsInstalled")
+          : t("actions.installSilicaClawSkills");
+    installBtn.disabled = !openclawDetected || !openclawRunning || (allFeaturedInstalled && bundledUpdateCount === 0);
+    document.getElementById("skillsFeedback").textContent = allFeaturedInstalled && bundledUpdateCount === 0
       ? t("feedback.openclawSkillInstalled")
       : installAction.recommended_command || t("common.ready");
   }

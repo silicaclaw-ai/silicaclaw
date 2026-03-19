@@ -151,8 +151,10 @@ export function createOverviewController({
     setOverviewMode(heroModeText);
     document.getElementById("heroMode").textContent = heroModeText;
     document.getElementById("heroAdapter").textContent = heroAdapterText;
-    document.getElementById("heroRelay").textContent = heroRelayText;
-    document.getElementById("heroRoom").textContent = heroRoomText;
+    const heroRelayEl = document.getElementById("heroRelay");
+    const heroRoomEl = document.getElementById("heroRoom");
+    if (heroRelayEl) heroRelayEl.textContent = heroRelayText;
+    if (heroRoomEl) heroRoomEl.textContent = heroRoomText;
     document.getElementById("overviewModeHint").textContent = t("overview.modeCurrentSource", {
       mode: describeCurrentMode(t, heroModeText),
       hint: t("overview.modeCacheHint"),

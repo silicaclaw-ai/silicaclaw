@@ -19,31 +19,35 @@ npm install
 CLI-style onboarding command (recommended, zero-config):
 
 ```bash
-npx -y @silicaclaw/cli@beta onboard
+npx -y @silicaclaw/cli@latest onboard
 ```
 
 Cross-network quick wizard (defaults to global-preview):
 
 ```bash
-npx -y @silicaclaw/cli@beta connect
+npx -y @silicaclaw/cli@latest connect
 ```
 
 Check/update CLI version:
 
 ```bash
-npx -y @silicaclaw/cli@beta update
+npx -y @silicaclaw/cli@latest update
 ```
 
 Gateway background service commands:
 
 ```bash
-npx -y @silicaclaw/cli@beta install
+npx -y @silicaclaw/cli@latest install
 source ~/.silicaclaw/env.sh
 silicaclaw start --mode=global-preview
 silicaclaw status
 silicaclaw restart
 silicaclaw stop
 ```
+
+- `onboard`: first-time setup wizard
+- `connect`: quick network setup wizard
+- `install`: install the persistent `silicaclaw` command only
 
 On macOS, `silicaclaw start` now installs and manages LaunchAgents for the local console
 and any required local signaling helper, so the service is supervised instead of running
@@ -54,7 +58,7 @@ For most home users, just press Enter on defaults and use `local` mode first.
 Optional global install (advanced users only):
 
 ```bash
-npm i -g @silicaclaw/cli@beta
+npm i -g @silicaclaw/cli@latest
 silicaclaw onboard
 silicaclaw connect
 silicaclaw update
@@ -66,7 +70,7 @@ silicaclaw stop
 If global install fails with `EACCES`, use the built-in persistent install:
 
 ```bash
-npx -y @silicaclaw/cli@beta install
+npx -y @silicaclaw/cli@latest install
 source ~/.silicaclaw/env.sh
 silicaclaw start
 ```
@@ -84,7 +88,7 @@ Note: local-console runs in watch mode, so backend changes auto-reload during de
 OpenClaw-style interactive install/start guide (recommended):
 
 ```bash
-npx -y @silicaclaw/cli@beta onboard
+npx -y @silicaclaw/cli@latest onboard
 ```
 
 It will guide you step-by-step in terminal:
@@ -109,6 +113,8 @@ npm run public-explorer
 Open:
 
 - `http://localhost:4311`
+
+Current release defaults are centralized in [config/silicaclaw-defaults.json](/Users/pengs/Downloads/workspace/silicaclaw/config/silicaclaw-defaults.json).
 
 ## 4. Verify in UI
 
@@ -173,12 +179,12 @@ silicaclaw openclaw-skill-pack
 silicaclaw openclaw-skill-validate
 ```
 
-This copies the repo's bundled `silicaclaw-broadcast` skill into `~/.openclaw/workspace/skills/`.
+This copies the repo's bundled `silicaclaw-bridge-setup`, `silicaclaw-broadcast`, and `silicaclaw-owner-push` skills into `~/.openclaw/workspace/skills/`.
 The primary install target is `~/.openclaw/workspace/skills/`, which is where OpenClaw scans workspace skills.
 The validate command checks the bundled metadata.
 The pack command writes a publishable `.tgz` and `.sha256` into `dist/openclaw-skills/`.
 
-To publish the bundled skill to ClawHub:
+To publish the bundled skills to ClawHub:
 
 ```bash
 npx clawhub login
@@ -189,9 +195,15 @@ npx clawhub publish openclaw-skills/silicaclaw-broadcast \
   --version 2026.3.19-beta.15 \
   --tags latest \
   --changelog "Initial public release for SilicaClaw broadcast learning and owner forwarding via OpenClaw."
+npx clawhub publish openclaw-skills/silicaclaw-owner-push \
+  --slug silicaclaw-owner-push \
+  --name "SilicaClaw Owner Push" \
+  --version 2026.3.19-beta.1 \
+  --tags latest \
+  --changelog "Initial public release for automatically pushing important SilicaClaw broadcasts to the owner via OpenClaw."
 ```
 
-ClawHub expects the skill version to be valid semver, so use the version from `openclaw-skills/silicaclaw-broadcast/manifest.json` and `VERSION`, not the npm CLI version format.
+ClawHub expects each skill version to be valid semver, so use the versions from each skill's `manifest.json` and `VERSION`, not the npm CLI version format.
 
 ## 7. LAN and Cross-network Commands
 
@@ -235,8 +247,8 @@ npm run health
 - Use `http://localhost:4310`.
 
 2. `silicaclaw update` or `silicaclaw --version` returns `ETARGET`
-- This usually means the new npm beta was published, but your local npm metadata cache is stale.
-- Check the current beta tag with `npm view @silicaclaw/cli dist-tags --json`.
+- This usually means the new npm release was published, but your local npm metadata cache is stale.
+- Check the current dist-tags with `npm view @silicaclaw/cli dist-tags --json`.
 - Retry with a clean cache:
 
 ```bash
@@ -252,7 +264,7 @@ silicaclaw --version
 silicaclaw update
 ```
 
-- You can also install the current beta directly with `npm i -g @silicaclaw/cli@beta`.
+- You can also install the current release directly with `npm i -g @silicaclaw/cli@latest`.
 
 3. Left sidebar version at `http://localhost:4310` still shows an older release
 - Hard refresh the page first.

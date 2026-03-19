@@ -12,6 +12,7 @@ import { JsonMessageEnvelopeCodec } from "./codec/jsonMessageEnvelopeCodec";
 import { JsonTopicCodec } from "./codec/jsonTopicCodec";
 import { UdpLanBroadcastTransport } from "./transport/udpLanBroadcastTransport";
 import { HeartbeatPeerDiscovery } from "./discovery/heartbeatPeerDiscovery";
+import defaults from "../../../config/silicaclaw-defaults.json";
 
 type RealNetworkAdapterPreviewOptions = {
   peerId?: string;
@@ -124,7 +125,7 @@ export class RealNetworkAdapterPreview implements NetworkAdapter {
 
   constructor(options: RealNetworkAdapterPreviewOptions = {}) {
     this.peerId = options.peerId ?? `peer-${process.pid}-${Math.random().toString(36).slice(2, 10)}`;
-    this.namespace = this.normalizeNamespace(options.namespace ?? "silicaclaw.preview");
+    this.namespace = this.normalizeNamespace(options.namespace ?? defaults.network.default_namespace);
     this.transport = options.transport ?? new UdpLanBroadcastTransport();
     this.envelopeCodec = options.envelopeCodec ?? new JsonMessageEnvelopeCodec();
     this.topicCodec = options.topicCodec ?? new JsonTopicCodec();
@@ -424,7 +425,7 @@ export class RealNetworkAdapterPreview implements NetworkAdapter {
 
   private normalizeNamespace(namespace: string): string {
     const normalized = namespace.trim();
-    return normalized.length > 0 ? normalized : "silicaclaw.preview";
+    return normalized.length > 0 ? normalized : defaults.network.default_namespace;
   }
 
   private errorMessage(error: unknown): string {

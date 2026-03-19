@@ -8,6 +8,7 @@ import {
 import { TopicCodec } from "./abstractions/topicCodec";
 import { JsonMessageEnvelopeCodec } from "./codec/jsonMessageEnvelopeCodec";
 import { JsonTopicCodec } from "./codec/jsonTopicCodec";
+import defaults from "../../../config/silicaclaw-defaults.json";
 
 type RelayPreviewOptions = {
   peerId?: string;
@@ -196,7 +197,8 @@ export class RelayPreviewAdapter implements NetworkAdapter {
 
   constructor(options: RelayPreviewOptions = {}) {
     this.peerId = options.peerId ?? `peer-${process.pid}-${Math.random().toString(36).slice(2, 10)}`;
-    this.namespace = String(options.namespace || "silicaclaw.preview").trim() || "silicaclaw.preview";
+    this.namespace =
+      String(options.namespace || defaults.network.default_namespace).trim() || defaults.network.default_namespace;
     this.signalingEndpoints = dedupe(
       (options.signalingUrls && options.signalingUrls.length > 0
         ? options.signalingUrls
@@ -204,7 +206,8 @@ export class RelayPreviewAdapter implements NetworkAdapter {
     );
     this.activeEndpoint = this.signalingEndpoints[0] || "http://localhost:4510";
     this.activeEndpointIndex = 0;
-    this.room = String(options.room || "silicaclaw-global-preview").trim() || "silicaclaw-global-preview";
+    this.room =
+      String(options.room || defaults.network.global_preview.room).trim() || defaults.network.global_preview.room;
     this.seedPeers = dedupe(options.seedPeers || []);
     this.bootstrapHints = dedupe(options.bootstrapHints || []);
     this.bootstrapSources = dedupe(options.bootstrapSources || []);

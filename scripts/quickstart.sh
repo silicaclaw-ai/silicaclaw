@@ -7,6 +7,10 @@ WORK_DIR="$ROOT_DIR"
 IS_NPX_MODE=0
 DEFAULT_MODE_PICK="${QUICKSTART_DEFAULT_MODE:-3}"
 CONNECT_MODE="${QUICKSTART_CONNECT_MODE:-0}"
+DEFAULTS_FILE="$ROOT_DIR/config/silicaclaw-defaults.json"
+DEFAULT_LOCAL_CONSOLE_PORT="$(node -p "require(process.argv[1]).ports.local_console" "$DEFAULTS_FILE")"
+DEFAULT_GLOBAL_SIGNALING_URL="$(node -p "require(process.argv[1]).network.global_preview.relay_url" "$DEFAULTS_FILE")"
+DEFAULT_GLOBAL_ROOM="$(node -p "require(process.argv[1]).network.global_preview.room" "$DEFAULTS_FILE")"
 
 case "$DEFAULT_MODE_PICK" in
   1|2|3) ;;
@@ -144,7 +148,7 @@ install_npx_alias() {
   rc_file="$(detect_shell_rc_file)"
   local begin_mark="# >>> silicaclaw npx alias >>>"
   local end_mark="# <<< silicaclaw npx alias <<<"
-  local alias_line="alias silicaclaw='npx -y @silicaclaw/cli@beta'"
+  local alias_line="alias silicaclaw='npx -y @silicaclaw/cli@latest'"
 
   mkdir -p "$(dirname "$rc_file")"
   touch "$rc_file"
@@ -345,14 +349,14 @@ EOF"
 
   if [ "$INSTALLED" != "1" ]; then
     echo "你也可以选择无需全局安装的命令别名模式。"
-    if ask_yes_no "是否自动写入 shell alias（silicaclaw -> npx @silicaclaw/cli@beta）？" "Y"; then
+    if ask_yes_no "是否自动写入 shell alias（silicaclaw -> npx @silicaclaw/cli@latest）？" "Y"; then
       if install_npx_alias; then
         success "alias 安装完成"
       else
         note "alias 安装失败。继续使用 npx 即可。"
       fi
     else
-      kv "临时用法" "npx @silicaclaw/cli@beta <command>"
+      kv "临时用法" "npx @silicaclaw/cli@latest <command>"
     fi
   fi
 fi
@@ -386,7 +390,7 @@ fi
 NETWORK_MODE="local"
 NETWORK_ADAPTER="local-event-bus"
 WEBRTC_SIGNALING_URL_VALUE=""
-WEBRTC_ROOM_VALUE="silicaclaw-global-preview"
+WEBRTC_ROOM_VALUE="$DEFAULT_GLOBAL_ROOM"
 AUTO_START_SIGNALING=0
 
 case "$MODE_PICK" in
@@ -398,9 +402,9 @@ case "$MODE_PICK" in
     NETWORK_MODE="global-preview"
     NETWORK_ADAPTER="relay-preview"
     PUBLIC_IP="$(detect_public_ip)"
-    SIGNALING_DEFAULT="${WEBRTC_SIGNALING_URL:-https://relay.silicaclaw.com}"
+    SIGNALING_DEFAULT="${WEBRTC_SIGNALING_URL:-$DEFAULT_GLOBAL_SIGNALING_URL}"
     if [ -n "$PUBLIC_IP" ]; then
-      SIGNALING_DEFAULT="https://relay.silicaclaw.com"
+      SIGNALING_DEFAULT="$DEFAULT_GLOBAL_SIGNALING_URL"
     fi
     note "signaling 地址需要所有节点都可访问。"
     if [ -n "$PUBLIC_IP" ]; then
@@ -428,8 +432,8 @@ case "$MODE_PICK" in
       kv "本地 relay" "PORT=$SIGNALING_PORT_VALUE"
     fi
 
-    read -r -p "请输入 room（默认 silicaclaw-global-preview）: " WEBRTC_ROOM_VALUE_INPUT || true
-    WEBRTC_ROOM_VALUE="${WEBRTC_ROOM_VALUE_INPUT:-silicaclaw-global-preview}"
+    read -r -p "请输入 room（默认 ${DEFAULT_GLOBAL_ROOM}）: " WEBRTC_ROOM_VALUE_INPUT || true
+    WEBRTC_ROOM_VALUE="${WEBRTC_ROOM_VALUE_INPUT:-$DEFAULT_GLOBAL_ROOM}"
     ;;
   *)
     NETWORK_MODE="local"
@@ -481,7 +485,7 @@ else
   run_cmd "$GATEWAY_CMD"
   echo ""
   success "已启动完成"
-  kv "打开" "http://localhost:4310"
+  kv "打开" "http://localhost:${DEFAULT_LOCAL_CONSOLE_PORT}"
   echo ""
   echo "常用命令："
   kv "Status" "silicaclaw status"

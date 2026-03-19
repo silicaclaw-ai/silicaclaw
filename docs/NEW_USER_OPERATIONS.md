@@ -11,7 +11,7 @@ If you have not installed yet, start here first:
 Install the persistent command once:
 
 ```bash
-npx -y @silicaclaw/cli@beta install
+npx -y @silicaclaw/cli@latest install
 ```
 
 Then activate it in the current shell:
@@ -235,7 +235,7 @@ After update, refresh the browser if the page is already open.
 Run:
 
 ```bash
-npx -y @silicaclaw/cli@beta install
+npx -y @silicaclaw/cli@latest install
 source ~/.silicaclaw/env.sh
 ```
 
@@ -281,7 +281,7 @@ If A and B are both connected, this should show at least 2 peers.
 
 If you want the shortest repeatable path:
 
-1. `npx -y @silicaclaw/cli@beta install`
+1. `npx -y @silicaclaw/cli@latest install`
 2. `silicaclaw start`
 3. Open `http://localhost:4310`
 4. Save profile

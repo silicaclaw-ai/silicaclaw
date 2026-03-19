@@ -190,17 +190,31 @@ root.innerHTML = appTemplate;
         document.getElementById('skillsBannerTitle').textContent = t('hints.skillsBannerTitle');
         document.getElementById('skillsBannerBody').textContent = t('hints.skillsBannerBody');
         document.getElementById('skillsBannerRuntimeLabel').textContent = t('hints.skillsBannerRuntime');
+        document.getElementById('skillsActionEyebrow').textContent = t('labels.skillsRecommendedAction');
+        document.getElementById('skillsActionTitle').textContent = t('hints.skillsActionInstallTitle');
+        document.getElementById('skillsActionBody').textContent = t('hints.skillsActionInstallBody');
+        document.getElementById('skillsActionState').textContent = t('labels.skillsStateReady');
+        document.getElementById('skillsJumpEyebrow').textContent = t('labels.skillsBrowseAreas');
+        document.getElementById('skillsJumpTitle').textContent = t('hints.skillsJumpTitle');
+        document.getElementById('skillsJumpFeatured').textContent = t('labels.skillsFeatured');
+        document.getElementById('skillsJumpBundled').textContent = t('labels.skillsBundled');
+        document.getElementById('skillsJumpInstalled').textContent = t('labels.skillsInstalled');
+        document.getElementById('skillsJumpDialogue').textContent = t('labels.skillsDialogue');
         document.getElementById('skillsFeaturedTitle').textContent = t('labels.skillsFeatured');
         document.getElementById('skillsFeaturedHint').textContent = t('hints.skillsFeaturedHint');
         document.getElementById('skillsBundledTitle').textContent = t('labels.skillsBundled');
         document.getElementById('skillsBundledHint').textContent = t('hints.skillsBundledHint');
+        document.getElementById('skillsDialogueTitle').textContent = t('labels.skillsDialogue');
+        document.getElementById('skillsDialogueHint').textContent = t('hints.skillsDialogueHint');
         document.getElementById('skillsInstalledTitle').textContent = t('labels.skillsInstalled');
         document.getElementById('skillsInstalledHint').textContent = t('hints.skillsInstalledHint');
-        document.getElementById('skillsInstallBtn').textContent = t('actions.learnOpenClawSkill');
+        document.getElementById('skillsInstallBtn').textContent = t('actions.installSilicaClawSkills');
         document.getElementById('socialIntegrationTitle').textContent = t('labels.integrationStatus');
         document.querySelector('#socialStatusLine').textContent = t('hints.checkingIntegration');
         document.getElementById('socialRuntimeSummaryTitle').textContent = t('labels.whatIsActive');
         document.getElementById('socialBridgeTitle').textContent = t('labels.identityBinding');
+        document.getElementById('socialCapabilityTitle').textContent = t('labels.ownerCommunicationCapabilities');
+        document.getElementById('socialCapabilityHint').textContent = t('hints.ownerCommunicationCapabilitiesHint');
         document.getElementById('socialOwnerDeliveryTitle').textContent = t('labels.ownerDelivery');
         document.getElementById('socialSkillLearningTitle').textContent = t('labels.openclawSkillLearning');
         document.getElementById('socialMessagePathTitle').textContent = t('labels.messagePath');
@@ -409,6 +423,7 @@ root.innerHTML = appTemplate;
       const refreshNetwork = networkController.refreshNetwork;
       const refreshPeers = networkController.refreshPeers;
       const refreshDiscovery = networkController.refreshDiscovery;
+      const getQuickConnectDefaults = networkController.getQuickConnectDefaults;
 
       const refreshSocial = socialController.refreshSocial;
       const exportSocialTemplate = socialController.exportSocialTemplate;
@@ -465,6 +480,7 @@ root.innerHTML = appTemplate;
         t,
         toast,
         getSocialTemplate: () => socialTemplate,
+        getQuickConnectDefaults,
         setAgentsPage: (value) => { agentsPage = value; },
         getSocialMessagesCache: () => socialMessagesCache,
         toPrettyJson,

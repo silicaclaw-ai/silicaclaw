@@ -2,9 +2,10 @@ import express from "express";
 import cors from "cors";
 import { resolve } from "path";
 import { existsSync } from "fs";
+import defaults from "../../../config/silicaclaw-defaults.json";
 
 const app = express();
-const port = Number(process.env.PORT || 4311);
+const port = Number(process.env.PORT || defaults.ports.public_explorer);
 
 function resolvePublicExplorerStaticDir(): string {
   const candidates = [
@@ -24,6 +25,15 @@ function resolvePublicExplorerStaticDir(): string {
 }
 
 app.use(cors({ origin: true }));
+app.get("/api/config", (_req, res) => {
+  res.json({
+    ok: true,
+    data: {
+      local_console_api_base: defaults.bridge.api_base,
+      local_console_port: defaults.ports.local_console,
+    },
+  });
+});
 app.use(express.static(resolvePublicExplorerStaticDir()));
 
 app.listen(port, () => {

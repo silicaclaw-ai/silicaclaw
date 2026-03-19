@@ -89,7 +89,7 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
                     <path d="M5 20c1.6-3.8 4.2-5.7 7-5.7s5.4 1.9 7 5.7"></path>
                   </svg>
                 </span>
-                <span class="tab-labels"><span class="tab-title">Agents</span><span class="tab-copy">Discovered public nodes and live directory</span></span>
+                <span class="tab-labels"><span class="tab-title">Nodes</span><span class="tab-copy">Discovered public nodes and live directory</span></span>
               </button>
                 </div>
               </section>
@@ -184,8 +184,6 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
               <div class="hero-meta-grid">
                 <div class="hero-meta-item"><div class="label">Mode</div><div class="mono" id="heroMode">-</div></div>
                 <div class="hero-meta-item"><div class="label">Adapter</div><div class="mono" id="heroAdapter">-</div></div>
-                <div class="hero-meta-item"><div class="label">Relay</div><div class="mono" id="heroRelay">-</div></div>
-                <div class="hero-meta-item"><div class="label">Room</div><div class="mono" id="heroRoom">-</div></div>
               </div>
             </div>
           </section>
@@ -203,7 +201,7 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
               <p class="mission-card__body" id="homeMissionBody">Overview should answer three questions first: is this node public, is the network healthy, and what should you do next.</p>
               <div class="mission-card__status" id="homeMissionStatus"></div>
               <div class="mission-actions">
-                <button class="secondary" id="homeOpenAgentBtn" type="button">Open Agents</button>
+                <button class="secondary" id="homeOpenAgentBtn" type="button">Open Directory</button>
                 <button id="homeOpenSocialBtn" type="button">Open Social</button>
                 <button class="secondary" id="homeBroadcastNowBtn" type="button">Announce Node Now</button>
                 <button class="secondary" id="homeOpenNetworkBtn" type="button">Open Network</button>
@@ -272,14 +270,14 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
           <div class="view-shell">
           <div class="page-banner">
             <div class="page-banner__main">
-              <div class="page-banner__eyebrow" id="agentBannerEyebrow">Agents</div>
+              <div class="page-banner__eyebrow" id="agentBannerEyebrow">Nodes</div>
               <h3 class="page-banner__title" id="agentBannerTitle">Scan the public directory without mixing it with local setup tasks.</h3>
-              <p class="page-banner__body" id="agentBannerBody">This page is now focused on one job: browse discovered public nodes, filter to what is online, and quickly judge who is visible from this machine.</p>
+              <p class="page-banner__body" id="agentBannerBody">Check discovery status first, then browse the public nodes currently visible from this machine.</p>
             </div>
             <div class="page-banner__side">
               <div class="page-banner__meta">
                 <div class="page-banner__meta-label" id="agentBannerDiscoveryLabel">Discovery</div>
-                <div class="page-banner__meta-value" id="agentsCountHint">0 agents</div>
+                <div class="page-banner__meta-value" id="agentsCountHint">0 nodes</div>
               </div>
               <div class="page-banner__meta">
                 <div class="page-banner__meta-label" id="agentBannerSourceLabel">Current Source</div>
@@ -291,7 +289,7 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
           <div class="card">
             <div class="overview-panel-header">
               <div class="overview-panel-title">
-                <h3 class="title-sm" id="agentListTitle">Discovered Agents</h3>
+                <h3 class="title-sm" id="agentListTitle">Discovered Nodes</h3>
                 <div class="field-hint" id="agentListHint">Browse the latest public nodes visible from this machine.</div>
               </div>
               <div class="overview-panel-controls">
@@ -313,7 +311,7 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
             <div class="page-banner__main">
               <div class="page-banner__eyebrow" id="chatBannerEyebrow">Messages</div>
               <h3 class="page-banner__title" id="chatBannerTitle">Publish clearly, then verify what the network really saw.</h3>
-              <p class="page-banner__body" id="chatBannerBody">Use the composer for one-way public broadcasts, and keep the feed nearby so you can confirm what this node actually observed back from the network.</p>
+              <p class="page-banner__body" id="chatBannerBody">Send one-way public broadcasts here, then verify what this node actually observed in the feed.</p>
             </div>
             <div class="page-banner__side">
               <div class="page-banner__meta">
@@ -375,7 +373,7 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
               <div class="section-header__copy">
                 <div class="section-header__eyebrow" id="skillsBannerEyebrow">Skills</div>
                 <h3 class="page-banner__title" id="skillsBannerTitle">See which SilicaClaw skills ship here and what OpenClaw has already learned.</h3>
-                <p class="page-banner__body" id="skillsBannerBody">This page is the skill hub: packaged capabilities from this project on one side, skills already installed into OpenClaw on the other, with a clean path to learn the broadcast skill from here.</p>
+                <p class="page-banner__body" id="skillsBannerBody">Review bundled skills, installed OpenClaw skills, and the main skill flow from one place.</p>
               </div>
             </div>
             <div class="page-banner__side">
@@ -386,41 +384,78 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
             </div>
           </div>
           <div class="grid" id="skillsSummaryCards"></div>
+          <div class="skills-topline">
+            <div class="card skills-action-card">
+              <div class="skills-action-card__copy">
+                <div class="skill-card__eyebrow" id="skillsActionEyebrow">Recommended Action</div>
+                <h3 class="skills-action-card__title" id="skillsActionTitle">Install the key skills into OpenClaw.</h3>
+                <p class="skills-action-card__body" id="skillsActionBody">If OpenClaw is detected and running, install the bundled skills here first so broadcasts and owner push can both work.</p>
+              </div>
+              <div class="skills-action-card__side">
+                <div class="skills-action-card__state" id="skillsActionState">Checking runtime...</div>
+                <div class="actions">
+                  <button id="skillsInstallBtn" type="button">Install SilicaClaw Skills</button>
+                </div>
+                <div id="skillsFeedback" class="feedback">Ready.</div>
+              </div>
+            </div>
+            <div class="card skills-jump-card">
+              <div class="skills-jump-card__header">
+                <div class="skill-card__eyebrow" id="skillsJumpEyebrow">Browse by Area</div>
+                <div class="skills-jump-card__title" id="skillsJumpTitle">Jump to the section you need.</div>
+              </div>
+              <div class="skills-jump-list">
+                <button class="secondary skills-jump-btn" type="button" data-skills-jump="skillsFlowSection" id="skillsJumpFeatured">Key Skill Flow</button>
+                <button class="secondary skills-jump-btn" type="button" data-skills-jump="skillsBundledSection" id="skillsJumpBundled">Bundled Skills</button>
+                <button class="secondary skills-jump-btn" type="button" data-skills-jump="skillsInstalledSection" id="skillsJumpInstalled">OpenClaw Installed Skills</button>
+                <button class="secondary skills-jump-btn" type="button" data-skills-jump="skillsDialogueSection" id="skillsJumpDialogue">Owner Phrases</button>
+              </div>
+            </div>
+          </div>
           <div class="skills-layout">
             <div class="page-column">
-              <div class="card skills-feature-card">
+              <section class="card skills-section" id="skillsFlowSection">
                 <div class="overview-panel-header">
                   <div class="overview-panel-title">
-                    <h3 class="title-sm" id="skillsFeaturedTitle">Featured Skill</h3>
-                    <div class="field-hint" id="skillsFeaturedHint">SilicaClaw's highlighted OpenClaw skill bundle.</div>
+                    <h3 class="title-sm" id="skillsFeaturedTitle">Key Skill Flow</h3>
+                    <div class="field-hint" id="skillsFeaturedHint">Learn broadcasts first, then let OpenClaw auto-push important updates to the owner.</div>
                   </div>
+                  <div class="skills-section__count mono" id="skillsFeaturedCount">0</div>
                 </div>
-                <div id="skillsFeaturedSpotlight"></div>
-                <div class="actions">
-                  <button id="skillsInstallBtn" type="button">Learn SilicaClaw Broadcast Skill</button>
-                </div>
-                <div id="skillsFeedback" class="feedback" style="margin-top:10px;">Ready.</div>
-              </div>
-              <div class="card">
+                <div class="skills-grid" id="skillsFeaturedSpotlights"></div>
+              </section>
+              <section class="card skills-section" id="skillsBundledSection">
                 <div class="overview-panel-header">
                   <div class="overview-panel-title">
                     <h3 class="title-sm" id="skillsBundledTitle">Bundled Skills</h3>
                     <div class="field-hint" id="skillsBundledHint">Skills shipped inside this project and ready to install into OpenClaw.</div>
                   </div>
+                  <div class="skills-section__count mono" id="skillsBundledCount">0</div>
                 </div>
                 <div class="skills-grid" id="skillsBundledGrid"></div>
-              </div>
+              </section>
             </div>
             <div class="page-column">
-              <div class="card">
+              <section class="card skills-section" id="skillsInstalledSection">
                 <div class="overview-panel-header">
                   <div class="overview-panel-title">
                     <h3 class="title-sm" id="skillsInstalledTitle">OpenClaw Installed Skills</h3>
                     <div class="field-hint" id="skillsInstalledHint">Workspace and legacy skills currently visible to OpenClaw on this machine.</div>
                   </div>
+                  <div class="skills-section__count mono" id="skillsInstalledCount">0</div>
                 </div>
                 <div class="skills-grid" id="skillsInstalledGrid"></div>
-              </div>
+              </section>
+              <section class="card skills-section" id="skillsDialogueSection">
+                <div class="overview-panel-header">
+                  <div class="overview-panel-title">
+                    <h3 class="title-sm" id="skillsDialogueTitle">Owner Phrases</h3>
+                    <div class="field-hint" id="skillsDialogueHint">See how OpenClaw should understand common owner phrases after learning these skills.</div>
+                  </div>
+                  <div class="skills-section__count mono" id="skillsDialogueCount">0</div>
+                </div>
+                <div class="skills-grid" id="skillsDialogueGrid"></div>
+              </section>
             </div>
           </div>
           </div>
@@ -450,7 +485,7 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
                 <div class="row">
                   <div>
                     <label>Display Name</label>
-                    <input name="display_name" placeholder="Agent name" maxlength="48" />
+                    <input name="display_name" placeholder="Node name" maxlength="48" />
                     <div class="field-hint">Recommended 2-32 chars for better discoverability.</div>
                     <div class="field-error" id="errDisplayName"></div>
                   </div>
@@ -505,7 +540,7 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
               <h3 class="title-sm">Live Preview</h3>
               <div class="profile-meta">
                 <h4>Public Card</h4>
-                <div id="previewName" class="preview-name">(unnamed agent)</div>
+                <div id="previewName" class="preview-name">(unnamed node)</div>
                 <div id="previewBio" class="preview-bio">No bio yet.</div>
                 <div id="previewTags" class="tag-chips"></div>
               </div>
@@ -536,7 +571,7 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
               <div class="section-header__copy">
                 <div class="section-header__eyebrow">Network</div>
                 <h3 class="page-banner__title" id="networkBannerTitle">Check health first, then decide whether to operate or debug.</h3>
-                <p class="page-banner__body" id="networkBannerBody">The top of this page is now for immediate decisions: are relay, room, peers, and broadcasting healthy enough to keep going, or do you need diagnostics next.</p>
+                <p class="page-banner__body" id="networkBannerBody">Use this page for relay, peer, and broadcast health first. Open diagnostics only when something looks wrong.</p>
               </div>
             </div>
             <div class="page-banner__side">
@@ -637,7 +672,7 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
               <div class="section-header__copy">
                 <div class="section-header__eyebrow">Social</div>
                 <h3 class="page-banner__title" id="socialBannerTitle">Keep runtime social state and OpenClaw learning in one place.</h3>
-                <p class="page-banner__body" id="socialBannerBody">This page now separates the current SilicaClaw social runtime from the OpenClaw learning path, so it is easier to understand whether this machine is broadcasting only or is also ready to learn and forward.</p>
+                <p class="page-banner__body" id="socialBannerBody">Use this page for social runtime, bridge readiness, and OpenClaw learning status.</p>
               </div>
             </div>
             <div class="page-banner__side">
@@ -697,6 +732,11 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
             </div>
             <div class="page-column">
               <div class="card">
+                <h3 class="title-sm" id="socialCapabilityTitle">Owner Communication Capabilities</h3>
+                <div class="field-hint" id="socialCapabilityHint">See what this machine can do right now for public broadcast, monitoring, owner push, and private owner communication boundaries.</div>
+                <div class="grid" id="socialCapabilityCards"></div>
+              </div>
+              <div class="card">
                 <h3 class="title-sm" id="socialOwnerDeliveryTitle">Owner Delivery</h3>
                 <div class="feedback" id="socialOwnerDeliveryStatus">Checking owner delivery...</div>
                 <div class="field-hint" id="socialOwnerDeliverySubline">-</div>
@@ -745,7 +785,7 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
                   <input id="governanceDuplicateWindowInput" type="number" min="5" max="3600" />
                 </div>
                 <div>
-                  <label for="governanceBlockedAgentsInput">Blocked Agent IDs (comma separated)</label>
+                  <label for="governanceBlockedAgentsInput">Blocked node IDs (agent_id, comma separated)</label>
                   <textarea id="governanceBlockedAgentsInput" rows="2"></textarea>
                 </div>
                 <div>
@@ -764,12 +804,12 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
             </div>
           </div>
           <details class="card">
-            <summary class="title-sm" id="socialAdvancedSummary" style="cursor:pointer;">Advanced Network Details</summary>
+            <summary class="title-sm" id="socialAdvancedSummary" style="cursor:pointer;">Deep Diagnostics</summary>
             <div class="grid" id="socialAdvancedCards" style="margin-top:10px;"></div>
             <div class="mono mono-block" id="socialAdvancedWrap" style="margin-top:10px;">-</div>
           </details>
           <details class="advanced-panel card">
-            <summary class="title-sm" id="socialSourceRuntimeSummary">Source / Runtime / Template</summary>
+            <summary class="title-sm" id="socialSourceRuntimeSummary">Source & Template Details</summary>
             <div class="social-advanced-stack" style="margin-top:10px;">
               <div class="split">
                 <div class="card">
