@@ -6,12 +6,21 @@ type RoomState = {
   peers: Record<string, { last_seen_at: number }>;
   queues: Record<string, any[]>;
   relay_queues: Record<string, any[]>;
+  recent_relay_messages: Array<{
+    id: string;
+    room: string;
+    from_peer_id: string;
+    envelope: unknown;
+    at: number;
+  }>;
   signal_fingerprints: Record<string, number>;
 };
 
 const PEER_STALE_MS = 120_000;
 const SIGNAL_DEDUPE_WINDOW_MS = 60_000;
 const TOUCH_WRITE_INTERVAL_MS = 30_000;
+const RELAY_MESSAGE_BACKLOG_MAX_AGE_MS = 10 * 60_000;
+const RELAY_MESSAGE_BACKLOG_MAX_ITEMS = 200;
 
 function now(): number {
   return Date.now();
@@ -31,6 +40,7 @@ function emptyState(): RoomState {
     peers: {},
     queues: {},
     relay_queues: {},
+    recent_relay_messages: [],
     signal_fingerprints: {},
   };
 }
@@ -156,7 +166,11 @@ export class RoomRelay {
     if (request.method === "POST" && url.pathname === "/join") {
       const peerId = String(body.peer_id || "").trim();
       if (!peerId) return json({ ok: false, error: "missing_peer_id" }, { status: 400 });
+      const knownPeer = Boolean(state.peers[peerId]);
       this.touchPeer(state, peerId);
+      if (!knownPeer) {
+        state.relay_queues[peerId] = this.buildRelayBacklogForPeer(state, peerId);
+      }
       await this.persist(state);
       return json({ ok: true, peers: Object.keys(state.peers), room: roomId });
     }
@@ -209,19 +223,22 @@ export class RoomRelay {
         return json({ ok: false, error: "invalid_relay_payload" }, { status: 400 });
       }
       this.touchPeer(state, peerId);
+      const relayMessage = {
+        id: String(body.id || crypto.randomUUID()),
+        room: roomId,
+        from_peer_id: peerId,
+        envelope,
+        at: now(),
+      };
       let delivered = 0;
       for (const targetPeerId of Object.keys(state.peers)) {
         if (targetPeerId === peerId) continue;
         if (!state.relay_queues[targetPeerId]) state.relay_queues[targetPeerId] = [];
-        state.relay_queues[targetPeerId].push({
-          id: String(body.id || crypto.randomUUID()),
-          room: roomId,
-          from_peer_id: peerId,
-          envelope,
-          at: now(),
-        });
+        state.relay_queues[targetPeerId].push(relayMessage);
         delivered += 1;
       }
+      state.recent_relay_messages.push(relayMessage);
+      this.trimRelayBacklog(state);
       await this.persist(state);
       return json({ ok: true, delivered_to: delivered });
     }
@@ -230,7 +247,18 @@ export class RoomRelay {
   }
 
   private async loadState(): Promise<RoomState> {
-    return (await this.storage.get<RoomState>("room-state")) || emptyState();
+    const raw = await this.storage.get<Partial<RoomState>>("room-state");
+    if (!raw) {
+      return emptyState();
+    }
+    return {
+      peers: raw.peers && typeof raw.peers === "object" ? raw.peers : {},
+      queues: raw.queues && typeof raw.queues === "object" ? raw.queues : {},
+      relay_queues: raw.relay_queues && typeof raw.relay_queues === "object" ? raw.relay_queues : {},
+      recent_relay_messages: Array.isArray(raw.recent_relay_messages) ? raw.recent_relay_messages : [],
+      signal_fingerprints:
+        raw.signal_fingerprints && typeof raw.signal_fingerprints === "object" ? raw.signal_fingerprints : {},
+    };
   }
 
   private async persist(state: RoomState): Promise<void> {
@@ -262,5 +290,17 @@ export class RoomRelay {
         delete state.signal_fingerprints[key];
       }
     }
+    this.trimRelayBacklog(state);
+  }
+
+  private buildRelayBacklogForPeer(state: RoomState, peerId: string) {
+    return state.recent_relay_messages.filter((message) => message.from_peer_id !== peerId);
+  }
+
+  private trimRelayBacklog(state: RoomState): void {
+    const cutoff = now() - RELAY_MESSAGE_BACKLOG_MAX_AGE_MS;
+    state.recent_relay_messages = state.recent_relay_messages
+      .filter((message) => message.at >= cutoff)
+      .slice(-RELAY_MESSAGE_BACKLOG_MAX_ITEMS);
   }
 }

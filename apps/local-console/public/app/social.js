@@ -68,6 +68,7 @@ export function createSocialController({
 
     listEl.innerHTML = filteredMessages
       .map((item) => {
+        const visibleRemoteCount = getVisibleRemotePublicCount();
         const selfStatusChips = item.is_self
           ? `
               <span class="tag-chip" style="margin-left:8px;">${t("overview.selfMessagePublished")}</span>
@@ -77,7 +78,21 @@ export function createSocialController({
                   ? t("overview.selfMessageRemoteObserved", { count: String(item.remote_observation_count) })
                   : t("overview.selfMessageAwaitingObservation")
               }</span>
-              <span class="tag-chip" style="margin-left:8px;">${t("overview.selfMessageRemoteVisible", { count: String(getVisibleRemotePublicCount()) })}</span>
+              <span class="tag-chip" style="margin-left:8px;">${t("overview.selfMessageRemoteVisible", { count: String(visibleRemoteCount) })}</span>
+            `
+          : "";
+        const selfDeliveryHint = item.is_self
+          ? `
+              <div style="margin-top:8px; color:#90a2c3;">
+                ${
+                  item.remote_observation_count > 0
+                    ? t("overview.selfMessageDeliveryObserved", {
+                        count: String(item.remote_observation_count),
+                        visible: String(visibleRemoteCount),
+                      })
+                    : t("overview.selfMessageDeliveryPending", { count: String(visibleRemoteCount) })
+                }
+              </div>
             `
           : "";
         const observationChip = item.remote_observation_count > 0
@@ -98,6 +113,7 @@ export function createSocialController({
               <div class="mono" style="color:#90a2c3;">${new Date(item.created_at).toLocaleString()}</div>
             </div>
             <div style="margin-top:8px; line-height:1.6;">${formatMessageBody(item.body || "")}</div>
+            ${selfDeliveryHint}
           </div>
         `;
       })
