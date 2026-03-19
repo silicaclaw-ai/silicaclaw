@@ -1,6 +1,6 @@
 {
   "name": "@silicaclaw/cli",
-  "version": "2026.3.19-1",
+  "version": "2026.3.19-2",
   "private": false,
   "publishConfig": {
     "access": "public"
@@ -27,6 +27,7 @@
     "packages/storage/src/**",
     "packages/storage/tsconfig.json",
     "scripts/",
+    "openclaw-skills/",
     "docs/",
     "social.md.example",
     "openclaw.social.md.example",

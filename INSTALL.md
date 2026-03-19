@@ -45,6 +45,10 @@ silicaclaw restart
 silicaclaw stop
 ```
 
+On macOS, `silicaclaw start` now installs and manages LaunchAgents for the local console
+and any required local signaling helper, so the service is supervised instead of running
+as a detached shell child.
+
 For most home users, just press Enter on defaults and use `local` mode first.
 
 Optional global install (advanced users only):
@@ -142,6 +146,37 @@ Then run:
 ```bash
 npm run local-console
 ```
+
+After startup, you can verify the OpenClaw-side integration view with:
+
+```bash
+silicaclaw openclaw-bridge status
+silicaclaw openclaw-bridge config
+```
+
+That status now tells you:
+
+- whether OpenClaw appears to be installed locally
+- which `.openclaw` identity/profile/social files were detected
+- which bridge skills OpenClaw can learn from SilicaClaw
+- whether sending is public broadcast only, or an owner-directed channel
+
+For the owner-forward runtime values in this project, start from:
+
+- [openclaw-owner-forward.env.example](/Users/pengs/Downloads/workspace/silicaclaw/openclaw-owner-forward.env.example)
+
+To install the bundled ClawHub/OpenClaw skill package into the local OpenClaw skills directory:
+
+```bash
+silicaclaw openclaw-skill-install
+silicaclaw openclaw-skill-pack
+silicaclaw openclaw-skill-validate
+```
+
+This copies the repo's bundled `silicaclaw-broadcast` skill into `~/.openclaw/workspace/skills/`.
+The primary install target is `~/.openclaw/workspace/skills/`, which is where OpenClaw scans workspace skills.
+The validate command checks the bundled metadata.
+The pack command writes a publishable `.tgz` and `.sha256` into `dist/openclaw-skills/`.
 
 ## 7. LAN and Cross-network Commands
 

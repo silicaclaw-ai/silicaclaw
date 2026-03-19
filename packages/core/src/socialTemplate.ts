@@ -39,7 +39,7 @@ export function generateSocialMdTemplate(runtimeConfig: SocialRuntimeConfig | nu
   const mode =
     network?.mode === "local" || network?.mode === "lan" || network?.mode === "global-preview"
       ? network.mode
-      : "lan";
+      : "global-preview";
 
   const discoverable = asBool(discovery?.discoverable, true);
   const allowProfileBroadcast = asBool(discovery?.allow_profile_broadcast, true);

@@ -377,7 +377,7 @@
         flex: 1;
         overflow-y: auto;
         overflow-x: hidden;
-        padding: 0;
+        padding: 0 2px;
       }
       .sidebar-nav::-webkit-scrollbar {
         display: none;
@@ -472,6 +472,17 @@
         box-shadow:
           inset 0 1px 0 color-mix(in srgb, white 10%, transparent),
           0 10px 18px color-mix(in srgb, black 8%, transparent);
+      }
+      .nav button.active::before {
+        content: "";
+        position: absolute;
+        left: 8px;
+        top: 9px;
+        bottom: 9px;
+        width: 3px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--accent) 86%, transparent);
+        box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 28%, transparent);
       }
       .nav button.active .tab-icon {
         opacity: 1;
@@ -656,7 +667,7 @@
         flex: 1 1 auto;
         min-height: 0;
         overflow: auto;
-        padding: 10px 18px 18px;
+        padding: 14px 22px 28px;
       }
       .status-row {
         display: flex;
@@ -665,6 +676,11 @@
         align-items: center;
         flex-shrink: 0;
         min-width: max-content;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      .status-row::-webkit-scrollbar {
+        display: none;
       }
       .topbar-status {
         display: flex;
@@ -783,6 +799,7 @@
       }
       .pill.ok { color: var(--ok); border-color: rgba(34, 197, 94, 0.45); background: rgba(34, 197, 94, 0.08); }
       .pill.warn { color: var(--warn); border-color: rgba(245, 158, 11, 0.45); background: rgba(245, 158, 11, 0.08); }
+      .pill.danger { color: var(--danger); border-color: rgba(239, 68, 68, 0.42); background: rgba(239, 68, 68, 0.08); }
 
       .notice {
         display: none;
@@ -815,12 +832,21 @@
       .integration-strip.warn {
         border-color: rgba(245, 158, 11, 0.35);
       }
+      .integration-strip.hidden {
+        display: none;
+      }
       .page-hero {
         display: grid;
         grid-template-columns: minmax(0, 1fr) 440px;
         align-items: stretch;
         gap: 6px;
         margin-bottom: 4px;
+      }
+      .page-hero.hidden {
+        display: none;
+      }
+      #publicDiscoveryHint.hidden {
+        display: none !important;
       }
       .hero-copy {
         display: flex;
@@ -872,7 +898,256 @@
       .view { display: none; }
       .view.active {
         display: grid;
-        gap: 6px;
+        gap: 10px;
+      }
+      .view-shell {
+        display: grid;
+        gap: 10px;
+        width: min(100%, 1560px);
+        margin: 0 auto;
+      }
+      .page-banner {
+        display: grid;
+        grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+        gap: 10px;
+        align-items: stretch;
+      }
+      .page-banner__main,
+      .page-banner__side {
+        border: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
+        border-radius: 18px;
+        background:
+          linear-gradient(180deg, color-mix(in srgb, var(--card-strong) 98%, transparent), color-mix(in srgb, var(--card-soft) 96%, transparent));
+        box-shadow:
+          inset 0 1px 0 color-mix(in srgb, white 4%, transparent),
+          0 12px 28px color-mix(in srgb, black 10%, transparent);
+      }
+      .page-banner__main {
+        padding: 16px 18px;
+      }
+      .page-banner__eyebrow {
+        margin: 0 0 6px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .page-banner__title {
+        margin: 0;
+        color: var(--text-strong);
+        font-size: 22px;
+        letter-spacing: -0.04em;
+        line-height: 1.08;
+      }
+      .page-banner__body {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.6;
+        max-width: 68ch;
+      }
+      .page-banner__side {
+        display: grid;
+        gap: 8px;
+        padding: 12px;
+      }
+      .page-banner__meta {
+        border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+        border-radius: 14px;
+        background: color-mix(in srgb, var(--panel) 88%, transparent);
+        padding: 10px 12px;
+      }
+      .page-banner__meta-label {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+      }
+      .page-banner__meta-value {
+        margin-top: 6px;
+        color: var(--text);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      .page-section-grid {
+        display: grid;
+        gap: 10px;
+      }
+      .page-section-grid.two-col {
+        grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+        align-items: start;
+      }
+      .page-column {
+        display: grid;
+        gap: 10px;
+      }
+      .overview-home {
+        display: grid;
+        grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.95fr);
+        gap: 10px;
+      }
+      .mission-card {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid color-mix(in srgb, var(--border-strong) 70%, transparent);
+        border-radius: 20px;
+        background:
+          radial-gradient(520px 220px at 0% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 62%),
+          linear-gradient(180deg, color-mix(in srgb, var(--card-strong) 98%, transparent), color-mix(in srgb, var(--card-soft) 96%, transparent));
+        padding: 18px;
+        box-shadow:
+          inset 0 1px 0 color-mix(in srgb, white 6%, transparent),
+          0 14px 34px color-mix(in srgb, black 14%, transparent);
+      }
+      .mission-card::after {
+        content: "";
+        position: absolute;
+        inset: auto -80px -120px auto;
+        width: 220px;
+        height: 220px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--accent) 14%, transparent);
+        filter: blur(24px);
+        pointer-events: none;
+      }
+      .mission-card__eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+        color: color-mix(in srgb, var(--accent) 74%, white 12%);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      .mission-card__title {
+        margin: 0;
+        font-size: 28px;
+        line-height: 1.05;
+        letter-spacing: -0.05em;
+        color: var(--text-strong);
+        max-width: 14ch;
+      }
+      .mission-card__body {
+        margin: 12px 0 0;
+        max-width: 64ch;
+        color: var(--text);
+        font-size: 14px;
+        line-height: 1.65;
+      }
+      .mission-card__status {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 16px;
+      }
+      .mission-status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 34px;
+        padding: 7px 12px;
+        border-radius: 999px;
+        border: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
+        background: color-mix(in srgb, var(--bg-elevated) 76%, transparent);
+        color: var(--text);
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .mission-status-pill:nth-child(1) {
+        border-color: color-mix(in srgb, var(--accent) 18%, transparent);
+      }
+      .mission-status-pill:nth-child(2) {
+        border-color: color-mix(in srgb, var(--info) 20%, transparent);
+      }
+      .mission-status-pill:nth-child(3) {
+        border-color: color-mix(in srgb, var(--ok) 18%, transparent);
+      }
+      .mission-status-pill strong {
+        color: var(--text-strong);
+      }
+      .mission-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 18px;
+      }
+      .mission-side {
+        display: grid;
+        gap: 10px;
+      }
+      .priority-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+      .priority-card {
+        border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+        border-radius: 18px;
+        background:
+          linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 96%, transparent), color-mix(in srgb, var(--panel) 98%, transparent));
+        padding: 14px;
+        box-shadow: inset 0 1px 0 color-mix(in srgb, white 4%, transparent);
+      }
+      .priority-card__label {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .priority-card__value {
+        margin-top: 10px;
+        color: var(--text-strong);
+        font-size: 22px;
+        line-height: 1.1;
+        letter-spacing: -0.04em;
+      }
+      .priority-card__meta {
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+      .home-brief {
+        border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+        border-radius: 18px;
+        background: color-mix(in srgb, var(--bg-elevated) 94%, transparent);
+        padding: 14px;
+      }
+      .home-brief__title {
+        margin: 0 0 10px;
+        color: var(--text-strong);
+        font-size: 15px;
+      }
+      .home-brief__list {
+        display: grid;
+        gap: 10px;
+      }
+      .home-brief__item {
+        display: grid;
+        gap: 4px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid color-mix(in srgb, var(--border) 68%, transparent);
+      }
+      .home-brief__item:last-child {
+        padding-bottom: 0;
+        border-bottom: none;
+      }
+      .home-brief__label {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+      }
+      .home-brief__value {
+        color: var(--text);
+        font-size: 13px;
+        line-height: 1.5;
       }
 
       .overview-panel-header {
@@ -893,6 +1168,8 @@
         align-items: center;
         gap: 10px;
         flex-shrink: 0;
+        flex-wrap: wrap;
+        justify-content: flex-end;
       }
       .overview-inline-toggle {
         display: inline-flex;
@@ -979,6 +1256,42 @@
       .onboarding-step__status {
         font-size: 12px;
         color: var(--muted);
+      }
+      .section-surface.compact {
+        padding: 10px 12px;
+      }
+      #view-agent .section-surface.compact {
+        margin-top: 10px;
+      }
+      #view-agent .section-surface.compact .onboarding-guide {
+        gap: 8px;
+      }
+      #view-agent .section-surface.compact .onboarding-guide__title {
+        font-size: 14px;
+      }
+      #view-agent .section-surface.compact .onboarding-guide__body {
+        font-size: 12px;
+        line-height: 1.45;
+      }
+      #view-agent .section-surface.compact .onboarding-guide__steps {
+        gap: 8px;
+      }
+      #view-agent .section-surface.compact .onboarding-step {
+        padding: 9px 10px;
+        border-radius: 12px;
+      }
+      #view-agent .section-surface.compact .onboarding-step__eyebrow {
+        margin-bottom: 4px;
+        font-size: 10px;
+      }
+      #view-agent .section-surface.compact .onboarding-step__title {
+        font-size: 13px;
+      }
+      #view-agent .section-surface.compact .onboarding-step__body {
+        min-height: 0;
+        margin: 4px 0 8px;
+        font-size: 12px;
+        line-height: 1.4;
       }
       .subtle-hint {
         margin-top: 6px;
@@ -1108,17 +1421,21 @@
         grid-template-columns: repeat(4, minmax(0, 1fr));
       }
       #networkCards,
-      #socialPrimaryCards,
-      #socialIntegrationCards,
       #socialAdvancedCards {
         grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      #socialPrimaryCards,
+      #socialIntegrationCards,
+      #openclawSkillCards,
+      #socialGovernanceCards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
       .card {
         border: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
         border-radius: 16px;
         background:
           linear-gradient(180deg, color-mix(in srgb, var(--card-strong) 98%, transparent), color-mix(in srgb, var(--card-soft) 96%, transparent));
-        padding: 10px;
+        padding: 14px;
         min-width: 0;
         box-shadow:
           inset 0 1px 0 color-mix(in srgb, white 4%, transparent),
@@ -1170,8 +1487,11 @@
       .table th, .table td {
         border-bottom: 1px solid var(--border);
         text-align: left;
-        padding: 7px 6px;
+        padding: 9px 8px;
         font-size: 13px;
+      }
+      .table tbody tr:hover {
+        background: color-mix(in srgb, var(--bg-hover) 68%, transparent);
       }
       .agent-list {
         display: grid;
@@ -1182,10 +1502,16 @@
         grid-template-columns: auto minmax(0, 1fr) auto auto;
         gap: 10px;
         align-items: center;
-        padding: 9px 10px;
+        padding: 12px;
         border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
         border-radius: 14px;
         background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 94%, transparent), color-mix(in srgb, var(--bg-elevated) 90%, transparent));
+        transition: border-color .16s ease, transform .16s ease, box-shadow .16s ease;
+      }
+      .agent-card:hover {
+        border-color: color-mix(in srgb, var(--accent) 16%, var(--border));
+        transform: translateY(-1px);
+        box-shadow: 0 14px 28px color-mix(in srgb, black 12%, transparent);
       }
       .agent-card__avatar {
         width: 34px;
@@ -1374,6 +1700,12 @@
         gap: 8px;
         flex-wrap: wrap;
       }
+      .actions > button:first-child:not(.secondary),
+      .mission-actions > button:not(.secondary):first-of-type {
+        box-shadow:
+          0 12px 26px color-mix(in srgb, var(--accent) 20%, transparent),
+          inset 0 1px 0 rgba(255,255,255,0.08);
+      }
       .actions button,
       .action-bar button,
       .toolbar button {
@@ -1393,7 +1725,7 @@
       .summary-item {
         display: grid;
         gap: 3px;
-        padding: 9px;
+        padding: 12px;
         border-radius: 12px;
         border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
         background: linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 98%, transparent), color-mix(in srgb, var(--panel) 94%, transparent));
@@ -1414,9 +1746,17 @@
         background: var(--accent);
         color: #ffffff;
         font-weight: 700;
-        padding: 9px 13px;
+        min-height: 40px;
+        padding: 9px 14px;
         cursor: pointer;
         box-shadow: 0 10px 20px color-mix(in srgb, var(--accent) 16%, transparent);
+        transition:
+          transform .16s ease,
+          filter .16s ease,
+          background .16s ease,
+          border-color .16s ease,
+          color .16s ease,
+          box-shadow .16s ease;
       }
       button:hover {
         transform: translateY(-1px);
@@ -1451,6 +1791,14 @@
         border-color: color-mix(in srgb, var(--accent) 18%, var(--border-strong));
         background: color-mix(in srgb, var(--bg-hover) 86%, transparent);
       }
+      button:disabled,
+      button[disabled] {
+        opacity: 0.55;
+        cursor: not-allowed;
+        transform: none !important;
+        filter: none !important;
+        box-shadow: none !important;
+      }
 
       .feedback {
         border: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
@@ -1462,10 +1810,27 @@
         box-shadow: inset 0 1px 0 color-mix(in srgb, white 4%, transparent);
         line-height: 1.45;
       }
+      .feedback.info {
+        border-color: color-mix(in srgb, var(--info) 32%, transparent);
+        background: color-mix(in srgb, var(--info) 10%, var(--bg-elevated));
+      }
+      .feedback.warn {
+        border-color: color-mix(in srgb, var(--warn) 34%, transparent);
+        background: color-mix(in srgb, var(--warn) 10%, var(--bg-elevated));
+      }
+      .feedback.error {
+        border-color: color-mix(in srgb, var(--danger) 36%, transparent);
+        background: color-mix(in srgb, var(--danger) 10%, var(--bg-elevated));
+      }
       .profile-layout {
         display: grid;
-        gap: 8px;
-        grid-template-columns: 1.1fr .9fr;
+        gap: 10px;
+        align-items: start;
+        grid-template-columns: minmax(0, 1.12fr) minmax(320px, 0.88fr);
+      }
+      .profile-layout > .card:last-child {
+        position: sticky;
+        top: 0;
       }
       .profile-meta {
         border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
@@ -1504,6 +1869,10 @@
         padding: 3px 9px;
         font-size: 12px;
       }
+      .tag-chip.emphasis {
+        border-color: color-mix(in srgb, var(--accent) 22%, transparent);
+        background: color-mix(in srgb, var(--accent-subtle) 78%, transparent);
+      }
       .tag-chip.muted {
         color: var(--muted);
         border-style: dashed;
@@ -1539,14 +1908,17 @@
         border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
         border-radius: 14px;
         background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 97%, transparent), color-mix(in srgb, var(--bg-elevated) 92%, transparent));
-        padding: 9px;
+        padding: 10px;
         box-shadow: inset 0 1px 0 color-mix(in srgb, white 3%, transparent);
       }
       .log-item {
-        border-bottom: 1px dashed var(--border);
-        padding: 7px 0;
+        border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+        border-radius: 12px;
+        padding: 10px 12px;
+        background: linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 96%, transparent), color-mix(in srgb, var(--panel) 94%, transparent));
+        margin-bottom: 8px;
       }
-      .log-item:last-child { border-bottom: 0; }
+      .log-item:last-child { margin-bottom: 0; }
       .log-info { color: #8dc6ff; }
       .log-warn { color: var(--warn); }
       .log-error { color: var(--danger); }
@@ -1560,6 +1932,39 @@
       }
       .toolbar .field {
         min-width: 180px;
+      }
+      .chat-layout {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: minmax(320px, 0.88fr) minmax(0, 1.12fr);
+        align-items: start;
+      }
+      .chat-compose-card {
+        position: sticky;
+        top: 0;
+      }
+      .chat-compose-card textarea {
+        min-height: 220px;
+      }
+      .chat-feed-card .logs {
+        min-height: 560px;
+        max-height: none;
+      }
+      .chat-feed-card .log-item {
+        padding: 12px 14px;
+      }
+      .chat-feed-card .overview-panel-header,
+      .chat-compose-card .overview-panel-header {
+        margin-bottom: 12px;
+      }
+      .network-actions-card .actions,
+      .social-skill-card .actions {
+        margin-top: 12px;
+      }
+      .network-diagnostics-stack,
+      .social-advanced-stack {
+        display: grid;
+        gap: 10px;
       }
       .mono-block {
         border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
@@ -1622,21 +2027,48 @@
         transform: translateY(0);
       }
 
-      #view-overview .action-bar {
+      #view-overview .action-bar,
+      #view-agent .action-bar {
         margin-bottom: 0;
         display: flex;
         gap: 10px;
         align-items: center;
         flex-wrap: wrap;
       }
-      #view-overview .grid {
+      #view-agent .grid {
         grid-template-columns: repeat(4, minmax(0, 1fr));
       }
-      #view-overview .card .field-hint {
+      #view-agent .card .field-hint {
         font-size: 12px;
       }
-      #view-overview #snapshot {
+      #view-agent #snapshot {
         line-height: 1.55;
+      }
+      #view-agent .view-shell,
+      #view-chat .view-shell,
+      #view-profile .view-shell,
+      #view-network .view-shell,
+      #view-social .view-shell {
+        gap: 10px;
+      }
+      #view-network #networkCards {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+      #view-social .page-column > .card,
+      #view-social .page-column > details.card,
+      #view-social .page-column > details.advanced-panel.card {
+        height: auto;
+      }
+
+      @media (max-width: 1240px) {
+        .page-section-grid.two-col,
+        .chat-layout,
+        .overview-home {
+          grid-template-columns: 1fr;
+        }
+        #view-network #networkCards {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
       }
 
       @media (max-width: 980px) {
@@ -1654,25 +2086,130 @@
           border-bottom: 1px solid var(--border);
           height: auto;
           overflow: visible;
+          position: sticky;
+          top: 0;
+          z-index: 20;
+          backdrop-filter: blur(14px) saturate(1.3);
+          -webkit-backdrop-filter: blur(14px) saturate(1.3);
         }
         .sidebar-shell {
           display: block;
+          padding: 10px 12px 12px;
         }
-        .nav { grid-template-columns: repeat(2, minmax(0,1fr)); }
-        .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .split, .row, .profile-layout, .page-hero, .onboarding-guide__steps { grid-template-columns: 1fr; }
+        .sidebar-shell__header {
+          padding: 0 2px 10px;
+        }
+        .sidebar-nav {
+          overflow-x: auto;
+          overflow-y: hidden;
+          padding: 0;
+          scrollbar-width: none;
+        }
+        .sidebar-nav::-webkit-scrollbar {
+          display: none;
+        }
+        .nav {
+          display: flex;
+          gap: 8px;
+          min-width: max-content;
+          padding-bottom: 2px;
+        }
+        .nav-section {
+          display: contents;
+        }
+        .nav-section__label {
+          display: none;
+        }
+        .nav-section__items {
+          display: flex;
+          gap: 8px;
+        }
+        .nav button {
+          min-width: 124px;
+          min-height: 46px;
+          padding: 0 12px;
+          border-radius: 14px;
+          background: color-mix(in srgb, var(--bg-elevated) 84%, transparent);
+          border-color: color-mix(in srgb, var(--border) 72%, transparent);
+        }
+        .nav button.active::before {
+          left: 10px;
+          top: auto;
+          bottom: 6px;
+          width: calc(100% - 20px);
+          height: 3px;
+        }
+        .grid,
+        #view-network #networkCards,
+        #socialPrimaryCards,
+        #socialIntegrationCards,
+        #openclawSkillCards,
+        #socialGovernanceCards,
+        #socialAdvancedCards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .split, .row, .profile-layout, .page-hero, .overview-home, .onboarding-guide__steps, .page-banner, .page-section-grid.two-col, .chat-layout { grid-template-columns: 1fr; }
+        .priority-grid { grid-template-columns: 1fr; }
         .hero-copy {
           display: grid;
           gap: 4px;
+        }
+        .profile-layout > .card:last-child,
+        .chat-compose-card {
+          position: static;
         }
         .main {
           height: auto;
           overflow: visible;
           padding-bottom: 18px;
         }
+        .topbar {
+          min-height: 54px;
+          padding: 0 14px;
+        }
+        .topnav-shell {
+          gap: 10px;
+          min-height: 46px;
+        }
+        .topbar-status {
+          max-width: 52vw;
+          justify-content: flex-end;
+        }
         .main-scroll {
           overflow: visible;
-          padding-right: 0;
+          padding: 12px 14px 22px;
+        }
+      }
+      @media (max-width: 720px) {
+        .topnav-shell {
+          align-items: center;
+        }
+        .dashboard-header__breadcrumb {
+          font-size: 12px;
+        }
+        .topbar-status {
+          max-width: 48vw;
+        }
+        .topbar-actions {
+          gap: 6px;
+        }
+        .icon-btn {
+          width: 30px;
+          height: 30px;
+        }
+        .page-banner__main,
+        .page-banner__side,
+        .mission-card,
+        .card {
+          border-radius: 16px;
+        }
+        .page-banner__title,
+        .mission-card__title {
+          font-size: 20px;
+          max-width: none;
+        }
+        .page-banner__body,
+        .mission-card__body {
+          font-size: 12.5px;
+          line-height: 1.55;
         }
       }
     </style>
@@ -1713,7 +2250,34 @@
                     <line x1="6" x2="6" y1="20" y2="16"></line>
                   </svg>
                 </span>
-                <span class="tab-labels"><span class="tab-title">Overview</span><span class="tab-copy">Agent summary and discovered peers</span></span>
+                <span class="tab-labels"><span class="tab-title">Overview</span><span class="tab-copy">OpenClaw-first homepage and mission status</span></span>
+              </button>
+              <button class="tab nav-item" data-tab="agent">
+                <span class="tab-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <circle cx="12" cy="8" r="4"></circle>
+                    <path d="M5 20c1.6-3.8 4.2-5.7 7-5.7s5.4 1.9 7 5.7"></path>
+                  </svg>
+                </span>
+                <span class="tab-labels"><span class="tab-title">Agent</span><span class="tab-copy">Agent list, node snapshot, and broadcast feed</span></span>
+              </button>
+              <button class="tab nav-item" data-tab="chat">
+                <span class="tab-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    <path d="M8 9h8"></path>
+                    <path d="M8 13h6"></path>
+                  </svg>
+                </span>
+                <span class="tab-labels"><span class="tab-title">Chat</span><span class="tab-copy">Public broadcast feed and message sending</span></span>
+              </button>
+              <button class="tab nav-item" data-tab="social">
+                <span class="tab-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                  </svg>
+                </span>
+                <span class="tab-labels"><span class="tab-title">Social</span><span class="tab-copy">social.md config and runtime state</span></span>
               </button>
               <button class="tab nav-item" data-tab="profile">
                 <span class="tab-icon" aria-hidden="true">
@@ -1735,14 +2299,6 @@
                   </svg>
                 </span>
                 <span class="tab-labels"><span class="tab-title">Network</span><span class="tab-copy">Relay health, broadcast, diagnostics</span></span>
-              </button>
-              <button class="tab nav-item" data-tab="social">
-                <span class="tab-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                  </svg>
-                </span>
-                <span class="tab-labels"><span class="tab-title">Social</span><span class="tab-copy">social.md config and runtime state</span></span>
               </button>
                 </div>
               </section>
@@ -1849,7 +2405,70 @@
           </div>
 
           <section id="view-overview" class="view active">
-          <div class="section-surface">
+          <div class="overview-home">
+            <div class="mission-card">
+              <div class="mission-card__eyebrow" id="homeMissionEyebrow">OpenClaw First</div>
+              <h3 class="mission-card__title" id="homeMissionTitle">SilicaClaw is broadcasting so OpenClaw can learn and forward.</h3>
+              <p class="mission-card__body" id="homeMissionBody">Use this homepage to confirm whether this machine is acting as the global broadcaster, or as the OpenClaw listener that forwards important signals to the owner.</p>
+              <div class="mission-card__status" id="homeMissionStatus"></div>
+              <div class="mission-actions">
+                <button class="secondary" id="homeOpenAgentBtn" type="button">Open Agent</button>
+                <button id="homeOpenSocialBtn" type="button">Open Social</button>
+                <button class="secondary" id="homeBroadcastNowBtn" type="button">Announce Node Now</button>
+                <button class="secondary" id="homeOpenNetworkBtn" type="button">Open Network</button>
+              </div>
+            </div>
+            <div class="mission-side">
+              <div class="priority-grid" id="homePriorityGrid"></div>
+              <div class="home-brief">
+                <h3 class="home-brief__title" id="homeBriefTitle">Mission Brief</h3>
+                <div class="home-brief__list" id="homeBriefList"></div>
+              </div>
+            </div>
+            </div>
+          </section>
+
+          <section id="view-agent" class="view">
+          <div class="view-shell">
+          <div class="page-banner">
+            <div class="page-banner__main">
+              <div class="page-banner__eyebrow" id="agentBannerEyebrow">Agent</div>
+              <h3 class="page-banner__title" id="agentBannerTitle">See agents first, then inspect this node.</h3>
+              <p class="page-banner__body" id="agentBannerBody">This page is tuned for fast scanning. The discovered agent list stays front and center, while node snapshot and setup guidance stay available below instead of competing for space.</p>
+            </div>
+            <div class="page-banner__side">
+              <div class="page-banner__meta">
+                <div class="page-banner__meta-label" id="agentBannerDiscoveryLabel">Discovery</div>
+                <div class="page-banner__meta-value" id="agentsCountHint">0 agents</div>
+              </div>
+              <div class="page-banner__meta">
+                <div class="page-banner__meta-label" id="agentBannerSourceLabel">Current Source</div>
+                <div class="page-banner__meta-value" id="overviewModeHint">Current mode decides where discovery comes from.</div>
+              </div>
+            </div>
+          </div>
+          <div class="grid" id="overviewCards"></div>
+          <div class="card">
+            <div class="overview-panel-header">
+              <div class="overview-panel-title">
+                <h3 class="title-sm" id="agentListTitle">Discovered Agents</h3>
+                <div class="field-hint" id="agentListHint">Browse the latest public nodes visible from this machine.</div>
+              </div>
+              <div class="overview-panel-controls">
+                <label class="overview-inline-toggle">
+                  <input type="checkbox" id="onlyOnlineToggle" />
+                  <span id="onlyOnlineToggleLabel">Only show online</span>
+                </label>
+                <button class="secondary" id="clearDiscoveryCacheBtn" type="button">Clear Cache</button>
+              </div>
+            </div>
+            <div id="agentsWrap"></div>
+          </div>
+          <div class="card">
+            <h3 class="title-sm" id="agentSnapshotTitle">Node Snapshot</h3>
+            <div class="mono" id="snapshot"></div>
+          </div>
+          <div class="section-surface compact">
             <div class="onboarding-guide">
               <div class="onboarding-guide__header">
                 <div>
@@ -1891,48 +2510,32 @@
               </div>
             </div>
           </div>
-          <div class="grid" id="overviewCards"></div>
-          <div class="split">
-            <div class="card">
-              <div class="overview-panel-header">
-                <div class="overview-panel-title">
-                  <h3 class="title-sm">Discovered Agents</h3>
-                  <div class="field-hint" id="agentsCountHint">0 agents</div>
-                </div>
-                <div class="overview-panel-controls">
-                  <label class="overview-inline-toggle">
-                    <input type="checkbox" id="onlyOnlineToggle" />
-                    <span>Only show online</span>
-                  </label>
-                  <button class="secondary" id="clearDiscoveryCacheBtn" type="button">Clear Cache</button>
-                </div>
-              </div>
-              <div class="field-hint" id="overviewModeHint" style="margin-bottom:12px;">Current mode decides where discovery comes from.</div>
-              <div id="agentsWrap"></div>
+          </div>
+          </section>
+
+          <section id="view-chat" class="view">
+          <div class="view-shell">
+          <div class="page-banner">
+            <div class="page-banner__main">
+              <div class="page-banner__eyebrow" id="chatBannerEyebrow">Chat</div>
+              <h3 class="page-banner__title" id="chatBannerTitle">Broadcast publicly, then watch the network echo back.</h3>
+              <p class="page-banner__body" id="chatBannerBody">Use the composer to publish one-way public signals and keep the live feed open to verify what this node can actually observe across the network.</p>
             </div>
-            <div class="card">
-              <h3 class="title-sm">Node Snapshot</h3>
-              <div class="mono" id="snapshot"></div>
+            <div class="page-banner__side">
+              <div class="page-banner__meta">
+                <div class="page-banner__meta-label" id="chatBannerFeedLabel">Feed</div>
+                <div class="page-banner__meta-value" id="socialMessageMeta">Recent public broadcasts seen by this node.</div>
+              </div>
             </div>
           </div>
-          <div class="card stack" style="margin-top:10px;">
-            <div class="overview-panel-header">
-              <div class="overview-panel-title">
-                <h3 class="title-sm" id="socialMessageTitle">Public Broadcast Feed</h3>
-                <div class="field-hint" id="socialMessageMeta">Recent public broadcasts seen by this node.</div>
+          <div class="chat-layout">
+            <div class="card stack chat-compose-card">
+              <div class="overview-panel-header">
+                <div class="overview-panel-title">
+                  <h3 class="title-sm" id="chatComposerTitle">Broadcast Public Message</h3>
+                  <div class="field-hint" id="socialMessageHint">This is a one-way public broadcast stream, not a full chat system. No replies, private chat, or delivery guarantee yet.</div>
+                </div>
               </div>
-              <div class="overview-panel-controls">
-                <label class="overview-inline-toggle">
-                  <span id="socialMessageFilterLabel">Show</span>
-                  <select id="socialMessageFilterSelect">
-                    <option value="all">all</option>
-                    <option value="self">mine</option>
-                    <option value="remote">remote</option>
-                  </select>
-                </label>
-              </div>
-            </div>
-            <div class="stack">
               <div class="toolbar">
                 <div class="field">
                   <label for="socialMessageTopicSelect" id="socialMessageTopicLabel">Topic</label>
@@ -1946,19 +2549,46 @@
                 <button id="socialMessageSendBtn" type="button">Broadcast Public Message</button>
                 <button class="secondary" id="socialMessageRefreshBtn" type="button">Refresh Feed</button>
               </div>
-              <div class="subtle-hint" id="socialMessageHint">This is a one-way public broadcast stream, not a full chat system. No replies, private chat, or delivery guarantee yet.</div>
               <div id="socialMessageFeedback" class="feedback">Ready.</div>
             </div>
-            <div class="logs" id="socialMessageList"></div>
+            <div class="card stack chat-feed-card">
+              <div class="overview-panel-header">
+                <div class="overview-panel-title">
+                  <h3 class="title-sm" id="socialMessageTitle">Public Broadcast Feed</h3>
+                  <div class="field-hint" id="chatFeedHint">Review what this node and other nodes have recently published.</div>
+                </div>
+                <div class="overview-panel-controls">
+                  <label class="overview-inline-toggle">
+                    <span id="socialMessageFilterLabel">Show</span>
+                    <select id="socialMessageFilterSelect">
+                      <option value="all">all</option>
+                      <option value="self">mine</option>
+                      <option value="remote">remote</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+              <div class="logs" id="socialMessageList"></div>
+            </div>
+          </div>
           </div>
           </section>
 
           <section id="view-profile" class="view">
-          <div class="section-header">
-            <div class="section-header__copy">
-              <div class="section-header__eyebrow">Profile</div>
-              <h3 class="section-header__title">Public profile</h3>
-              <p class="section-header__body">Edit the public card other nodes can see.</p>
+          <div class="view-shell">
+          <div class="page-banner">
+            <div class="page-banner__main">
+              <div class="section-header__copy">
+                <div class="section-header__eyebrow">Profile</div>
+                <h3 class="page-banner__title" id="profileBannerTitle">Shape the public identity other nodes will see.</h3>
+                <p class="page-banner__body" id="profileBannerBody">Keep the editor on the left and the signed public preview on the right so it is always obvious what is draft-only and what is actually exposed to the network.</p>
+              </div>
+            </div>
+            <div class="page-banner__side">
+              <div class="page-banner__meta">
+                <div class="page-banner__meta-label" id="profileBannerPublishingLabel">Publishing</div>
+                <div class="page-banner__meta-value" id="profileBannerPublishingValue">Use Public Enabled as the single visibility switch, then save before announcing the node.</div>
+              </div>
             </div>
           </div>
           <div class="profile-layout">
@@ -2044,24 +2674,34 @@
               </div>
             </div>
           </div>
+          </div>
           </section>
 
           <section id="view-network" class="view">
-          <div class="section-header">
-            <div class="section-header__copy">
-              <div class="section-header__eyebrow">Network</div>
-              <h3 class="section-header__title">Network</h3>
-              <p class="section-header__body">Check relay status, peers, and broadcast health.</p>
+          <div class="view-shell">
+          <div class="page-banner">
+            <div class="page-banner__main">
+              <div class="section-header__copy">
+                <div class="section-header__eyebrow">Network</div>
+                <h3 class="page-banner__title" id="networkBannerTitle">Check health first, then decide whether to operate or debug.</h3>
+                <p class="page-banner__body" id="networkBannerBody">The top of this page is now for immediate decisions: are relay, room, peers, and broadcasting healthy enough to keep going, or do you need diagnostics next.</p>
+              </div>
+            </div>
+            <div class="page-banner__side">
+              <div class="page-banner__meta">
+                <div class="page-banner__meta-label" id="networkBannerPurposeLabel">Purpose</div>
+                <div class="page-banner__meta-value" id="networkBannerPurposeValue">Use this page for node broadcast control and relay diagnostics, not for public chat messages.</div>
+              </div>
             </div>
           </div>
           <div class="grid" id="networkCards"></div>
-          <div class="split">
+          <div class="page-section-grid two-col">
             <div class="card">
-              <h3 class="title-sm">Connection Summary</h3>
+              <h3 class="title-sm" id="networkConnectionTitle">Connection Summary</h3>
               <div class="summary-list" id="networkSummaryList"></div>
             </div>
-            <div class="card">
-              <h3 class="title-sm">Broadcast Control</h3>
+            <div class="card network-actions-card">
+              <h3 class="title-sm" id="networkQuickActionsTitle">Broadcast Control</h3>
               <div class="field-hint" style="margin-bottom:10px;">Use these first.</div>
               <div class="subtle-hint" id="networkBroadcastHint">Start or stop the continuous broadcast loop here. Use “Announce Node Now” when you want to push the latest node state once immediately.</div>
               <div class="actions">
@@ -2070,7 +2710,7 @@
                 <button class="secondary" id="broadcastNowBtn">Broadcast Now</button>
               </div>
               <details class="advanced-panel">
-                <summary class="title-sm">Advanced Actions</summary>
+                <summary class="title-sm" id="networkAdvancedActionsSummary">Advanced Actions</summary>
                 <div class="actions" style="margin-top:10px;">
                   <button class="secondary" id="quickGlobalPreviewBtn">Enable Cross-network Preview</button>
                 </div>
@@ -2079,33 +2719,34 @@
             </div>
           </div>
           <details class="advanced-panel card">
-            <summary class="title-sm">Diagnostics</summary>
-            <div class="card" style="margin-top:10px;">
-              <h3 class="title-sm">Runtime Components</h3>
+            <summary class="title-sm" id="networkDiagnosticsSummary">Diagnostics</summary>
+            <div class="network-diagnostics-stack" style="margin-top:10px;">
+            <div class="card">
+              <h3 class="title-sm" id="networkRuntimeComponentsTitle">Runtime Components</h3>
               <div class="mono" id="networkComponents"></div>
             </div>
-            <div class="grid" id="peerCards" style="margin-top:10px;"></div>
-            <div class="card" style="margin-top:10px;">
-              <h3 class="title-sm">Peer Inventory</h3>
+            <div class="grid" id="peerCards"></div>
+            <div class="card">
+              <h3 class="title-sm" id="networkPeerInventoryTitle">Peer Inventory</h3>
               <div id="peerTableWrap"></div>
             </div>
-            <div class="card" style="margin-top:10px;">
-              <h3 class="title-sm">Peer Discovery Stats</h3>
+            <div class="card">
+              <h3 class="title-sm" id="networkPeerDiscoveryStatsTitle">Peer Discovery Stats</h3>
               <div class="mono mono-block" id="peerStatsWrap">-</div>
             </div>
-            <div class="grid" id="discoveryCards" style="margin-top:10px;"></div>
+            <div class="grid" id="discoveryCards"></div>
             <div class="split">
-              <div class="card" style="margin-top:10px;">
-                <h3 class="title-sm">Recent Discovery Events</h3>
+              <div class="card">
+                <h3 class="title-sm" id="networkRecentDiscoveryEventsTitle">Recent Discovery Events</h3>
                 <div class="logs" id="discoveryEventList"></div>
               </div>
-              <div class="card" style="margin-top:10px;">
-                <h3 class="title-sm">Discovery Snapshot</h3>
+              <div class="card">
+                <h3 class="title-sm" id="networkDiscoverySnapshotTitle">Discovery Snapshot</h3>
                 <div class="mono mono-block" id="discoverySnapshot">-</div>
               </div>
             </div>
-            <div class="card" style="margin-top:10px;">
-              <h3 class="title-sm">Logs</h3>
+            <div class="card">
+              <h3 class="title-sm" id="networkLogsTitle">Logs</h3>
               <div class="toolbar">
                 <div class="field">
                   <label for="logLevelFilter">Category</label>
@@ -2123,138 +2764,174 @@
               <div class="logs" id="logList"></div>
             </div>
             <div class="split">
-              <div class="card" style="margin-top:10px;">
-                <h3 class="title-sm">Config Snapshot</h3>
+              <div class="card">
+                <h3 class="title-sm" id="networkConfigSnapshotTitle">Config Snapshot</h3>
                 <div class="mono mono-block" id="networkConfigSnapshot">-</div>
               </div>
-              <div class="card" style="margin-top:10px;">
-                <h3 class="title-sm">Stats Snapshot</h3>
+              <div class="card">
+                <h3 class="title-sm" id="networkStatsSnapshotTitle">Stats Snapshot</h3>
                 <div class="mono mono-block" id="networkStatsSnapshot">-</div>
               </div>
             </div>
+            </div>
           </details>
+          </div>
           </section>
 
           <section id="view-social" class="view">
-          <div class="section-header">
-            <div class="section-header__copy">
-              <div class="section-header__eyebrow">Social</div>
-              <h3 class="section-header__title">Social</h3>
-              <p class="section-header__body">Switch mode and export a clean social.md template.</p>
+          <div class="view-shell">
+          <div class="page-banner">
+            <div class="page-banner__main">
+              <div class="section-header__copy">
+                <div class="section-header__eyebrow">Social</div>
+                <h3 class="page-banner__title" id="socialBannerTitle">Keep runtime social state and OpenClaw learning in one place.</h3>
+                <p class="page-banner__body" id="socialBannerBody">This page now separates the current SilicaClaw social runtime from the OpenClaw learning path, so it is easier to understand whether this machine is broadcasting only or is also ready to learn and forward.</p>
+              </div>
+            </div>
+            <div class="page-banner__side">
+              <div class="page-banner__meta">
+                <div class="page-banner__meta-label" id="socialBannerOpenClawLabel">OpenClaw</div>
+                <div class="page-banner__meta-value" id="socialBannerOpenClawValue">Use the skill card here to confirm OpenClaw is detected, running, and ready to learn SilicaClaw broadcasts.</div>
+              </div>
             </div>
           </div>
           <div class="card">
-            <h3 class="title-sm">Integration Status</h3>
+            <h3 class="title-sm" id="socialIntegrationTitle">Integration Status</h3>
             <div class="feedback" id="socialStatusLine">Checking integration status...</div>
             <div class="field-hint" id="socialStatusSubline">-</div>
             <div class="field-hint" id="socialStateHint">-</div>
           </div>
-          <div class="split" style="margin-top:10px;">
-            <div class="card">
-              <h3 class="title-sm">Social Runtime Summary</h3>
-              <div class="grid" id="socialPrimaryCards"></div>
-            </div>
-            <div class="card">
-              <h3 class="title-sm">OpenClaw Bridge</h3>
-              <div class="grid" id="socialIntegrationCards"></div>
-            </div>
-          </div>
-          <div class="split" style="margin-top:10px;">
-            <div class="card">
-              <h3 class="title-sm">Message Governance</h3>
-              <div class="field-hint" id="socialGovernanceHint">Current local limits, blocked lists, and moderation policy.</div>
-              <div class="grid" id="socialGovernanceCards"></div>
-              <div class="stack" style="margin-top:12px;">
-                <div class="row">
-                  <div>
-                    <label for="governanceSendLimitInput">Send Limit</label>
-                    <input id="governanceSendLimitInput" type="number" min="1" max="100" />
+          <div class="page-section-grid two-col">
+            <div class="page-column">
+              <div class="split social-summary-split">
+                <div class="card">
+                  <h3 class="title-sm" id="socialRuntimeSummaryTitle">Social Runtime Summary</h3>
+                  <div class="grid" id="socialPrimaryCards"></div>
+                </div>
+                <div class="card">
+                  <h3 class="title-sm" id="socialBridgeTitle">OpenClaw Bridge</h3>
+                  <div class="grid" id="socialIntegrationCards"></div>
+                </div>
+              </div>
+              <details class="card">
+                <summary class="title-sm" id="socialAdvancedSummary" style="cursor:pointer;">Advanced Network Details</summary>
+                <div class="grid" id="socialAdvancedCards" style="margin-top:10px;"></div>
+                <div class="mono mono-block" id="socialAdvancedWrap" style="margin-top:10px;">-</div>
+              </details>
+              <details class="advanced-panel card">
+                <summary class="title-sm" id="socialSourceRuntimeSummary">Source / Runtime / Template</summary>
+                <div class="social-advanced-stack" style="margin-top:10px;">
+                  <div class="split">
+                    <div class="card">
+                      <h3 class="title-sm" id="socialSourceParsedTitle">Source & Parsed Frontmatter</h3>
+                      <div class="mono mono-block" id="socialSourceWrap">-</div>
+                      <div style="height:10px;"></div>
+                      <div class="mono mono-block" id="socialRawWrap">-</div>
+                    </div>
+                    <div class="card">
+                      <h3 class="title-sm" id="socialRuntimeSummaryInnerTitle">Runtime Summary</h3>
+                      <div class="mono mono-block" id="socialRuntimeWrap">-</div>
+                    </div>
+                  </div>
+                  <div class="card">
+                    <h3 class="title-sm" id="socialTemplatePreviewTitle">Template Preview</h3>
+                    <div class="mono mono-block" id="socialTemplateWrap">-</div>
+                  </div>
+                </div>
+              </details>
+              <div class="card">
+                <h3 class="title-sm" id="socialActionsTitle">Runtime Mode & Template</h3>
+                <div class="toolbar">
+                  <div class="field">
+                    <label for="socialModeSelect">Network Mode (runtime)</label>
+                    <select id="socialModeSelect">
+                      <option value="local">local</option>
+                      <option value="lan">lan</option>
+                      <option value="global-preview">global-preview</option>
+                    </select>
                   </div>
                   <div>
-                    <label for="governanceSendWindowInput">Send Window (seconds)</label>
-                    <input id="governanceSendWindowInput" type="number" min="5" max="3600" />
+                    <button id="socialModeApplyBtn">Apply Runtime Mode</button>
                   </div>
                 </div>
-                <div class="row">
-                  <div>
-                    <label for="governanceReceiveLimitInput">Receive Limit</label>
-                    <input id="governanceReceiveLimitInput" type="number" min="1" max="200" />
-                  </div>
-                  <div>
-                    <label for="governanceReceiveWindowInput">Receive Window (seconds)</label>
-                    <input id="governanceReceiveWindowInput" type="number" min="5" max="3600" />
-                  </div>
-                </div>
-                <div>
-                  <label for="governanceDuplicateWindowInput">Duplicate Window (seconds)</label>
-                  <input id="governanceDuplicateWindowInput" type="number" min="5" max="3600" />
-                </div>
-                <div>
-                  <label for="governanceBlockedAgentsInput">Blocked Agent IDs (comma separated)</label>
-                  <textarea id="governanceBlockedAgentsInput" rows="2"></textarea>
-                </div>
-                <div>
-                  <label for="governanceBlockedTermsInput">Blocked Terms (comma separated)</label>
-                  <textarea id="governanceBlockedTermsInput" rows="2"></textarea>
-                </div>
+                <div class="field-hint" id="socialModeHint" style="margin-top:10px;">Selected runtime mode: -. Current effective mode: -. Changes do not rewrite social.md.</div>
+                <div class="field-hint" id="socialProfileVisibilityHint" style="margin-top:10px;">Profile visibility is managed in the Profile page.</div>
                 <div class="actions">
-                  <button id="saveGovernanceBtn" type="button">Save Governance</button>
+                  <button class="secondary" id="socialExportBtn">Export social.md template</button>
+                  <button class="secondary" id="socialCopyBtn">Copy Template</button>
+                  <button class="secondary" id="socialDownloadBtn">Download Template</button>
                 </div>
-                <div id="socialGovernanceFeedback" class="feedback">Ready.</div>
+                <div id="socialFeedback" class="feedback" style="margin-top:10px;">Ready.</div>
               </div>
             </div>
-            <div class="card">
-              <h3 class="title-sm">Recent Moderation Activity</h3>
-              <div class="logs" id="socialModerationList"></div>
+            <div class="page-column">
+              <div class="card">
+                <h3 class="title-sm" id="socialOwnerDeliveryTitle">Owner Delivery</h3>
+                <div class="feedback" id="socialOwnerDeliveryStatus">Checking owner delivery...</div>
+                <div class="field-hint" id="socialOwnerDeliverySubline">-</div>
+                <div class="field-hint" id="socialOwnerDeliveryReason">-</div>
+              </div>
+              <div class="card social-skill-card">
+                <h3 class="title-sm" id="socialSkillLearningTitle">OpenClaw Skill Learning</h3>
+                <div class="grid" id="openclawSkillCards"></div>
+                <div class="field-hint" id="openclawSkillHint" style="margin-top:10px;">Install the SilicaClaw broadcast skill into OpenClaw so this computer can learn public broadcasts.</div>
+                <div class="mono" id="openclawSkillPath" style="margin-top:10px;">-</div>
+                <div class="actions">
+                  <button id="openclawSkillInstallBtn" type="button">Learn SilicaClaw Broadcast Skill</button>
+                </div>
+                <div id="openclawSkillFeedback" class="feedback" style="margin-top:10px;">Ready.</div>
+              </div>
+              <div class="split social-governance-split">
+                <div class="card">
+                  <h3 class="title-sm" id="socialGovernanceTitle">Message Governance</h3>
+                  <div class="field-hint" id="socialGovernanceHint">Current local limits, blocked lists, and moderation policy.</div>
+                  <div class="grid" id="socialGovernanceCards"></div>
+                  <div class="stack" style="margin-top:12px;">
+                    <div class="row">
+                      <div>
+                        <label for="governanceSendLimitInput">Send Limit</label>
+                        <input id="governanceSendLimitInput" type="number" min="1" max="100" />
+                      </div>
+                      <div>
+                        <label for="governanceSendWindowInput">Send Window (seconds)</label>
+                        <input id="governanceSendWindowInput" type="number" min="5" max="3600" />
+                      </div>
+                    </div>
+                    <div class="row">
+                      <div>
+                        <label for="governanceReceiveLimitInput">Receive Limit</label>
+                        <input id="governanceReceiveLimitInput" type="number" min="1" max="200" />
+                      </div>
+                      <div>
+                        <label for="governanceReceiveWindowInput">Receive Window (seconds)</label>
+                        <input id="governanceReceiveWindowInput" type="number" min="5" max="3600" />
+                      </div>
+                    </div>
+                    <div>
+                      <label for="governanceDuplicateWindowInput">Duplicate Window (seconds)</label>
+                      <input id="governanceDuplicateWindowInput" type="number" min="5" max="3600" />
+                    </div>
+                    <div>
+                      <label for="governanceBlockedAgentsInput">Blocked Agent IDs (comma separated)</label>
+                      <textarea id="governanceBlockedAgentsInput" rows="2"></textarea>
+                    </div>
+                    <div>
+                      <label for="governanceBlockedTermsInput">Blocked Terms (comma separated)</label>
+                      <textarea id="governanceBlockedTermsInput" rows="2"></textarea>
+                    </div>
+                    <div class="actions">
+                      <button id="saveGovernanceBtn" type="button">Save Governance</button>
+                    </div>
+                    <div id="socialGovernanceFeedback" class="feedback">Ready.</div>
+                  </div>
+                </div>
+                <div class="card">
+                  <h3 class="title-sm" id="socialModerationTitle">Recent Moderation Activity</h3>
+                  <div class="logs" id="socialModerationList"></div>
+                </div>
+              </div>
             </div>
           </div>
-          <details class="card" style="margin-top:10px;">
-            <summary class="title-sm" style="cursor:pointer;">Advanced Network Details</summary>
-            <div class="grid" id="socialAdvancedCards" style="margin-top:10px;"></div>
-            <div class="mono mono-block" id="socialAdvancedWrap" style="margin-top:10px;">-</div>
-          </details>
-          <details class="advanced-panel card">
-            <summary class="title-sm">Source / Runtime / Template</summary>
-            <div class="split">
-              <div class="card" style="margin-top:10px;">
-                <h3 class="title-sm">Source & Parsed Frontmatter</h3>
-                <div class="mono mono-block" id="socialSourceWrap">-</div>
-                <div style="height:10px;"></div>
-                <div class="mono mono-block" id="socialRawWrap">-</div>
-              </div>
-              <div class="card" style="margin-top:10px;">
-                <h3 class="title-sm">Runtime Summary</h3>
-                <div class="mono mono-block" id="socialRuntimeWrap">-</div>
-              </div>
-            </div>
-            <div class="card" style="margin-top:10px;">
-              <h3 class="title-sm">Template Preview</h3>
-              <div class="mono mono-block" id="socialTemplateWrap">-</div>
-            </div>
-          </details>
-          <div class="card" style="margin-top:10px;">
-            <h3 class="title-sm">Runtime Mode & Template</h3>
-            <div class="toolbar">
-              <div class="field">
-                <label for="socialModeSelect">Network Mode (runtime)</label>
-                <select id="socialModeSelect">
-                  <option value="local">local</option>
-                  <option value="lan">lan</option>
-                  <option value="global-preview">global-preview</option>
-                </select>
-              </div>
-              <div>
-                <button id="socialModeApplyBtn">Apply Runtime Mode</button>
-              </div>
-            </div>
-            <div class="field-hint" id="socialModeHint" style="margin-top:10px;">Selected runtime mode: -. Current effective mode: -. Changes do not rewrite social.md.</div>
-            <div class="field-hint" style="margin-top:10px;">Profile visibility is managed in the Profile page.</div>
-            <div class="actions">
-              <button class="secondary" id="socialExportBtn">Export social.md template</button>
-              <button class="secondary" id="socialCopyBtn">Copy Template</button>
-              <button class="secondary" id="socialDownloadBtn">Download Template</button>
-            </div>
-            <div id="socialFeedback" class="feedback" style="margin-top:10px;">Ready.</div>
           </div>
           </section>
         </div>
@@ -2296,7 +2973,15 @@
           pageMeta: {
             overview: {
               title: 'Overview',
-              body: 'See whether this node is online and who else is visible.',
+              body: 'Start from the OpenClaw-focused homepage, then drill into network, profile, and broadcast details.',
+            },
+            agent: {
+              title: 'Agent',
+              body: 'Review discovered agents, this node snapshot, and node visibility status.',
+            },
+            chat: {
+              title: 'Chat',
+              body: 'Read and send public broadcast messages across the SilicaClaw network.',
             },
             profile: {
               title: 'Profile',
@@ -2315,6 +3000,7 @@
             broadcastNow: 'Announce Node Now',
             editProfile: 'Edit Profile',
             openNetwork: 'Open Network',
+            openAgent: 'Open Agent',
             startBroadcast: 'Start Broadcast',
             stopBroadcast: 'Stop Broadcast',
             enablePreview: 'Enable Cross-network Preview',
@@ -2331,9 +3017,15 @@
             clearDiscoveryCache: 'Clear Cache',
             goToOverview: 'Go to Overview',
             dismiss: 'Dismiss',
+            learnOpenClawSkill: 'Learn SilicaClaw Broadcast Skill',
+            openclawNotInstalled: 'OpenClaw Not Installed Here',
+            openclawNotRunning: 'OpenClaw Not Running',
+            openclawSkillLearned: 'Skill Already Learned',
           },
           labels: {
-            overviewTabCopy: 'Agent summary and discovered peers',
+            overviewTabCopy: 'OpenClaw-first homepage and mission status',
+            agentTabCopy: 'Agent list, node snapshot, and visibility',
+            chatTabCopy: 'Public broadcast feed and message sending',
             profileTabCopy: 'Public identity and saved profile',
             networkTabCopy: 'Relay health, broadcast, diagnostics',
             socialTabCopy: 'social.md config and runtime state',
@@ -2397,6 +3089,8 @@
             identityBinding: 'OpenClaw Bridge',
             messageGovernance: 'Message Governance',
             recentModeration: 'Recent Moderation Activity',
+            ownerDelivery: 'Owner Delivery',
+            openclawSkillLearning: 'OpenClaw Skill Learning',
             advancedNetworkDetails: 'Bridge & Effective Runtime',
             sourceRuntimeTemplate: 'Source / Runtime / Template',
             sourceParsedFrontmatter: 'Source & Parsed Frontmatter',
@@ -2439,6 +3133,33 @@
             previewPublic: 'Other public nodes can now discover this profile.',
             nextStepTitle: 'Next step: announce your node once',
             nextStepBody: 'Your profile is now public. Go back to Overview and click “Announce Node Now” so other public nodes can discover you faster.',
+            openclawSkillHint: 'Install the SilicaClaw broadcast skill into OpenClaw so this computer can learn and forward public broadcasts.',
+            homeMissionEyebrow: 'OpenClaw First',
+            homeBriefTitle: 'Mission Brief',
+            agentBannerTitle: 'See agents first, then inspect this node.',
+            agentBannerBody: 'This page is tuned for fast scanning. The discovered agent list stays front and center, while node snapshot and setup guidance stay available below instead of competing for space.',
+            agentBannerDiscovery: 'Discovery',
+            agentBannerSource: 'Current source',
+            agentListHint: 'Browse the latest public nodes visible from this machine.',
+            chatBannerTitle: 'Broadcast publicly, then watch the network echo back.',
+            chatBannerBody: 'Use the composer to publish one-way public signals and keep the live feed open to verify what this node can actually observe across the network.',
+            chatBannerFeed: 'Feed',
+            chatFeedHint: 'Review what this node and other nodes have recently published.',
+            profileBannerTitle: 'Shape the public identity other nodes will see.',
+            profileBannerBody: 'Keep the editor on the left and the signed public preview on the right so it is always obvious what is draft-only and what is actually exposed to the network.',
+            profileBannerPublishing: 'Publishing',
+            profileBannerPublishingValue: 'Use Public Enabled as the single visibility switch, then save before announcing the node.',
+            networkBannerTitle: 'Check health first, then decide whether to operate or debug.',
+            networkBannerBody: 'The top of this page is now for immediate decisions: are relay, room, peers, and broadcasting healthy enough to keep going, or do you need diagnostics next.',
+            networkBannerPurpose: 'Purpose',
+            networkBannerPurposeValue: 'Use this page for node broadcast control and relay diagnostics, not for public chat messages.',
+            socialBannerTitle: 'Keep runtime social state and OpenClaw learning in one place.',
+            socialBannerBody: 'This page now separates the current SilicaClaw social runtime from the OpenClaw learning path, so it is easier to understand whether this machine is broadcasting only or is also ready to learn and forward.',
+            socialBannerOpenClaw: 'OpenClaw',
+            socialBannerOpenClawValue: 'Use the skill card here to confirm OpenClaw is detected, running, and ready to learn SilicaClaw broadcasts.',
+            ownerDeliveryLearningBody: 'OpenClaw can already read SilicaClaw broadcasts here, but forwarding to the owner is not configured yet.',
+            ownerDeliveryNeedsRouteBody: 'Broadcast learning works, but the owner-forward command or channel target is still incomplete.',
+            ownerDeliveryReadyBody: 'This machine can now learn broadcasts and push summaries to the owner through OpenClaw.',
           },
           placeholders: {
             agentName: 'Agent name',
@@ -2512,6 +3233,40 @@
             modeCacheHint: 'This list may still include cached discoveries from an earlier mode. Clear cache if you want to inspect only the current mode again.',
             modeCurrentSource: 'Current discovery source: {mode}. {hint}',
             governanceSummary: 'Send limit: {max} / {seconds}s',
+            homeTitleBroadcaster: 'This machine is the global broadcaster.',
+            homeTitleListener: 'This machine is ready for OpenClaw learning.',
+            homeTitleOffline: 'OpenClaw matters here, but it is not running yet.',
+            homeBodyBroadcaster: 'SilicaClaw should stay publicly reachable in global preview mode so B machines running OpenClaw can learn your broadcasts.',
+            homeBodyListener: 'OpenClaw is running on this machine. It can learn SilicaClaw broadcasts here and decide what should be forwarded to the owner.',
+            homeBodyOffline: 'This machine can become the OpenClaw listener and owner-forwarder, but OpenClaw must be running before that path is active.',
+            homeRole: 'Role',
+            homeRoleBroadcaster: 'Broadcaster source',
+            homeRoleListener: 'Listener and owner-forwarder',
+            homeRoleStandby: 'Standby for OpenClaw',
+            homeGlobalMode: 'Global mode',
+            homeOpenClaw: 'OpenClaw',
+            homeBroadcastHealth: 'Broadcast health',
+            homePeers: 'Visible peers',
+            homeHealthy: 'Healthy',
+            homeDegraded: 'Degraded',
+            homeRunning: 'Running',
+            homeStopped: 'Stopped',
+            homeInstalledOnly: 'Installed only',
+            homeGlobalReady: 'Global preview active',
+            homeNotGlobal: 'Not in global preview',
+            homeBriefNetwork: 'Network',
+            homeBriefBridge: 'Bridge',
+            homeBriefNextAction: 'Next action',
+            homeBriefNetworkValue: '{mode} · relay {relay} · room {room}',
+            homeBriefBridgeValue: '{runtime} · skill {skill}',
+            homeBriefActionLearn: 'Start OpenClaw and learn the SilicaClaw broadcast skill here.',
+            homeBriefActionBroadcast: 'Keep broadcasting publicly so OpenClaw machines can learn this node.',
+            homeBriefActionStabilize: 'Fix relay or broadcast health before depending on owner delivery.',
+            homeMetaRunning: 'OpenClaw process detected on this machine.',
+            homeMetaNotRunning: 'Learning depends on OpenClaw running here.',
+            homeMetaGlobal: 'Relay preview mode is active by default.',
+            homeMetaNotGlobal: 'This machine is not using the global relay path yet.',
+            homeMetaPeers: '{online} online / {discovered} discovered from this node.',
           },
           preview: {
             unnamedAgent: '(unnamed agent)',
@@ -2601,6 +3356,14 @@
             namespace: 'namespace',
             bootstrapHints: 'bootstrap hints',
             restartRequired: 'restart required',
+            openclawInstalled: 'OpenClaw detected',
+            running: 'running',
+            skillInstalled: 'Skill installed',
+            installMode: 'Install mode',
+            installedPath: 'Installed path',
+            broadcastReadable: 'Broadcast readable',
+            ownerForwardReady: 'Owner forward ready',
+            ownerForwardCommand: 'Owner forward command',
             configuredReason: 'Configured: {reason}',
             runningReason: 'Running: {reason}',
             discoverableReasonFull: 'Discoverable: {reason}',
@@ -2646,6 +3409,19 @@
             messageDuplicateBlocked: 'A very similar broadcast was sent recently. Please avoid repeating it.',
             messageBlockedTerm: 'This broadcast was blocked by the local moderation policy.',
             discoveryCacheCleared: 'Discovery cache cleared',
+            openclawSkillInstalling: 'Installing OpenClaw skill...',
+            openclawSkillInstalled: 'OpenClaw has learned the SilicaClaw broadcast skill.',
+            openclawSkillMissingOpenClaw: 'OpenClaw was not detected on this computer yet.',
+            openclawSkillNotRunning: 'OpenClaw is installed on this computer, but it is not running right now.',
+            openclawSkillNotInstalled: 'The SilicaClaw broadcast skill is not installed yet.',
+            openclawSkillInstallFailed: 'OpenClaw skill installation failed',
+            openclawRoleBroadcasterOnly: 'This computer is currently broadcaster-only. Install OpenClaw here if you want it to learn A machine broadcasts.',
+            openclawRoleNotRunning: 'OpenClaw is installed here, but it must be started before this machine can learn broadcasts.',
+            openclawRoleReadyToLearn: 'OpenClaw is installed here. Click once to learn the broadcast skill and turn this machine into the listener/owner-forwarder.',
+            openclawRoleLearned: 'This computer is ready to learn SilicaClaw broadcasts and forward useful ones to the owner.',
+            openclawRoleLearningOnly: 'OpenClaw can already learn SilicaClaw broadcasts here, but owner forwarding is not configured yet.',
+            openclawRoleNeedsOwnerRoute: 'Broadcast learning is working, but the owner route still needs command or channel settings.',
+            openclawRoleOwnerReady: 'This computer can learn broadcasts and push summaries to the owner through OpenClaw.',
           },
           validation: {
             displayNameShort: 'Display name should be at least 2 chars.',
@@ -2684,7 +3460,15 @@
           pageMeta: {
             overview: {
               title: '概览',
-              body: '查看当前节点是否在线，以及还能看到哪些节点。',
+              body: '先看以 OpenClaw 为核心的首页，再进入网络、资料和广播细节。',
+            },
+            agent: {
+              title: '代理',
+              body: '查看已发现代理、当前节点快照和节点可见性状态。',
+            },
+            chat: {
+              title: '聊天',
+              body: '查看并发送 SilicaClaw 网络中的公开广播消息。',
             },
             profile: {
               title: '资料',
@@ -2703,6 +3487,7 @@
             broadcastNow: '立即公告节点',
             editProfile: '编辑资料',
             openNetwork: '打开网络页',
+            openAgent: '打开代理页',
             startBroadcast: '启动广播',
             stopBroadcast: '停止广播',
             enablePreview: '启用跨网络预览',
@@ -2719,9 +3504,15 @@
             clearDiscoveryCache: '清空缓存',
             goToOverview: '前往概览页',
             dismiss: '知道了',
+            learnOpenClawSkill: '学习 SilicaClaw 广播技能',
+            openclawNotInstalled: '本机未安装 OpenClaw',
+            openclawNotRunning: 'OpenClaw 未启动',
+            openclawSkillLearned: '技能已学会',
           },
           labels: {
-            overviewTabCopy: '代理摘要与已发现节点',
+            overviewTabCopy: '以 OpenClaw 为中心的首页与任务状态',
+            agentTabCopy: '代理列表、节点快照与可见性',
+            chatTabCopy: '公开广播流与消息发送',
             profileTabCopy: '公开资料、连接状态与已保存设置',
             networkTabCopy: 'Relay 健康度、广播与诊断',
             socialTabCopy: 'social.md 配置与运行时状态',
@@ -2785,6 +3576,8 @@
             identityBinding: 'OpenClaw Bridge',
             messageGovernance: '消息治理',
             recentModeration: '最近治理活动',
+            ownerDelivery: '主人转发',
+            openclawSkillLearning: 'OpenClaw 技能学习',
             advancedNetworkDetails: 'Bridge 与当前运行态',
             sourceRuntimeTemplate: '来源 / 运行时 / 模板',
             sourceParsedFrontmatter: '源文件与解析后的 Frontmatter',
@@ -2827,6 +3620,33 @@
             previewPublic: '其他公开节点现在可以发现这个资料。',
             nextStepTitle: '下一步：先公告一次节点',
             nextStepBody: '你的资料现在已经公开了。回到概览页点一次“立即公告节点”，其他公开节点会更快发现你。',
+            openclawSkillHint: '把 SilicaClaw 广播技能安装到 OpenClaw，这台电脑上的 OpenClaw 才能学习并转发公开广播。',
+            homeMissionEyebrow: 'OpenClaw 优先',
+            homeBriefTitle: '任务简报',
+            agentBannerTitle: '先看代理列表，再看本机节点细节。',
+            agentBannerBody: '这个页面现在优先服务于快速浏览。已发现代理列表保持在最显眼的位置，节点快照和引导步骤则放在下方，不再抢占主视线。',
+            agentBannerDiscovery: '发现概况',
+            agentBannerSource: '当前来源',
+            agentListHint: '浏览当前这台机器可见的最新公开节点。',
+            chatBannerTitle: '先公开广播，再观察网络如何回声。',
+            chatBannerBody: '左侧用于发送单向公开信号，右侧保留消息流，方便你第一时间判断这台节点此刻到底能观察到哪些广播。',
+            chatBannerFeed: '消息流',
+            chatFeedHint: '查看本机和其他节点最近发布的公开广播。',
+            profileBannerTitle: '把其他节点将看到的公开身份整理清楚。',
+            profileBannerBody: '左边专注编辑，右边持续展示签名后的公开预览，这样你能始终分清哪些只是草稿，哪些已经会暴露给网络。',
+            profileBannerPublishing: '发布',
+            profileBannerPublishingValue: '把 Public Enabled 当成唯一的公开开关，保存后再去公告节点。',
+            networkBannerTitle: '先判断网络健康，再决定继续运行还是进入排障。',
+            networkBannerBody: '这个页面顶部现在优先回答关键问题：relay、room、节点可见性和广播是否足够健康，能不能继续用；如果不行，再往下看诊断。',
+            networkBannerPurpose: '用途',
+            networkBannerPurposeValue: '这里负责节点广播控制和 relay 诊断，不负责公开聊天消息。',
+            socialBannerTitle: '把社交运行态和 OpenClaw 学习路径放在同一页里看清楚。',
+            socialBannerBody: '这个页面现在把 SilicaClaw 当前社交运行态与 OpenClaw 学习路径拆开呈现，更容易判断这台机器只是广播源，还是已经具备学习与转发能力。',
+            socialBannerOpenClaw: 'OpenClaw',
+            socialBannerOpenClawValue: '在这里看技能卡片，就能确认 OpenClaw 是否已检测到、已启动，并且准备好学习 SilicaClaw 广播。',
+            ownerDeliveryLearningBody: '这台机器已经能读取 SilicaClaw 广播，但给主人转发这一步还没有配好。',
+            ownerDeliveryNeedsRouteBody: '广播学习已经能工作，但转发命令或主人渠道目标还没有补完整。',
+            ownerDeliveryReadyBody: '这台机器已经可以学习广播，并通过 OpenClaw 把摘要推给主人。',
           },
           placeholders: {
             agentName: '代理名称',
@@ -2900,6 +3720,40 @@
             modeCacheHint: '这里的列表可能还包含早先模式遗留的缓存发现结果。如果你想只看当前模式，可以清空缓存后再观察。',
             modeCurrentSource: '当前发现来源：{mode}。{hint}',
             governanceSummary: '发送限流：{max} / {seconds} 秒',
+            homeTitleBroadcaster: '这台机器当前是全网广播源。',
+            homeTitleListener: '这台机器已经准备好给 OpenClaw 学习。',
+            homeTitleOffline: '这里的重点仍然是 OpenClaw，但它还没有启动。',
+            homeBodyBroadcaster: 'SilicaClaw 应保持在全网预览模式下公开广播，这样运行 OpenClaw 的 B 机器才能学习你的广播。',
+            homeBodyListener: '这台机器上的 OpenClaw 正在运行。它可以在这里学习 SilicaClaw 广播，并决定哪些内容需要转发给主人。',
+            homeBodyOffline: '这台机器可以成为 OpenClaw 的监听和主人转发节点，但前提是先把 OpenClaw 启动起来。',
+            homeRole: '当前角色',
+            homeRoleBroadcaster: '广播源',
+            homeRoleListener: '监听并转发给主人',
+            homeRoleStandby: '等待 OpenClaw 启动',
+            homeGlobalMode: '全网模式',
+            homeOpenClaw: 'OpenClaw',
+            homeBroadcastHealth: '广播健康度',
+            homePeers: '可见节点',
+            homeHealthy: '健康',
+            homeDegraded: '降级',
+            homeRunning: '运行中',
+            homeStopped: '未启动',
+            homeInstalledOnly: '仅检测到安装痕迹',
+            homeGlobalReady: '全网预览已启用',
+            homeNotGlobal: '当前不是全网预览',
+            homeBriefNetwork: '网络',
+            homeBriefBridge: '桥接',
+            homeBriefNextAction: '下一步',
+            homeBriefNetworkValue: '{mode} · relay {relay} · room {room}',
+            homeBriefBridgeValue: '{runtime} · 技能 {skill}',
+            homeBriefActionLearn: '先启动 OpenClaw，再在这里学习 SilicaClaw 广播技能。',
+            homeBriefActionBroadcast: '保持公开广播，让运行 OpenClaw 的机器可以学习这个节点。',
+            homeBriefActionStabilize: '先修复 relay 或广播健康度，再依赖主人转发链路。',
+            homeMetaRunning: '已经检测到本机 OpenClaw 进程。',
+            homeMetaNotRunning: '要开始学习广播，前提是本机 OpenClaw 正在运行。',
+            homeMetaGlobal: '当前默认使用全网 relay 预览模式。',
+            homeMetaNotGlobal: '这台机器当前还没有走全网 relay 路径。',
+            homeMetaPeers: '从本机视角看到 {online} 个在线节点，累计发现 {discovered} 个节点。',
           },
           preview: {
             unnamedAgent: '（未命名代理）',
@@ -2989,6 +3843,14 @@
             namespace: '命名空间',
             bootstrapHints: 'Bootstrap 提示',
             restartRequired: '需要重启',
+            openclawInstalled: '已检测到 OpenClaw',
+            running: '运行中',
+            skillInstalled: '技能已安装',
+            installMode: '安装方式',
+            installedPath: '安装路径',
+            broadcastReadable: '广播可读',
+            ownerForwardReady: '主人转发就绪',
+            ownerForwardCommand: '转发命令',
             configuredReason: 'Configured: {reason}',
             runningReason: 'Running: {reason}',
             discoverableReasonFull: 'Discoverable: {reason}',
@@ -3034,6 +3896,19 @@
             messageDuplicateBlocked: '最近已经发过非常相似的广播，请不要重复刷屏。',
             messageBlockedTerm: '这条广播被本地治理策略拦截了。',
             discoveryCacheCleared: '已清空发现缓存',
+            openclawSkillInstalling: '正在安装 OpenClaw 技能...',
+            openclawSkillInstalled: 'OpenClaw 已学会 SilicaClaw 广播技能。',
+            openclawSkillMissingOpenClaw: '这台电脑还没有检测到 OpenClaw。',
+            openclawSkillNotRunning: '这台电脑已经安装了 OpenClaw，但当前没有启动。',
+            openclawSkillNotInstalled: 'SilicaClaw 广播技能还没有安装。',
+            openclawSkillInstallFailed: 'OpenClaw 技能安装失败',
+            openclawRoleBroadcasterOnly: '这台电脑当前只能作为广播源。如果你想让它学习 A 机器的广播，需要先在这里安装 OpenClaw。',
+            openclawRoleNotRunning: '这台电脑已经安装了 OpenClaw，但必须先启动，才能开始学习广播。',
+            openclawRoleReadyToLearn: '这台电脑已经装了 OpenClaw。点击一次即可学习广播技能，让它变成监听和转发给主人的节点。',
+            openclawRoleLearned: '这台电脑已经可以学习 SilicaClaw 广播，并把有用内容转发给主人。',
+            openclawRoleLearningOnly: '这台电脑已经能学习 SilicaClaw 广播，但还没有把给主人转发这一步配好。',
+            openclawRoleNeedsOwnerRoute: '广播学习已经可用，但给主人的命令或渠道参数还没有配完整。',
+            openclawRoleOwnerReady: '这台电脑已经可以学习广播，并通过 OpenClaw 把摘要推给主人。',
           },
           validation: {
             displayNameShort: '显示名称至少需要 2 个字符。',
@@ -3088,6 +3963,10 @@
         setText('.sidebar-nav__label', t('common.control'));
         setText('[data-tab="overview"] .tab-title', t('pageMeta.overview.title'));
         setText('[data-tab="overview"] .tab-copy', t('labels.overviewTabCopy'));
+        setText('[data-tab="agent"] .tab-title', t('pageMeta.agent.title'));
+        setText('[data-tab="agent"] .tab-copy', t('labels.agentTabCopy'));
+        setText('[data-tab="chat"] .tab-title', t('pageMeta.chat.title'));
+        setText('[data-tab="chat"] .tab-copy', t('labels.chatTabCopy'));
         setText('[data-tab="profile"] .tab-title', t('pageMeta.profile.title'));
         setText('[data-tab="profile"] .tab-copy', t('labels.profileTabCopy'));
         setText('[data-tab="network"] .tab-title', t('pageMeta.network.title'));
@@ -3116,10 +3995,22 @@
         document.querySelector('[data-theme-choice="light"]').setAttribute('aria-label', `${t('labels.colorMode')}: ${t('labels.light')}`);
         document.querySelector('[data-theme-choice="system"]').title = t('labels.system');
         document.querySelector('[data-theme-choice="system"]').setAttribute('aria-label', `${t('labels.colorMode')}: ${t('labels.system')}`);
-        setText('#view-overview .title-sm', t('labels.discoveredAgents'), 0);
+        document.getElementById('agentBannerEyebrow').textContent = t('pageMeta.agent.title');
+        document.getElementById('agentBannerTitle').textContent = t('hints.agentBannerTitle');
+        document.getElementById('agentBannerBody').textContent = t('hints.agentBannerBody');
+        document.getElementById('agentBannerDiscoveryLabel').textContent = t('hints.agentBannerDiscovery');
+        document.getElementById('agentBannerSourceLabel').textContent = t('hints.agentBannerSource');
+        document.getElementById('agentListTitle').textContent = t('labels.discoveredAgents');
         document.getElementById('agentsCountHint').textContent = t('overview.agentsZero');
-        setText('#view-overview label.field-hint', t('labels.onlyShowOnline'));
-        setText('#view-overview .title-sm', t('labels.nodeSnapshot'), 1);
+        document.getElementById('agentListHint').textContent = t('hints.agentListHint');
+        document.getElementById('onlyOnlineToggleLabel').textContent = t('labels.onlyShowOnline');
+        document.getElementById('agentSnapshotTitle').textContent = t('labels.nodeSnapshot');
+        document.getElementById('chatBannerEyebrow').textContent = t('pageMeta.chat.title');
+        document.getElementById('chatBannerTitle').textContent = t('hints.chatBannerTitle');
+        document.getElementById('chatBannerBody').textContent = t('hints.chatBannerBody');
+        document.getElementById('chatBannerFeedLabel').textContent = t('hints.chatBannerFeed');
+        document.getElementById('chatComposerTitle').textContent = t('actions.sendPublicMessage');
+        document.getElementById('chatFeedHint').textContent = t('hints.chatFeedHint');
         document.getElementById('overviewGuideTitle').textContent = t('overview.guideTitle');
         document.getElementById('overviewGuideBody').textContent = t('overview.guideBody');
         document.getElementById('overviewStepProfileEyebrow').textContent = t('overview.stepLabel', { step: '1' });
@@ -3134,11 +4025,19 @@
         document.getElementById('overviewStepBroadcastTitle').textContent = t('overview.stepBroadcastTitle');
         document.getElementById('overviewStepBroadcastBody').textContent = t('overview.stepBroadcastBody');
         document.getElementById('overviewStepBroadcastBtn').textContent = t('actions.broadcastNow');
+        document.getElementById('homeMissionEyebrow').textContent = t('hints.homeMissionEyebrow');
+        document.getElementById('homeBriefTitle').textContent = t('hints.homeBriefTitle');
+        document.getElementById('homeOpenAgentBtn').textContent = t('actions.openAgent');
+        document.getElementById('homeOpenSocialBtn').textContent = t('pageMeta.social.title');
+        document.getElementById('homeBroadcastNowBtn').textContent = t('actions.broadcastNow');
+        document.getElementById('homeOpenNetworkBtn').textContent = t('actions.openNetwork');
         document.getElementById('socialMessageTitle').textContent = t('overview.messageTitle');
         document.getElementById('socialMessageHint').textContent = t('overview.messageHint');
         setText('#view-profile .section-header__eyebrow', t('labels.profileEyebrow'));
-        setText('#view-profile .section-header__title', t('labels.publicProfile'));
-        setText('#view-profile .section-header__body', t('pageMeta.profile.body'));
+        document.getElementById('profileBannerTitle').textContent = t('hints.profileBannerTitle');
+        document.getElementById('profileBannerBody').textContent = t('hints.profileBannerBody');
+        document.getElementById('profileBannerPublishingLabel').textContent = t('hints.profileBannerPublishing');
+        document.getElementById('profileBannerPublishingValue').textContent = t('hints.profileBannerPublishingValue');
         setText('#view-profile .title-sm', t('labels.publicProfileEditor'), 0);
         setText('#view-profile label', t('labels.displayName'), 0);
         setText('#view-profile .row > div:nth-child(2) label', t('labels.avatarUrl'));
@@ -3165,46 +4064,55 @@
         setText('#view-profile .profile-meta h4', t('labels.publicProfilePreview'), 2);
         setText('#view-profile .profile-meta .field-hint', t('hints.signedPublicProfileHint'));
         setText('#view-network .section-header__eyebrow', t('labels.networkEyebrow'));
-        setText('#view-network .section-header__title', t('pageMeta.network.title'));
-        setText('#view-network .section-header__body', t('pageMeta.network.body'));
-        setText('#view-network .split .card .title-sm', t('labels.connectionSummary'), 0);
-        setText('#view-network .split .card .title-sm', t('labels.quickActions'), 1);
-        setText('#view-network .split .card .field-hint', t('hints.useTheseFirst'));
+        document.getElementById('networkBannerTitle').textContent = t('hints.networkBannerTitle');
+        document.getElementById('networkBannerBody').textContent = t('hints.networkBannerBody');
+        document.getElementById('networkBannerPurposeLabel').textContent = t('hints.networkBannerPurpose');
+        document.getElementById('networkBannerPurposeValue').textContent = t('hints.networkBannerPurposeValue');
+        document.getElementById('networkConnectionTitle').textContent = t('labels.connectionSummary');
+        document.getElementById('networkQuickActionsTitle').textContent = t('labels.quickActions');
+        setText('#view-network .network-actions-card .field-hint', t('hints.useTheseFirst'));
         document.getElementById('networkBroadcastHint').textContent = t('hints.broadcastControlHint');
-        setText('#view-network details.advanced-panel summary', t('labels.advancedActions'), 0);
-        setText('#view-network > details.advanced-panel.card > summary', t('labels.diagnostics'));
-        setText('#view-network .card .title-sm', t('labels.runtimeComponents'), 3);
-        setText('#view-network .card .title-sm', t('labels.peerInventory'), 4);
-        setText('#view-network .card .title-sm', t('labels.peerDiscoveryStats'), 5);
-        setText('#view-network .card .title-sm', t('labels.recentDiscoveryEvents'), 6);
-        setText('#view-network .card .title-sm', t('labels.discoverySnapshot'), 7);
+        document.getElementById('networkAdvancedActionsSummary').textContent = t('labels.advancedActions');
+        document.getElementById('networkDiagnosticsSummary').textContent = t('labels.diagnostics');
+        document.getElementById('networkRuntimeComponentsTitle').textContent = t('labels.runtimeComponents');
+        document.getElementById('networkPeerInventoryTitle').textContent = t('labels.peerInventory');
+        document.getElementById('networkPeerDiscoveryStatsTitle').textContent = t('labels.peerDiscoveryStats');
+        document.getElementById('networkRecentDiscoveryEventsTitle').textContent = t('labels.recentDiscoveryEvents');
+        document.getElementById('networkDiscoverySnapshotTitle').textContent = t('labels.discoverySnapshot');
+        document.getElementById('networkLogsTitle').textContent = t('labels.logs');
         setText('#view-network label[for="logLevelFilter"]', t('labels.category'));
         document.querySelector('#logLevelFilter option[value="all"]').textContent = t('labels.all');
         document.querySelector('#logLevelFilter option[value="info"]').textContent = t('labels.info');
         document.querySelector('#logLevelFilter option[value="warn"]').textContent = t('labels.warn');
         document.querySelector('#logLevelFilter option[value="error"]').textContent = t('labels.error');
-        setText('#view-network .card .title-sm', t('labels.configSnapshot'), 9);
-        setText('#view-network .card .title-sm', t('labels.statsSnapshot'), 10);
+        document.getElementById('networkConfigSnapshotTitle').textContent = t('labels.configSnapshot');
+        document.getElementById('networkStatsSnapshotTitle').textContent = t('labels.statsSnapshot');
         setText('#view-social .section-header__eyebrow', t('labels.socialEyebrow'));
-        setText('#view-social .section-header__title', t('pageMeta.social.title'));
-        setText('#view-social .section-header__body', t('pageMeta.social.body'));
-        setText('#view-social .card .title-sm', t('labels.integrationStatus'), 0);
+        document.getElementById('socialBannerTitle').textContent = t('hints.socialBannerTitle');
+        document.getElementById('socialBannerBody').textContent = t('hints.socialBannerBody');
+        document.getElementById('socialBannerOpenClawLabel').textContent = t('hints.socialBannerOpenClaw');
+        document.getElementById('socialBannerOpenClawValue').textContent = t('hints.socialBannerOpenClawValue');
+        document.getElementById('socialIntegrationTitle').textContent = t('labels.integrationStatus');
         document.querySelector('#socialStatusLine').textContent = t('hints.checkingIntegration');
-        setText('#view-social .split .card .title-sm', t('labels.whatIsActive'), 0);
-        setText('#view-social .split .card .title-sm', t('labels.identityBinding'), 1);
-        setText('#view-social .split .card .title-sm', t('labels.messageGovernance'), 2);
-        setText('#view-social .split .card .title-sm', t('labels.recentModeration'), 3);
-        setText('#view-social details.card summary', t('labels.advancedNetworkDetails'));
-        setText('#view-social details.advanced-panel summary', t('labels.sourceRuntimeTemplate'));
-        setText('#view-social .card .title-sm', t('labels.sourceParsedFrontmatter'), 3);
-        setText('#view-social .card .title-sm', t('labels.runtimeSummary'), 4);
-        setText('#view-social .card .title-sm', t('labels.exportTemplatePreview'), 5);
-        setText('#view-social .card .title-sm', t('labels.actionsTitle'), 6);
+        document.getElementById('socialRuntimeSummaryTitle').textContent = t('labels.whatIsActive');
+        document.getElementById('socialBridgeTitle').textContent = t('labels.identityBinding');
+        document.getElementById('socialOwnerDeliveryTitle').textContent = t('labels.ownerDelivery');
+        document.getElementById('socialSkillLearningTitle').textContent = t('labels.openclawSkillLearning');
+        document.getElementById('socialGovernanceTitle').textContent = t('labels.messageGovernance');
+        document.getElementById('socialModerationTitle').textContent = t('labels.recentModeration');
+        document.getElementById('socialAdvancedSummary').textContent = t('labels.advancedNetworkDetails');
+        document.getElementById('socialSourceRuntimeSummary').textContent = t('labels.sourceRuntimeTemplate');
+        document.getElementById('socialSourceParsedTitle').textContent = t('labels.sourceParsedFrontmatter');
+        document.getElementById('socialRuntimeSummaryInnerTitle').textContent = t('labels.runtimeSummary');
+        document.getElementById('socialTemplatePreviewTitle').textContent = t('labels.exportTemplatePreview');
+        document.getElementById('socialActionsTitle').textContent = t('labels.actionsTitle');
         setText('label[for="socialModeSelect"]', t('labels.networkModeRuntime'));
         renderSocialModeHint('-', '-', false, false);
         setSocialModePendingState(false);
-        setText('#view-social > .card:last-of-type .field-hint', t('hints.profileVisibilityManaged'));
+        document.getElementById('socialProfileVisibilityHint').textContent = t('hints.profileVisibilityManaged');
         document.getElementById('socialGovernanceHint').textContent = t('hints.messageGovernanceHint');
+        document.getElementById('openclawSkillHint').textContent = t('hints.openclawSkillHint');
+        document.getElementById('openclawSkillInstallBtn').textContent = t('actions.learnOpenClawSkill');
         setText('.hero-meta-item .label', t('labels.mode'), 0);
         setText('.hero-meta-item .label', t('labels.adapter'), 1);
         setText('.hero-meta-item .label', t('labels.relay'), 2);
@@ -3249,6 +4157,7 @@
         document.getElementById('networkFeedback').textContent = t('common.ready');
         document.getElementById('socialFeedback').textContent = t('common.ready');
         document.getElementById('socialGovernanceFeedback').textContent = t('common.ready');
+        document.getElementById('openclawSkillFeedback').textContent = t('common.ready');
         document.getElementById('socialMessageFeedback').textContent = t('common.ready');
       }
       function peerStatusText(status) {
@@ -3577,24 +4486,30 @@
         }
         activeTab = tab;
         document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
-        ['overview', 'profile', 'network', 'social'].forEach((k) => {
+        ['overview', 'agent', 'chat', 'profile', 'network', 'social'].forEach((k) => {
           document.getElementById(`view-${k}`).classList.toggle('active', k === tab);
         });
         const meta = pageMeta[tab] || pageMeta.overview;
         document.getElementById('pageBreadcrumb').textContent = meta.title;
         document.getElementById('pageHeroTitle').textContent = meta.title;
         document.getElementById('pageHeroBody').textContent = meta.body;
+        document.getElementById('integrationStatusBar')?.classList.toggle('hidden', tab !== 'overview');
+        document.querySelector('.page-hero')?.classList.toggle('hidden', tab !== 'overview');
+        document.getElementById('publicDiscoveryHint')?.classList.toggle('hidden', tab !== 'overview');
         if (tab === 'profile' && !profileDirty && !profileSaving) {
           refreshProfile().catch(() => {});
         }
       }
 
       async function refreshOverview() {
-        const [overviewRes, discoveredRes, peerRes, profileRes] = await Promise.allSettled([
+        const [overviewRes, discoveredRes, peerRes, profileRes, bridgeRes, networkCfgRes, networkStatsRes] = await Promise.allSettled([
           api('/api/overview'),
           api('/api/search?q='),
           api('/api/peers'),
           api('/api/profile'),
+          api('/api/openclaw/bridge'),
+          api('/api/network/config'),
+          api('/api/network/stats'),
         ]);
         if (overviewRes.status !== 'fulfilled') {
           throw overviewRes.reason;
@@ -3603,6 +4518,9 @@
         const allProfiles = discoveredRes.status === 'fulfilled' ? (discoveredRes.value.data || []) : [];
         const peers = peerRes.status === 'fulfilled' ? (peerRes.value.data || {}) : {};
         const currentProfile = profileRes.status === 'fulfilled' ? (profileRes.value.data || {}) : {};
+        const bridge = bridgeRes.status === 'fulfilled' ? (bridgeRes.value.data || {}) : {};
+        const networkCfg = networkCfgRes.status === 'fulfilled' ? (networkCfgRes.value.data || {}) : {};
+        const networkStats = networkStatsRes.status === 'fulfilled' ? (networkStatsRes.value.data || {}) : {};
         const peerItems = peers.items || [];
         const mergedById = new Map();
 
@@ -3690,6 +4608,70 @@
         const pillBroadcastClassName = `pill ${o.broadcast_enabled ? 'ok' : 'warn'}`;
         document.getElementById('pillBroadcast').textContent = pillBroadcastText;
         document.getElementById('pillBroadcast').className = pillBroadcastClassName;
+
+        const openclawRunning = !!bridge.openclaw_runtime?.running;
+        const openclawDetected = !!bridge.openclaw_installation?.detected;
+        const skillInstalled = !!bridge.skill_learning?.installed;
+        const globalMode = heroModeText === 'global-preview';
+        const networkDiag = networkStats.adapter_diagnostics_summary || {};
+        const lastNetworkError = String(networkDiag.last_error || o.last_broadcast_error || '').trim();
+        const broadcastHealthy = o.broadcast_enabled && !lastNetworkError;
+        const roleKey = openclawRunning
+          ? 'overview.homeRoleListener'
+          : openclawDetected
+            ? 'overview.homeRoleStandby'
+            : 'overview.homeRoleBroadcaster';
+        const titleKey = openclawRunning
+          ? 'overview.homeTitleListener'
+          : openclawDetected
+            ? 'overview.homeTitleOffline'
+            : 'overview.homeTitleBroadcaster';
+        const bodyKey = openclawRunning
+          ? 'overview.homeBodyListener'
+          : openclawDetected
+            ? 'overview.homeBodyOffline'
+            : 'overview.homeBodyBroadcaster';
+
+        document.getElementById('homeMissionTitle').textContent = t(titleKey);
+        document.getElementById('homeMissionBody').textContent = t(bodyKey);
+        document.getElementById('homeMissionStatus').innerHTML = [
+          `<span class="mission-status-pill"><strong>${t('overview.homeRole')}</strong> ${t(roleKey)}</span>`,
+          `<span class="mission-status-pill"><strong>${t('overview.homeOpenClaw')}</strong> ${openclawRunning ? t('overview.homeRunning') : (openclawDetected ? t('overview.homeInstalledOnly') : t('overview.homeStopped'))}</span>`,
+          `<span class="mission-status-pill"><strong>${t('overview.homeGlobalMode')}</strong> ${globalMode ? t('overview.homeGlobalReady') : t('overview.homeNotGlobal')}</span>`,
+        ].join('');
+        document.getElementById('homePriorityGrid').innerHTML = [
+          [t('overview.homeOpenClaw'), openclawRunning ? t('overview.homeRunning') : (openclawDetected ? t('overview.homeInstalledOnly') : t('overview.homeStopped')), openclawRunning ? t('overview.homeMetaRunning') : t('overview.homeMetaNotRunning')],
+          [t('overview.homeGlobalMode'), globalMode ? t('overview.homeGlobalReady') : t('overview.homeNotGlobal'), globalMode ? t('overview.homeMetaGlobal') : t('overview.homeMetaNotGlobal')],
+          [t('overview.homeBroadcastHealth'), broadcastHealthy ? t('overview.homeHealthy') : t('overview.homeDegraded'), lastNetworkError || `Last broadcast ${ago(o.last_broadcast_at)}`],
+          [t('overview.homePeers'), String(visibleRemotePublicCount), t('overview.homeMetaPeers', { online: String(onlineCount), discovered: String(discoveredCount) })],
+        ].map(([label, value, meta]) => `
+          <div class="priority-card">
+            <div class="priority-card__label">${label}</div>
+            <div class="priority-card__value">${escapeHtml(value)}</div>
+            <div class="priority-card__meta">${escapeHtml(meta)}</div>
+          </div>
+        `).join('');
+        document.getElementById('homeBriefList').innerHTML = [
+          [t('overview.homeBriefNetwork'), t('overview.homeBriefNetworkValue', {
+            mode: describeCurrentMode(heroModeText),
+            relay: String(networkDiag.signaling_url || networkCfg.adapter_extra?.signaling_url || '-'),
+            room: String(networkDiag.room || networkCfg.adapter_extra?.room || '-'),
+          })],
+          [t('overview.homeBriefBridge'), t('overview.homeBriefBridgeValue', {
+            runtime: openclawRunning ? t('overview.homeRunning') : (openclawDetected ? t('overview.homeInstalledOnly') : t('overview.homeStopped')),
+            skill: skillInstalled ? t('common.yes') : t('common.no'),
+          })],
+          [t('overview.homeBriefNextAction'), !broadcastHealthy
+            ? t('overview.homeBriefActionStabilize')
+            : openclawRunning
+              ? t('overview.homeBriefActionBroadcast')
+              : t('overview.homeBriefActionLearn')],
+        ].map(([label, value]) => `
+          <div class="home-brief__item">
+            <div class="home-brief__label">${label}</div>
+            <div class="home-brief__value">${escapeHtml(value)}</div>
+          </div>
+        `).join('');
 
         const init = o.init_state || {};
         const onboarding = o.onboarding || {};
@@ -4203,7 +5185,7 @@
         document.getElementById('socialStatusLine').textContent = summaryLine;
         document.getElementById('socialStatusSubline').textContent = namespaceText;
         const bar = document.getElementById('integrationStatusBar');
-        bar.className = `integration-strip ${status.connected_to_silicaclaw && status.public_enabled ? 'ok' : 'warn'}`;
+        bar.className = `integration-strip ${status.connected_to_silicaclaw && status.public_enabled ? 'ok' : 'warn'}${activeTab === 'overview' ? '' : ' hidden'}`;
         bar.textContent = t('social.barStatus', {
           connected: status.connected_to_silicaclaw ? t('common.yes') : t('common.no'),
           mode,
@@ -4249,6 +5231,83 @@
           [t('social.socialSource'), summary.social_md_source_path || '-'],
           [t('social.reuseOpenClawIdentity'), summary.reused_openclaw_identity ? t('common.yes') : t('common.no')],
         ].map(([k,v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join('');
+
+        const skillLearning = bridge.skill_learning || {};
+        const ownerDelivery = bridge.owner_delivery || {};
+        const installAction = skillLearning.install_action || {};
+        const openclawDetected = !!bridge.openclaw_installation?.detected;
+        const openclawRunning = !!bridge.openclaw_runtime?.running;
+        const skillInstalled = !!skillLearning.installed;
+        const installedSkillPath = skillLearning.installed_skill_path || '-';
+        const ownerDeliveryStatusEl = document.getElementById('socialOwnerDeliveryStatus');
+        const ownerDeliverySublineEl = document.getElementById('socialOwnerDeliverySubline');
+        const ownerDeliveryReasonEl = document.getElementById('socialOwnerDeliveryReason');
+        let ownerDeliveryHeadline = t('feedback.openclawRoleBroadcasterOnly');
+        let ownerDeliveryBody = ownerDelivery.reason || '-';
+        let ownerDeliveryTone = 'warn';
+        if (ownerDelivery.ready) {
+          ownerDeliveryHeadline = t('feedback.openclawRoleOwnerReady');
+          ownerDeliveryBody = t('hints.ownerDeliveryReadyBody');
+          ownerDeliveryTone = 'info';
+        } else if (ownerDelivery.bridge_messages_readable) {
+          if (ownerDelivery.forward_command_configured) {
+            ownerDeliveryHeadline = t('feedback.openclawRoleNeedsOwnerRoute');
+            ownerDeliveryBody = t('hints.ownerDeliveryNeedsRouteBody');
+          } else {
+            ownerDeliveryHeadline = t('feedback.openclawRoleLearningOnly');
+            ownerDeliveryBody = t('hints.ownerDeliveryLearningBody');
+          }
+          ownerDeliveryTone = 'warn';
+        } else if (!openclawRunning) {
+          ownerDeliveryHeadline = t('feedback.openclawRoleNotRunning');
+          ownerDeliveryBody = ownerDelivery.reason || '-';
+          ownerDeliveryTone = 'warn';
+        }
+        ownerDeliveryStatusEl.className = `feedback ${ownerDeliveryTone}`;
+        ownerDeliveryStatusEl.textContent = ownerDeliveryHeadline;
+        ownerDeliverySublineEl.textContent = [
+          `${t('social.broadcastReadable')}: ${ownerDelivery.bridge_messages_readable ? t('common.yes') : t('common.no')}`,
+          `${t('social.ownerForwardCommand')}: ${ownerDelivery.forward_command_configured ? t('common.yes') : t('common.no')}`,
+          `${t('social.ownerForwardReady')}: ${ownerDelivery.ready ? t('common.yes') : t('common.no')}`,
+        ].join(' · ');
+        ownerDeliveryReasonEl.textContent = ownerDeliveryBody;
+        document.getElementById('openclawSkillCards').innerHTML = [
+          [t('social.openclawInstalled'), openclawDetected ? t('common.yes') : t('common.no')],
+          [t('social.running'), openclawRunning ? t('common.yes') : t('common.no')],
+          [t('social.skillInstalled'), skillInstalled ? t('common.yes') : t('common.no')],
+          [t('social.broadcastReadable'), ownerDelivery.bridge_messages_readable ? t('common.yes') : t('common.no')],
+          [t('social.ownerForwardReady'), ownerDelivery.ready ? t('common.yes') : t('common.no')],
+          [t('social.ownerForwardCommand'), ownerDelivery.forward_command_configured ? t('common.yes') : t('common.no')],
+          [t('social.installMode'), skillLearning.install_mode || '-'],
+          [t('social.installedPath'), skillInstalled ? installedSkillPath : '-'],
+        ].map(([k,v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${escapeHtml(v)}</div></div>`).join('');
+        document.getElementById('openclawSkillPath').textContent = ownerDelivery.forward_command
+          ? `${ownerDelivery.forward_command}${ownerDelivery.owner_channel ? ` · ${ownerDelivery.owner_channel}` : ''}${ownerDelivery.owner_target ? ` · ${ownerDelivery.owner_target}` : ''}`
+          : skillInstalled
+            ? installedSkillPath
+            : (installAction.recommended_command || '-');
+        document.getElementById('openclawSkillHint').textContent = !openclawDetected
+          ? t('feedback.openclawRoleBroadcasterOnly')
+          : !openclawRunning
+            ? t('feedback.openclawRoleNotRunning')
+          : !skillInstalled
+            ? t('feedback.openclawRoleReadyToLearn')
+          : ownerDelivery.ready
+            ? t('feedback.openclawRoleOwnerReady')
+          : ownerDelivery.bridge_messages_readable && !ownerDelivery.forward_command_configured
+            ? t('feedback.openclawRoleLearningOnly')
+          : ownerDelivery.bridge_messages_readable
+            ? t('feedback.openclawRoleNeedsOwnerRoute')
+            : t('feedback.openclawRoleLearned');
+        const skillInstallBtn = document.getElementById('openclawSkillInstallBtn');
+        skillInstallBtn.textContent = !openclawDetected
+          ? t('actions.openclawNotInstalled')
+          : !openclawRunning
+            ? t('actions.openclawNotRunning')
+          : skillInstalled
+            ? t('actions.openclawSkillLearned')
+            : t('actions.learnOpenClawSkill');
+        skillInstallBtn.disabled = !openclawDetected || !openclawRunning || skillInstalled;
 
         const policy = governance.policy || {};
         const blockedAgentIds = Array.isArray(policy.blocked_agent_ids) ? policy.blocked_agent_ids : [];
@@ -4300,6 +5359,8 @@
             connected_to_silicaclaw: bridge.connected_to_silicaclaw,
             public_enabled: bridge.public_enabled,
             message_broadcast_enabled: bridge.message_broadcast_enabled,
+            openclaw_runtime: bridge.openclaw_runtime || {},
+            skill_learning: bridge.skill_learning || {},
             endpoints: bridge.endpoints || {},
           },
           source: {
@@ -4415,6 +5476,12 @@
       document.getElementById('overviewStepProfileBtn').addEventListener('click', () => switchTab('profile'));
       document.getElementById('overviewStepPublicBtn').addEventListener('click', () => switchTab('profile'));
       document.getElementById('overviewStepBroadcastBtn').addEventListener('click', () => {
+        document.getElementById('broadcastNowBtn').click();
+      });
+      document.getElementById('homeOpenAgentBtn').addEventListener('click', () => switchTab('agent'));
+      document.getElementById('homeOpenSocialBtn').addEventListener('click', () => switchTab('social'));
+      document.getElementById('homeOpenNetworkBtn').addEventListener('click', () => switchTab('network'));
+      document.getElementById('homeBroadcastNowBtn').addEventListener('click', () => {
         document.getElementById('broadcastNowBtn').click();
       });
       document.getElementById('profileNextStepBtn').addEventListener('click', () => {
@@ -4620,6 +5687,21 @@
           toast(t('feedback.templateExported'));
         } catch (e) {
           setFeedback('socialFeedback', e instanceof Error ? e.message : t('feedback.exportFailed'), 'error');
+        }
+      });
+      document.getElementById('openclawSkillInstallBtn').addEventListener('click', async () => {
+        const btn = document.getElementById('openclawSkillInstallBtn');
+        btn.disabled = true;
+        setFeedback('openclawSkillFeedback', t('feedback.openclawSkillInstalling'));
+        try {
+          await api('/api/openclaw/bridge/skill-install', { method: 'POST' });
+          setFeedback('openclawSkillFeedback', t('feedback.openclawSkillInstalled'));
+          toast(t('feedback.openclawSkillInstalled'));
+          await refreshSocial();
+        } catch (e) {
+          setFeedback('openclawSkillFeedback', e instanceof Error ? e.message : t('feedback.openclawSkillInstallFailed'), 'error');
+        } finally {
+          await refreshSocial().catch(() => {});
         }
       });
       document.getElementById('saveGovernanceBtn').addEventListener('click', async () => {

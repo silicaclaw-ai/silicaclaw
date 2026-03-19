@@ -118,9 +118,16 @@ const CONSOLE_LOG_FILE = join(STATE_DIR, "local-console.log");
 const SIGNALING_PID_FILE = join(STATE_DIR, "signaling.pid");
 const SIGNALING_LOG_FILE = join(STATE_DIR, "signaling.log");
 const STATE_FILE = join(STATE_DIR, "state.json");
+const LAUNCH_AGENTS_DIR = join(homedir(), "Library", "LaunchAgents");
+const LOCAL_CONSOLE_LABEL = "ai.silicaclaw.local-console";
+const SIGNALING_LABEL = "ai.silicaclaw.signaling";
 
 function ensureStateDir() {
   mkdirSync(STATE_DIR, { recursive: true });
+}
+
+function ensureLaunchAgentsDir() {
+  mkdirSync(LAUNCH_AGENTS_DIR, { recursive: true });
 }
 
 function readPid(file) {
@@ -192,6 +199,118 @@ function parseUrlHostPort(url) {
   }
 }
 
+function isLaunchdPlatform() {
+  return process.platform === "darwin" && !hasFlag("no-launchd");
+}
+
+function launchdDomain() {
+  const uid = typeof process.getuid === "function" ? process.getuid() : 0;
+  return `gui/${uid}`;
+}
+
+function launchAgentPlistPath(label) {
+  return join(LAUNCH_AGENTS_DIR, `${label}.plist`);
+}
+
+function plistEscape(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
+}
+
+function buildLaunchAgentPlist({ label, programArguments, workingDirectory, stdoutPath, stderrPath, environment }) {
+  const argsXml = programArguments.map((arg) => `\n      <string>${plistEscape(arg)}</string>`).join("");
+  const envEntries = Object.entries(environment || {}).filter(([, value]) => String(value || "").trim());
+  const envXml = envEntries.length
+    ? `\n    <key>EnvironmentVariables</key>\n    <dict>${envEntries
+        .map(([key, value]) => `\n      <key>${plistEscape(key)}</key>\n      <string>${plistEscape(value)}</string>`)
+        .join("")}\n    </dict>`
+    : "";
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n  <dict>\n    <key>Label</key>\n    <string>${plistEscape(label)}</string>\n    <key>RunAtLoad</key>\n    <true/>\n    <key>KeepAlive</key>\n    <true/>\n    <key>ThrottleInterval</key>\n    <integer>1</integer>\n    <key>ProgramArguments</key>\n    <array>${argsXml}\n    </array>\n    <key>WorkingDirectory</key>\n    <string>${plistEscape(workingDirectory)}</string>\n    <key>StandardOutPath</key>\n    <string>${plistEscape(stdoutPath)}</string>\n    <key>StandardErrorPath</key>\n    <string>${plistEscape(stderrPath)}</string>${envXml}\n  </dict>\n</plist>\n`;
+}
+
+function runLaunchctl(args) {
+  return spawnSync("launchctl", args, {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+}
+
+function resolveCommandPath(command) {
+  const result = spawnSync("which", [command], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  if ((result.status ?? 1) === 0) {
+    const value = String(result.stdout || "").trim();
+    if (value) return value;
+  }
+  return command;
+}
+
+function isLaunchAgentLoaded(label) {
+  const result = runLaunchctl(["print", `${launchdDomain()}/${label}`]);
+  return (result.status ?? 1) === 0;
+}
+
+function readLaunchAgentRuntime(label) {
+  const result = runLaunchctl(["print", `${launchdDomain()}/${label}`]);
+  if ((result.status ?? 1) !== 0) return { loaded: false, pid: null };
+  const text = `${result.stdout || ""}\n${result.stderr || ""}`;
+  const pidMatch = text.match(/pid = (\d+)/);
+  return {
+    loaded: true,
+    pid: pidMatch ? Number(pidMatch[1]) : null,
+  };
+}
+
+function installLaunchAgent({ label, programArguments, workingDirectory, logFile, environment }) {
+  ensureLaunchAgentsDir();
+  ensureStateDir();
+  const plistPath = launchAgentPlistPath(label);
+  const plist = buildLaunchAgentPlist({
+    label,
+    programArguments,
+    workingDirectory,
+    stdoutPath: logFile,
+    stderrPath: logFile,
+    environment,
+  });
+  writeFileSync(plistPath, plist, "utf8");
+
+  if (isLaunchAgentLoaded(label)) {
+    runLaunchctl(["bootout", launchdDomain(), plistPath]);
+  }
+
+  const result = runLaunchctl(["bootstrap", launchdDomain(), plistPath]);
+  if ((result.status ?? 1) !== 0) {
+    const detail = String(result.stderr || result.stdout || "launchctl bootstrap failed").trim();
+    throw new Error(detail);
+  }
+}
+
+function stopLaunchAgent(label) {
+  const plistPath = launchAgentPlistPath(label);
+  if (!existsSync(plistPath) && !isLaunchAgentLoaded(label)) return;
+  const result = runLaunchctl(["bootout", launchdDomain(), plistPath]);
+  if ((result.status ?? 1) !== 0 && isLaunchAgentLoaded(label)) {
+    const detail = String(result.stderr || result.stdout || "launchctl bootout failed").trim();
+    throw new Error(detail);
+  }
+}
+
+function uninstallLaunchAgent(label) {
+  try {
+    stopLaunchAgent(label);
+  } catch {
+    // ignore best-effort cleanup
+  }
+  removeFileIfExists(launchAgentPlistPath(label));
+}
+
 function spawnBackground(command, args, env, logFile, pidFile, cwd = APP_DIR) {
   const outFd = openSync(logFile, "a");
   const child = spawn(command, args, {
@@ -230,7 +349,41 @@ function printHelp() {
   kv("Logs", "silicaclaw gateway logs local-console");
 }
 
+function launchdStatusPayload() {
+  const state = readState();
+  const localRuntime = readLaunchAgentRuntime(LOCAL_CONSOLE_LABEL);
+  const signalingRuntime = readLaunchAgentRuntime(SIGNALING_LABEL);
+  const localListener = listeningProcessOnPort(4310);
+  const signalingListener = listeningProcessOnPort(4510);
+  return {
+    app_dir: APP_DIR,
+    mode: state?.mode || "unknown",
+    adapter: state?.adapter || "unknown",
+    service_manager: "launchd",
+    local_console: {
+      pid: Number(localListener?.pid || localRuntime.pid || 0) || null,
+      running: Boolean(localListener) || Boolean(localRuntime.loaded && localRuntime.pid),
+      loaded: localRuntime.loaded,
+      label: LOCAL_CONSOLE_LABEL,
+      log_file: CONSOLE_LOG_FILE,
+    },
+    signaling: {
+      pid: Number(signalingListener?.pid || signalingRuntime.pid || 0) || null,
+      running: Boolean(signalingListener) || Boolean(signalingRuntime.loaded && signalingRuntime.pid),
+      loaded: signalingRuntime.loaded,
+      label: SIGNALING_LABEL,
+      log_file: SIGNALING_LOG_FILE,
+      url: state?.signaling_url || null,
+      room: state?.room || null,
+    },
+    updated_at: state?.updated_at || null,
+  };
+}
+
 function buildStatusPayload() {
+  if (isLaunchdPlatform()) {
+    return launchdStatusPayload();
+  }
   const localPid = readPid(CONSOLE_PID_FILE);
   const sigPid = readPid(SIGNALING_PID_FILE);
   const state = readState();
@@ -414,6 +567,19 @@ function tailFile(file, lines = 80) {
 }
 
 async function stopAll() {
+  if (isLaunchdPlatform()) {
+    stopLaunchAgent(LOCAL_CONSOLE_LABEL);
+    stopLaunchAgent(SIGNALING_LABEL);
+    await stopOwnedListener(4310, "local-console");
+    await stopOwnedListener(4510, "signaling");
+    removeFileIfExists(CONSOLE_PID_FILE);
+    removeFileIfExists(SIGNALING_PID_FILE);
+    writeState({
+      ...(readState() || {}),
+      updated_at: Date.now(),
+    });
+    return;
+  }
   const localPid = readPid(CONSOLE_PID_FILE);
   const sigPid = readPid(SIGNALING_PID_FILE);
   await stopPid(localPid, "local-console");
@@ -468,6 +634,55 @@ async function startAll() {
     mode === "global-preview" &&
     !shouldDisableSignaling &&
     (host === "localhost" || host === "127.0.0.1");
+
+  if (isLaunchdPlatform()) {
+    const npmPath = resolveCommandPath("npm");
+    const signalingEntry = resolve(APP_DIR, "scripts", "webrtc-signaling-server.mjs");
+    await stopOwnedListener(4310, "local-console");
+    await stopOwnedListener(4510, "signaling");
+    const baseEnv = {
+      NETWORK_ADAPTER: adapter,
+      NETWORK_MODE: mode,
+      WEBRTC_SIGNALING_URL: signalingUrl,
+      WEBRTC_ROOM: room,
+      PATH: process.env.PATH || "/usr/bin:/bin:/usr/sbin:/sbin",
+      HOME: process.env.HOME || homedir(),
+    };
+
+    installLaunchAgent({
+      label: LOCAL_CONSOLE_LABEL,
+      programArguments: [npmPath, "run", "--workspace", "@silicaclaw/local-console", "start"],
+      workingDirectory: APP_DIR,
+      logFile: CONSOLE_LOG_FILE,
+      environment: baseEnv,
+    });
+
+    if (shouldAutoStartSignaling) {
+      installLaunchAgent({
+        label: SIGNALING_LABEL,
+        programArguments: [process.execPath, signalingEntry],
+        workingDirectory: APP_DIR,
+        logFile: SIGNALING_LOG_FILE,
+        environment: {
+          PATH: baseEnv.PATH,
+          HOME: baseEnv.HOME,
+          PORT: String(port),
+        },
+      });
+    } else {
+      uninstallLaunchAgent(SIGNALING_LABEL);
+    }
+
+    writeState({
+      app_dir: APP_DIR,
+      mode,
+      adapter,
+      signaling_url: signalingUrl,
+      room,
+      updated_at: Date.now(),
+    });
+    return { localPid: null, signalingPid: null };
+  }
 
   let signalingPid = currentSigPid;
   if (shouldAutoStartSignaling) {

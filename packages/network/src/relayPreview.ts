@@ -480,31 +480,44 @@ export class RelayPreviewAdapter implements NetworkAdapter {
       const index = (this.activeEndpointIndex + offset) % this.signalingEndpoints.length;
       const endpoint = this.signalingEndpoints[index]?.replace(/\/+$/, "");
       if (!endpoint) continue;
+      let timeout: NodeJS.Timeout | null = null;
       try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), this.requestTimeoutMs);
+        timeout = setTimeout(() => controller.abort(), this.requestTimeoutMs);
         const response = await fetch(`${endpoint}${path}`, {
           method,
           headers: method === "POST" ? { "content-type": "application/json" } : undefined,
           body: method === "POST" ? JSON.stringify(body) : undefined,
           signal: controller.signal,
         });
-        clearTimeout(timeout);
         if (!response.ok) {
-          throw new Error(`${method} ${path} failed (${response.status})`);
+          const responseText = (await response.text().catch(() => "")).trim();
+          const detail = responseText ? `: ${responseText.slice(0, 200)}` : "";
+          throw new Error(`${method} ${path} failed (${response.status})${detail}`);
         }
         this.activeEndpointIndex = index;
         this.activeEndpoint = endpoint;
         this.lastError = null;
         return response.json();
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        const isAbort = error instanceof Error && (
+          error.name === "AbortError" || error.message === "This operation was aborted"
+        );
+        const message = isAbort
+          ? `${method} ${path} timed out after ${this.requestTimeoutMs}ms`
+          : error instanceof Error
+            ? error.message
+            : String(error);
         errors.push(`${endpoint}: ${message}`);
         this.stats.signaling_errors += 1;
         this.lastError = message;
         this.lastErrorAt = Date.now();
         this.reconnectAttemptsTotal += 1;
         this.recordDiscovery("signaling_error", { endpoint, detail: message });
+      } finally {
+        if (timeout) {
+          clearTimeout(timeout);
+        }
       }
     }
     throw new Error(errors.join(" | "));

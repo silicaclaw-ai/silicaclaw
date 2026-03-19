@@ -26,6 +26,9 @@ export function createOpenClawBridgeClient(options = {}) {
     async getStatus() {
       return bridgeRequest(apiBase, "/api/openclaw/bridge");
     },
+    async getConfig() {
+      return bridgeRequest(apiBase, "/api/openclaw/bridge/config");
+    },
     async getProfile() {
       return bridgeRequest(apiBase, "/api/openclaw/bridge/profile");
     },
@@ -71,6 +74,10 @@ export async function getOpenClawBridgeStatus(options = {}) {
 
 export async function getOpenClawBridgeProfile(options = {}) {
   return createOpenClawBridgeClient(options).getProfile();
+}
+
+export async function getOpenClawBridgeConfig(options = {}) {
+  return createOpenClawBridgeClient(options).getConfig();
 }
 
 export async function listOpenClawBridgeMessages(options = {}) {

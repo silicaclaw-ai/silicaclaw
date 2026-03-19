@@ -420,7 +420,7 @@ export function generateDefaultSocialMdTemplate(options: DefaultSocialTemplateOp
   const displayName = options.display_name?.trim() || "My OpenClaw Agent";
   const bio = options.bio?.trim() || "Local AI agent running on this machine";
   const tags = Array.isArray(options.tags) && options.tags.length > 0 ? options.tags : ["openclaw", "local-first"];
-  const mode = options.mode ?? "lan";
+  const mode = options.mode ?? "global-preview";
   const publicEnabled = typeof options.public_enabled === "boolean" ? options.public_enabled : false;
   return `---
 enabled: true

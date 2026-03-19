@@ -1,9 +1,11 @@
 import express, { NextFunction, Request, Response } from "express";
 import cors from "cors";
+import { execFile, spawnSync } from "child_process";
 import { resolve } from "path";
-import { copyFileSync, existsSync, mkdirSync, readFileSync } from "fs";
+import { accessSync, constants, copyFileSync, existsSync, mkdirSync, readFileSync } from "fs";
 import { createHash } from "crypto";
 import { hostname } from "os";
+import { promisify } from "util";
 import {
   AgentIdentity,
   DirectoryState,
@@ -106,6 +108,8 @@ const SOCIAL_MESSAGE_BLOCKED_AGENT_IDS = new Set(
 const SOCIAL_MESSAGE_BLOCKED_TERMS = dedupeStrings(parseListEnv(process.env.SOCIAL_MESSAGE_BLOCKED_TERMS || ""))
   .map((term) => term.trim().toLowerCase())
   .filter(Boolean);
+const execFileAsync = promisify(execFile);
+const OPENCLAW_SKILL_NAME = "silicaclaw-broadcast";
 
 function readWorkspaceVersion(workspaceRoot: string): string {
   const pkgFile = resolve(workspaceRoot, "package.json");
@@ -142,6 +146,193 @@ function resolveStorageRoot(workspaceRoot: string, cwd = process.cwd()): string 
     return appRoot;
   }
   return cwd;
+}
+
+function resolveExecutableInPath(binName: string): string | null {
+  const pathValue = String(process.env.PATH || "").trim();
+  if (!pathValue) return null;
+  const pathEntries = pathValue.split(":").map((item) => item.trim()).filter(Boolean);
+  for (const entry of pathEntries) {
+    const candidate = resolve(entry, binName);
+    if (!existsSync(candidate)) continue;
+    try {
+      accessSync(candidate, constants.X_OK);
+      return candidate;
+    } catch {
+      // ignore non-executable matches
+    }
+  }
+  return null;
+}
+
+function existingPathOrNull(filePath: string): string | null {
+  return existsSync(filePath) ? filePath : null;
+}
+
+function detectOpenClawInstallation(workspaceRoot: string) {
+  const workspaceDir = resolve(workspaceRoot, ".openclaw");
+  const homeDir = resolve(process.env.HOME || "", ".openclaw");
+  const commandPath = resolveExecutableInPath("openclaw");
+
+  const workspaceIdentityPath = existingPathOrNull(resolve(workspaceDir, "identity.json"));
+  const workspaceProfilePath = existingPathOrNull(resolve(workspaceDir, "profile.json"));
+  const workspaceSocialPath = existingPathOrNull(resolve(workspaceDir, "social.md"));
+  const workspaceSkillsPath = existingPathOrNull(resolve(workspaceDir, "skills"));
+  const homeIdentityPath = existingPathOrNull(resolve(homeDir, "identity.json"));
+  const homeProfilePath = existingPathOrNull(resolve(homeDir, "profile.json"));
+  const homeSocialPath = existingPathOrNull(resolve(homeDir, "social.md"));
+  const homeSkillsPath = existingPathOrNull(resolve(homeDir, "skills"));
+
+  const workspaceDetected = Boolean(
+    existsSync(workspaceDir) ||
+    workspaceIdentityPath ||
+    workspaceProfilePath ||
+    workspaceSocialPath ||
+    workspaceSkillsPath
+  );
+  const homeDetected = Boolean(
+    existsSync(homeDir) || homeIdentityPath || homeProfilePath || homeSocialPath || homeSkillsPath
+  );
+
+  return {
+    detected: Boolean(commandPath || workspaceDetected || homeDetected),
+    detection_mode: commandPath
+      ? "command"
+      : workspaceDetected
+        ? "workspace"
+        : homeDetected
+          ? "home"
+          : "not_found",
+    command_path: commandPath,
+    workspace_dir: workspaceDir,
+    home_dir: homeDir,
+    workspace_dir_exists: existsSync(workspaceDir),
+    home_dir_exists: existsSync(homeDir),
+    workspace_identity_path: workspaceIdentityPath,
+    workspace_profile_path: workspaceProfilePath,
+    workspace_social_path: workspaceSocialPath,
+    workspace_skills_path: workspaceSkillsPath,
+    home_identity_path: homeIdentityPath,
+    home_profile_path: homeProfilePath,
+    home_social_path: homeSocialPath,
+    home_skills_path: homeSkillsPath,
+  } as const;
+}
+
+function detectOpenClawRuntime() {
+  const result = spawnSync("ps", ["-Ao", "pid=,ppid=,command="], {
+    encoding: "utf8",
+  });
+  const stdout = String(result.stdout || "");
+  const lines = stdout
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const processes = lines
+    .map((line) => {
+      const match = line.match(/^(\d+)\s+(\d+)\s+(.+)$/);
+      if (!match) return null;
+      const command = match[3] || "";
+      const lower = command.toLowerCase();
+      const isOpenClaw =
+        lower.includes(" openclaw ") ||
+        lower.endsWith(" openclaw") ||
+        lower.includes("/openclaw ") ||
+        lower.includes("openclaw.mjs") ||
+        lower.includes("openclaw gateway") ||
+        lower.includes("openclaw agent") ||
+        lower.includes("openclaw message");
+      if (!isOpenClaw) return null;
+      return {
+        pid: Number(match[1]),
+        ppid: Number(match[2]),
+        command,
+      };
+    })
+    .filter((item): item is { pid: number; ppid: number; command: string } => Boolean(item));
+
+  return {
+    running: processes.length > 0,
+    process_count: processes.length,
+    processes: processes.slice(0, 10),
+    detection_error: result.status === 0 ? null : String(result.stderr || "ps failed"),
+  } as const;
+}
+
+function detectOpenClawSkillInstallation() {
+  const homeDir = resolve(process.env.HOME || "", ".openclaw");
+  const workspaceSkillRoot = resolve(homeDir, "workspace", "skills");
+  const legacySkillRoot = resolve(homeDir, "skills");
+  const workspaceSkillPath = resolve(workspaceSkillRoot, OPENCLAW_SKILL_NAME, "SKILL.md");
+  const legacySkillPath = resolve(legacySkillRoot, OPENCLAW_SKILL_NAME, "SKILL.md");
+  const workspaceInstalled = existsSync(workspaceSkillPath);
+  const legacyInstalled = existsSync(legacySkillPath);
+
+  return {
+    installed: workspaceInstalled || legacyInstalled,
+    install_mode: workspaceInstalled ? "workspace" : legacyInstalled ? "legacy" : "not_installed",
+    workspace_skill_root: workspaceSkillRoot,
+    legacy_skill_root: legacySkillRoot,
+    workspace_skill_path: workspaceInstalled ? workspaceSkillPath : null,
+    legacy_skill_path: legacyInstalled ? legacySkillPath : null,
+  } as const;
+}
+
+function detectOwnerDeliveryStatus(params: {
+  workspaceRoot: string;
+  connectedToSilicaclaw: boolean;
+  openclawRunning: boolean;
+  skillInstalled: boolean;
+}) {
+  const forwardCommand = String(process.env.OPENCLAW_OWNER_FORWARD_CMD || "").trim();
+  const ownerChannel = String(process.env.OPENCLAW_OWNER_CHANNEL || "").trim();
+  const ownerTarget = String(process.env.OPENCLAW_OWNER_TARGET || "").trim();
+  const ownerAccount = String(process.env.OPENCLAW_OWNER_ACCOUNT || "").trim();
+  const explicitOpenClawBin = String(process.env.OPENCLAW_BIN || "").trim();
+  const configuredSourceDir = String(process.env.OPENCLAW_SOURCE_DIR || "").trim();
+  const defaultSourceDir = resolve(params.workspaceRoot, "..", "openclaw");
+  const openclawSourceDir = configuredSourceDir || defaultSourceDir;
+  const openclawSourceEntry = existingPathOrNull(resolve(openclawSourceDir, "openclaw.mjs"));
+  const openclawCommandResolvable = Boolean(explicitOpenClawBin || resolveExecutableInPath("openclaw") || openclawSourceEntry);
+  const bridgeMessagesReadable = params.connectedToSilicaclaw && params.openclawRunning && params.skillInstalled;
+  const forwardCommandConfigured = Boolean(forwardCommand);
+  const ownerRouteConfigured = Boolean(ownerChannel && ownerTarget);
+  const ready =
+    bridgeMessagesReadable && forwardCommandConfigured && ownerRouteConfigured && openclawCommandResolvable;
+
+  let reason = "";
+  if (!params.connectedToSilicaclaw) {
+    reason = "SilicaClaw social bridge is not connected yet, so there is no broadcast stream for OpenClaw to learn.";
+  } else if (!params.openclawRunning) {
+    reason = "OpenClaw is not running on this machine yet, so broadcast learning and owner forwarding are idle.";
+  } else if (!params.skillInstalled) {
+    reason = "OpenClaw is running, but the silicaclaw-broadcast skill is not installed yet.";
+  } else if (!forwardCommandConfigured) {
+    reason = "Broadcast learning is ready, but OPENCLAW_OWNER_FORWARD_CMD is not configured yet.";
+  } else if (!ownerRouteConfigured) {
+    reason = "The owner forward command exists, but OPENCLAW_OWNER_CHANNEL and OPENCLAW_OWNER_TARGET are still missing.";
+  } else if (!openclawCommandResolvable) {
+    reason = "Owner forwarding is configured, but no runnable OpenClaw CLI or source checkout was found.";
+  } else {
+    reason = "This machine can read SilicaClaw broadcasts and route owner summaries through OpenClaw.";
+  }
+
+  return {
+    supported: bridgeMessagesReadable,
+    mode: "public-broadcast-via-openclaw" as const,
+    send_to_owner_via_openclaw: ready,
+    bridge_messages_readable: bridgeMessagesReadable,
+    forward_command_configured: forwardCommandConfigured,
+    openclaw_command_resolvable: openclawCommandResolvable,
+    ready,
+    forward_command: forwardCommand || null,
+    owner_channel: ownerChannel || null,
+    owner_target: ownerTarget || null,
+    owner_account: ownerAccount || null,
+    openclaw_source_dir: openclawSourceEntry ? openclawSourceDir : null,
+    reason,
+  };
 }
 
 function hasMeaningfulJson(filePath: string): boolean {
@@ -245,12 +436,91 @@ type OpenClawBridgeStatus = {
   identity_source: "silicaclaw-existing" | "openclaw-existing" | "silicaclaw-generated";
   openclaw_identity_source_path: string | null;
   social_source_path: string | null;
+  openclaw_installation: {
+    detected: boolean;
+    detection_mode: "command" | "workspace" | "home" | "not_found";
+    command_path: string | null;
+    workspace_dir: string;
+    home_dir: string;
+    workspace_dir_exists: boolean;
+    home_dir_exists: boolean;
+    workspace_identity_path: string | null;
+    workspace_profile_path: string | null;
+    workspace_social_path: string | null;
+    workspace_skills_path: string | null;
+    home_identity_path: string | null;
+    home_profile_path: string | null;
+    home_social_path: string | null;
+    home_skills_path: string | null;
+  };
+  openclaw_runtime: {
+    running: boolean;
+    process_count: number;
+    processes: Array<{
+      pid: number;
+      ppid: number;
+      command: string;
+    }>;
+    detection_error: string | null;
+  };
+  skill_learning: {
+    available: boolean;
+    installed: boolean;
+    install_mode: "workspace" | "legacy" | "not_installed";
+    installed_skill_path: string | null;
+    install_action: {
+      supported: boolean;
+      endpoint: string;
+      recommended_command: string;
+    };
+    skills: Array<{
+      key: "get_profile" | "list_messages" | "watch_messages" | "send_message";
+      summary: string;
+      endpoint: string;
+    }>;
+  };
+  owner_delivery: {
+    supported: boolean;
+    mode: "public-broadcast-via-openclaw";
+    send_to_owner_via_openclaw: boolean;
+    bridge_messages_readable: boolean;
+    forward_command_configured: boolean;
+    openclaw_command_resolvable: boolean;
+    ready: boolean;
+    forward_command: string | null;
+    owner_channel: string | null;
+    owner_target: string | null;
+    owner_account: string | null;
+    openclaw_source_dir: string | null;
+    reason: string;
+  };
   endpoints: {
     status: string;
     profile: string;
     messages: string;
     send_message: string;
+    install_skill: string;
   };
+};
+
+type OpenClawBridgeConfigView = {
+  bridge_api_base: string;
+  openclaw_detected: boolean;
+  openclaw_running: boolean;
+  openclaw_workspace_skill_dir: string;
+  openclaw_legacy_skill_dir: string;
+  silicaclaw_env_template_path: string;
+  recommended_skill_name: string;
+  recommended_install_command: string;
+  recommended_owner_forward_env: {
+    OPENCLAW_SOURCE_DIR: string;
+    OPENCLAW_OWNER_CHANNEL: string;
+    OPENCLAW_OWNER_TARGET: string;
+    OPENCLAW_OWNER_ACCOUNT: string;
+    OPENCLAW_OWNER_FORWARD_CMD: string;
+  };
+  owner_forward_command_example: string;
+  notes: string[];
 };
 
 export class LocalNodeService {
@@ -276,6 +546,9 @@ export class LocalNodeService {
   private broadcastCount = 0;
   private lastMessageAt = 0;
   private lastBroadcastAt = 0;
+  private lastBroadcastErrorAt = 0;
+  private lastBroadcastError: string | null = null;
+  private broadcastFailureCount = 0;
   private broadcaster: NodeJS.Timeout | null = null;
   private subscriptionsBound = false;
   private broadcastEnabled = true;
@@ -294,7 +567,7 @@ export class LocalNodeService {
 
   private network: NetworkAdapter;
   private adapterMode: "mock" | "local-event-bus" | "real-preview" | "webrtc-preview" | "relay-preview";
-  private networkMode: "local" | "lan" | "global-preview" = "lan";
+  private networkMode: "local" | "lan" | "global-preview" = "global-preview";
   private networkNamespace: string;
   private networkPort: number | null;
   private socialConfig: SocialConfig;
@@ -368,7 +641,14 @@ export class LocalNodeService {
     );
 
     if (this.profile?.public_enabled && this.broadcastEnabled) {
-      await this.broadcastNow("adapter_start");
+      try {
+        await this.broadcastNow("adapter_start");
+      } catch (error) {
+        await this.log(
+          "warn",
+          `Initial broadcast failed: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
     }
 
     this.startBroadcastLoop();
@@ -407,6 +687,9 @@ export class LocalNodeService {
       public_enabled: Boolean(this.profile?.public_enabled),
       broadcast_enabled: this.broadcastEnabled,
       last_broadcast_at: this.lastBroadcastAt,
+      last_broadcast_error_at: this.lastBroadcastErrorAt,
+      last_broadcast_error: this.lastBroadcastError,
+      broadcast_failure_count: this.broadcastFailureCount,
       discovered_count: profiles.length,
       online_count: onlineCount,
       offline_count: Math.max(0, profiles.length - onlineCount),
@@ -440,8 +723,11 @@ export class LocalNodeService {
       mode: this.networkMode,
       received_count: this.receivedCount,
       broadcast_count: this.broadcastCount,
+      broadcast_failure_count: this.broadcastFailureCount,
       last_message_at: this.lastMessageAt,
       last_broadcast_at: this.lastBroadcastAt,
+      last_broadcast_error_at: this.lastBroadcastErrorAt,
+      last_broadcast_error: this.lastBroadcastError,
       received_by_topic: this.receivedByTopic,
       published_by_topic: this.publishedByTopic,
       peers_discovered: peerCount,
@@ -554,8 +840,11 @@ export class LocalNodeService {
       message_counters: {
         received_total: this.receivedCount,
         broadcast_total: this.broadcastCount,
+        broadcast_failures_total: this.broadcastFailureCount,
         last_message_at: this.lastMessageAt,
         last_broadcast_at: this.lastBroadcastAt,
+        last_broadcast_error_at: this.lastBroadcastErrorAt,
+        last_broadcast_error: this.lastBroadcastError,
         received_by_topic: this.receivedByTopic,
         published_by_topic: this.publishedByTopic,
       },
@@ -970,6 +1259,15 @@ export class LocalNodeService {
 
   getOpenClawBridgeStatus(): OpenClawBridgeStatus {
     const integration = this.getIntegrationStatus();
+    const openclawInstallation = detectOpenClawInstallation(this.workspaceRoot);
+    const openclawRuntime = detectOpenClawRuntime();
+    const skillInstallation = detectOpenClawSkillInstallation();
+    const ownerDelivery = detectOwnerDeliveryStatus({
+      workspaceRoot: this.workspaceRoot,
+      connectedToSilicaclaw: integration.connected_to_silicaclaw,
+      openclawRunning: openclawRuntime.running,
+      skillInstalled: skillInstallation.installed,
+    });
     return {
       enabled: this.socialConfig.enabled,
       connected_to_silicaclaw: integration.connected_to_silicaclaw,
@@ -982,12 +1280,63 @@ export class LocalNodeService {
       identity_source: this.resolvedIdentitySource,
       openclaw_identity_source_path: this.resolvedOpenClawIdentityPath,
       social_source_path: this.socialSourcePath,
+      openclaw_installation: openclawInstallation,
+      openclaw_runtime: openclawRuntime,
+      skill_learning: {
+        available: integration.connected_to_silicaclaw && openclawRuntime.running,
+        installed: skillInstallation.installed,
+        install_mode: skillInstallation.install_mode,
+        installed_skill_path: skillInstallation.workspace_skill_path || skillInstallation.legacy_skill_path,
+        install_action: {
+          supported: true,
+          endpoint: "/api/openclaw/bridge/skill-install",
+          recommended_command: "silicaclaw openclaw-skill-install",
+        },
+        skills: [
+          {
+            key: "get_profile",
+            summary: "Read SilicaClaw identity/profile so OpenClaw can align its runtime persona.",
+            endpoint: "/api/openclaw/bridge/profile",
+          },
+          {
+            key: "list_messages",
+            summary: "Read recent public broadcast messages observed by this SilicaClaw node.",
+            endpoint: "/api/openclaw/bridge/messages",
+          },
+          {
+            key: "watch_messages",
+            summary: "Poll the recent broadcast feed so OpenClaw can learn from new public messages.",
+            endpoint: "/api/openclaw/bridge/messages",
+          },
+          {
+            key: "send_message",
+            summary: "Publish a signed public broadcast through SilicaClaw on behalf of OpenClaw.",
+            endpoint: "/api/openclaw/bridge/message",
+          },
+        ],
+      },
+      owner_delivery: ownerDelivery,
       endpoints: {
         status: "/api/openclaw/bridge",
         profile: "/api/openclaw/bridge/profile",
         messages: "/api/openclaw/bridge/messages",
         send_message: "/api/openclaw/bridge/message",
+        install_skill: "/api/openclaw/bridge/skill-install",
       },
+    };
+  }
+
+  async installOpenClawSkill() {
+    const scriptPath = resolve(this.workspaceRoot, "scripts", "install-openclaw-skill.mjs");
+    const { stdout } = await execFileAsync(process.execPath, [scriptPath], {
+      cwd: this.workspaceRoot,
+      env: process.env,
+      maxBuffer: 1024 * 1024,
+    });
+    const parsed = JSON.parse(String(stdout || "{}"));
+    return {
+      ...parsed,
+      bridge: this.getOpenClawBridgeStatus(),
     };
   }
 
@@ -998,6 +1347,44 @@ export class LocalNodeService {
       public_profile_preview: this.getPublicProfilePreview(),
       integration: this.getIntegrationSummary(),
       bridge: this.getOpenClawBridgeStatus(),
+    };
+  }
+
+  getOpenClawBridgeConfig(): OpenClawBridgeConfigView {
+    const homeDir = resolve(process.env.HOME || "", ".openclaw");
+    const workspaceSkillDir = resolve(homeDir, "workspace", "skills");
+    const legacySkillDir = resolve(homeDir, "skills");
+    const openclawSourceDir = resolve(this.workspaceRoot, "..", "openclaw");
+
+    return {
+      bridge_api_base: "http://localhost:4310",
+      openclaw_detected: detectOpenClawInstallation(this.workspaceRoot).detected,
+      openclaw_running: detectOpenClawRuntime().running,
+      openclaw_workspace_skill_dir: workspaceSkillDir,
+      openclaw_legacy_skill_dir: legacySkillDir,
+      silicaclaw_env_template_path: resolve(this.workspaceRoot, "openclaw-owner-forward.env.example"),
+      recommended_skill_name: "silicaclaw-broadcast",
+      recommended_install_command: "silicaclaw openclaw-skill-install",
+      recommended_owner_forward_env: {
+        OPENCLAW_SOURCE_DIR: openclawSourceDir,
+        OPENCLAW_OWNER_CHANNEL: "<channel>",
+        OPENCLAW_OWNER_TARGET: "<target>",
+        OPENCLAW_OWNER_ACCOUNT: "",
+        OPENCLAW_OWNER_FORWARD_CMD: "node scripts/send-to-owner-via-openclaw.mjs",
+      },
+      owner_forward_command_example: [
+        `OPENCLAW_SOURCE_DIR='${openclawSourceDir}'`,
+        "OPENCLAW_OWNER_CHANNEL='<channel>'",
+        "OPENCLAW_OWNER_TARGET='<target>'",
+        "OPENCLAW_OWNER_FORWARD_CMD='node scripts/send-to-owner-via-openclaw.mjs'",
+        "node scripts/owner-forwarder-demo.mjs",
+      ].join(" "),
+      notes: [
+        "Install and maintain the skill from SilicaClaw; do not edit OpenClaw core source for this integration.",
+        "OpenClaw learns broadcasts via the installed skill under ~/.openclaw/workspace/skills/.",
+        "Owner delivery runs through OpenClaw's own message channel stack after the skill forwards a summary.",
+        "Sensitive computer control still requires OpenClaw's own owner approval and node permission flow.",
+      ],
     };
   }
 
@@ -1043,7 +1430,7 @@ export class LocalNodeService {
     return this.getMessageGovernanceView();
   }
 
-  async sendSocialMessage(body: string, topic = DEFAULT_SOCIAL_MESSAGE_CHANNEL): Promise<{ sent: boolean; reason: string; message?: SocialMessageView }> {
+  async sendSocialMessage(body: string, topic = DEFAULT_SOCIAL_MESSAGE_CHANNEL): Promise<{ sent: boolean; reason: string; message?: SocialMessageView; error?: string }> {
     if (!this.identity || !this.profile) {
       return { sent: false, reason: "missing_identity_or_profile" };
     }
@@ -1091,7 +1478,22 @@ export class LocalNodeService {
 
     this.recordTimestamp(this.outboundMessageTimestamps, this.messageGovernance.send_window_ms, message.created_at);
     this.ingestSocialMessage(message);
-    await this.publish(SOCIAL_MESSAGE_TOPIC, message);
+    try {
+      await this.publish(SOCIAL_MESSAGE_TOPIC, message);
+    } catch (error) {
+      const messageText = error instanceof Error ? error.message : String(error);
+      this.lastBroadcastErrorAt = Date.now();
+      this.lastBroadcastError = messageText;
+      this.broadcastFailureCount += 1;
+      await this.persistSocialMessages();
+      await this.log("error", `Social message broadcast failed (${message.message_id.slice(0, 10)}): ${messageText}`);
+      return {
+        sent: false,
+        reason: "publish_failed",
+        error: messageText,
+        message: this.getSocialMessages(1).items[0],
+      };
+    }
     await this.persistSocialMessages();
     await this.log("info", `Social message broadcast (${message.message_id.slice(0, 10)})`);
 
@@ -1212,7 +1614,7 @@ export class LocalNodeService {
     return { broadcast_enabled: this.broadcastEnabled };
   }
 
-  async broadcastNow(reason = "manual"): Promise<{ sent: boolean; reason: string }> {
+  async broadcastNow(reason = "manual"): Promise<{ sent: boolean; reason: string; error?: string }> {
     if (!this.identity || !this.profile) {
       return { sent: false, reason: "missing_identity_or_profile" };
     }
@@ -1230,14 +1632,25 @@ export class LocalNodeService {
     const presenceRecord = signPresence(this.identity, Date.now());
     const indexRecords = buildIndexRecords(this.profile);
 
-    await this.publish("profile", profileRecord);
-    await this.publish("presence", presenceRecord);
-    for (const record of indexRecords) {
-      await this.publish("index", record);
+    try {
+      await this.publish("profile", profileRecord);
+      await this.publish("presence", presenceRecord);
+      for (const record of indexRecords) {
+        await this.publish("index", record);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.lastBroadcastErrorAt = Date.now();
+      this.lastBroadcastError = message;
+      this.broadcastFailureCount += 1;
+      await this.log("error", `Broadcast failed (reason=${reason}): ${message}`);
+      return { sent: false, reason: "publish_failed", error: message };
     }
 
     this.lastBroadcastAt = Date.now();
     this.broadcastCount += 1;
+    this.lastBroadcastError = null;
+    this.lastBroadcastErrorAt = 0;
 
     this.directory = ingestProfileRecord(this.directory, profileRecord);
     this.directory = ingestPresenceRecord(this.directory, presenceRecord);
@@ -1482,7 +1895,14 @@ export class LocalNodeService {
     }
 
     this.broadcaster = setInterval(async () => {
-      await this.broadcastNow("interval");
+      try {
+        await this.broadcastNow("interval");
+      } catch (error) {
+        await this.log(
+          "warn",
+          `Scheduled broadcast failed: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
     }, BROADCAST_INTERVAL_MS);
   }
 
@@ -1771,7 +2191,7 @@ export class LocalNodeService {
       this.socialConfig.network.mode ||
       (modeEnv === "local" || modeEnv === "lan" || modeEnv === "global-preview"
         ? modeEnv
-        : "lan");
+        : "global-preview");
 
     this.networkMode = resolvedMode;
     this.networkNamespace = this.socialConfig.network.namespace || process.env.NETWORK_NAMESPACE || "silicaclaw.preview";
@@ -2372,6 +2792,10 @@ export async function main() {
     sendOk(res, node.getOpenClawBridgeStatus());
   });
 
+  app.get("/api/openclaw/bridge/config", (_req, res) => {
+    sendOk(res, node.getOpenClawBridgeConfig());
+  });
+
   app.get("/api/openclaw/bridge/profile", (_req, res) => {
     sendOk(res, node.getOpenClawBridgeProfile());
   });
@@ -2391,6 +2815,25 @@ export async function main() {
       sendOk(res, result, {
         message: result.sent ? "OpenClaw bridge message published" : `OpenClaw bridge message skipped: ${result.reason}`,
       });
+    })
+  );
+
+  app.post(
+    "/api/openclaw/bridge/skill-install",
+    asyncRoute(async (_req, res) => {
+      try {
+        const result = await node.installOpenClawSkill();
+        sendOk(res, result, {
+          message: "OpenClaw skill installed",
+        });
+      } catch (error) {
+        sendError(
+          res,
+          500,
+          "OPENCLAW_SKILL_INSTALL_FAILED",
+          error instanceof Error ? error.message : "OpenClaw skill install failed"
+        );
+      }
     })
   );
 

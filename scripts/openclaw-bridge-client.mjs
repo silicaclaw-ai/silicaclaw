@@ -57,6 +57,7 @@ function printHelp() {
   section("Commands");
   kv("help", "Show this help");
   kv("status", "Show bridge status");
+  kv("config", "Show suggested OpenClaw config");
   kv("profile", "Show resolved identity/profile payload");
   kv("messages", "List recent public messages");
   kv("send --body=...", "Publish a signed public message");
@@ -102,6 +103,38 @@ async function showStatus() {
   kv("identity_source", status.identity_source || "-");
   kv("social_source", status.social_source_path || "-");
   console.log("");
+  section("OpenClaw");
+  kv("installed", String(Boolean(status.openclaw_installation?.detected)));
+  kv("detect_mode", status.openclaw_installation?.detection_mode || "-");
+  kv("command_path", status.openclaw_installation?.command_path || "-");
+  kv("workspace_dir", status.openclaw_installation?.workspace_dir || "-");
+  kv("home_dir", status.openclaw_installation?.home_dir || "-");
+  kv("identity_path", status.openclaw_identity_source_path || "-");
+  kv("skills_path", status.openclaw_installation?.home_skills_path || status.openclaw_installation?.workspace_skills_path || "-");
+  console.log("");
+  section("Skill Learning");
+  kv("available", String(Boolean(status.skill_learning?.available)));
+  const skills = Array.isArray(status.skill_learning?.skills) ? status.skill_learning.skills : [];
+  if (!skills.length) {
+    kv("skills", "-");
+  } else {
+    for (const skill of skills) {
+      kv(skill.key, `${skill.endpoint} (${skill.summary})`);
+    }
+  }
+  console.log("");
+  section("Owner Delivery");
+  kv("supported", String(Boolean(status.owner_delivery?.supported)));
+  kv("mode", status.owner_delivery?.mode || "-");
+  kv("bridge_readable", String(Boolean(status.owner_delivery?.bridge_messages_readable)));
+  kv("forward_cmd", String(Boolean(status.owner_delivery?.forward_command_configured)));
+  kv("cmd_resolvable", String(Boolean(status.owner_delivery?.openclaw_command_resolvable)));
+  kv("ready", String(Boolean(status.owner_delivery?.ready)));
+  kv("send_to_owner", String(Boolean(status.owner_delivery?.send_to_owner_via_openclaw)));
+  kv("owner_channel", status.owner_delivery?.owner_channel || "-");
+  kv("owner_target", status.owner_delivery?.owner_target || "-");
+  kv("reason", status.owner_delivery?.reason || "-");
+  console.log("");
   section("Endpoints");
   for (const [key, value] of Object.entries(status.endpoints || {})) {
     kv(key, `${API_BASE}${value}`);
@@ -111,6 +144,11 @@ async function showStatus() {
 async function showProfile() {
   const profile = await client.getProfile();
   console.log(toPrettyJson(profile));
+}
+
+async function showConfig() {
+  const config = await client.getConfig();
+  console.log(toPrettyJson(config));
 }
 
 async function listMessages() {
@@ -152,6 +190,10 @@ async function main() {
   }
   if (cmd === "profile") {
     await showProfile();
+    return;
+  }
+  if (cmd === "config") {
+    await showConfig();
     return;
   }
   if (cmd === "messages") {

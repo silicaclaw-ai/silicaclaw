@@ -55,6 +55,17 @@ async function main() {
     'ROADMAP.md',
     'CHANGELOG.md',
     'VERSION',
+    'openclaw-owner-forward.env.example',
+    'openclaw-skills/silicaclaw-broadcast/SKILL.md',
+    'openclaw-skills/silicaclaw-broadcast/VERSION',
+    'openclaw-skills/silicaclaw-broadcast/manifest.json',
+    'openclaw-skills/silicaclaw-broadcast/agents/openai.yaml',
+    'openclaw-skills/silicaclaw-broadcast/references/owner-forwarding-policy.md',
+    'openclaw-skills/silicaclaw-broadcast/references/owner-dispatch-adapter.md',
+    'openclaw-skills/silicaclaw-broadcast/references/computer-control-via-openclaw.md',
+    'openclaw-skills/silicaclaw-broadcast/scripts/owner-dispatch-adapter-demo.mjs',
+    'openclaw-skills/silicaclaw-broadcast/scripts/send-to-owner-via-openclaw.mjs',
+    'openclaw-skills/silicaclaw-broadcast/scripts/owner-forwarder-demo.mjs',
     'apps/local-console/public/index.html',
     'apps/public-explorer/public/index.html',
     'data/cache.json',
@@ -77,6 +88,19 @@ async function main() {
   // Browser script syntax sanity
   checkInlineScriptSyntax(path.resolve(root, 'apps/local-console/public/index.html'));
   checkInlineScriptSyntax(path.resolve(root, 'apps/public-explorer/public/index.html'));
+
+  const skillBody = readFileSync(path.resolve(root, 'openclaw-skills/silicaclaw-broadcast/SKILL.md'), 'utf8');
+  assert(skillBody.includes('name: silicaclaw-broadcast'), 'OpenClaw skill metadata missing');
+  const skillManifest = JSON.parse(readFileSync(path.resolve(root, 'openclaw-skills/silicaclaw-broadcast/manifest.json'), 'utf8'));
+  assert(skillManifest.name === 'silicaclaw-broadcast', 'OpenClaw skill manifest missing name');
+  assert(skillManifest.references?.owner_forwarding_policy === 'references/owner-forwarding-policy.md', 'OpenClaw skill manifest missing owner forwarding reference');
+  assert(skillManifest.references?.owner_dispatch_adapter === 'references/owner-dispatch-adapter.md', 'OpenClaw skill manifest missing owner dispatch adapter reference');
+  assert(skillManifest.references?.computer_control_via_openclaw === 'references/computer-control-via-openclaw.md', 'OpenClaw skill manifest missing computer control reference');
+  assert(skillManifest.entrypoints?.owner_forwarder_demo === 'scripts/owner-forwarder-demo.mjs', 'OpenClaw skill manifest missing owner forwarder demo entrypoint');
+  assert(skillManifest.entrypoints?.owner_dispatch_adapter_demo === 'scripts/owner-dispatch-adapter-demo.mjs', 'OpenClaw skill manifest missing owner dispatch adapter demo entrypoint');
+  assert(skillManifest.entrypoints?.owner_send_via_openclaw === 'scripts/send-to-owner-via-openclaw.mjs', 'OpenClaw skill manifest missing owner send via openclaw entrypoint');
+  const skillUi = readFileSync(path.resolve(root, 'openclaw-skills/silicaclaw-broadcast/agents/openai.yaml'), 'utf8');
+  assert(skillUi.includes('display_name: "SilicaClaw Broadcast"'), 'OpenClaw skill UI metadata missing');
 
   // Import built modules (requires npm run build)
   const core = await import(pathToFileURL(path.resolve(root, 'packages/core/dist/index.js')).href);
@@ -185,6 +209,11 @@ async function main() {
   try {
     const bridgeStatus = service.getOpenClawBridgeStatus();
     assert(typeof bridgeStatus.agent_id === 'string', 'Bridge status missing agent_id');
+    assert(typeof bridgeStatus.openclaw_installation?.detected === 'boolean', 'Bridge status missing OpenClaw installation detection');
+    assert(Array.isArray(bridgeStatus.skill_learning?.skills), 'Bridge status missing skill learning list');
+    assert(bridgeStatus.owner_delivery?.mode === 'public-broadcast-via-openclaw', 'Bridge status missing owner delivery mode');
+    assert(typeof bridgeStatus.owner_delivery?.bridge_messages_readable === 'boolean', 'Bridge status missing owner delivery readability state');
+    assert(typeof bridgeStatus.owner_delivery?.forward_command_configured === 'boolean', 'Bridge status missing owner forward command state');
 
     const bridgeProfile = service.getOpenClawBridgeProfile();
     assert(bridgeProfile?.profile, 'Bridge profile payload missing profile');

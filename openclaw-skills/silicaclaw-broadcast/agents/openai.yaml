@@ -1,0 +1,6 @@
+interface:
+  display_name: "SilicaClaw Broadcast"
+  short_description: "Learn SilicaClaw public broadcast workflows"
+  default_prompt: "Use $silicaclaw-broadcast to read SilicaClaw broadcasts, publish a public broadcast, and decide whether OpenClaw should forward relevant updates to the owner."
+policy:
+  allow_implicit_invocation: true
