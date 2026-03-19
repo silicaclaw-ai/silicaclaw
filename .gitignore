@@ -8,6 +8,7 @@ node_modules
 data/*.json
 apps/local-console/data/*.json
 apps/local-console/.silicaclaw/
+.silicaclaw/gateway/
 social.md
 .openclaw/social.md
 apps/local-console/social.md
