@@ -1,6 +1,74 @@
 # Changelog
 
+## v1.0 beta - 2026-03-20
+
+### 2026.3.20-2
+
+- release build:
+  - prepared another fresh latest-channel package build without publishing
+  - regenerated the npm tarball through the verified release packing workflow
+
+### 2026.3.20-1
+
+- release build:
+  - prepared the first latest-channel package build for 2026-03-20 without publishing
+  - regenerated the npm tarball through the verified release packing workflow
+
 ## v1.0 beta - 2026-03-19
+
+### 2026.3.19-29
+
+- release build:
+  - prepared another fresh latest-channel package build without publishing
+  - regenerated the npm tarball through the verified release packing workflow
+
+### 2026.3.19-28
+
+- release build:
+  - prepared another fresh latest-channel package build without publishing
+  - regenerated the npm tarball through the verified release packing workflow
+
+### 2026.3.19-27
+
+- release channel simplification:
+  - npm package update checks now follow only the `latest` dist-tag
+  - release verification and install docs no longer require a parallel `beta` npm channel for the CLI package
+
+### 2026.3.19-26
+
+- release build:
+  - prepared another fresh beta-channel package build without publishing
+  - regenerated the npm tarball through the verified release packing workflow
+
+### 2026.3.19-25
+
+- update fix:
+  - restored version token comparison in the CLI so `silicaclaw update` can compare `latest` and `beta` without throwing
+  - update checks now resolve the registry tags correctly when both channels are present
+
+### 2026.3.19-24
+
+- release build:
+  - prepared another fresh beta-channel package build without publishing
+  - regenerated the npm tarball through the verified release packing workflow
+
+### 2026.3.19-23
+
+- release build:
+  - prepared another fresh beta-channel package build without publishing
+  - regenerated the npm tarball through the verified release packing workflow
+
+### 2026.3.19-22
+
+- release build:
+  - prepared another fresh beta-channel package build without publishing
+  - regenerated the npm tarball through the verified release packing workflow
+
+### 2026.3.19-21
+
+- release build:
+  - prepared another fresh beta-channel package build without publishing
+  - regenerated the npm tarball through the verified release packing workflow
 
 ### 2026.3.19-20
 

@@ -125,19 +125,29 @@ const execFileAsync = promisify(execFile);
 const OPENCLAW_SKILL_NAME = "silicaclaw-broadcast";
 
 function readWorkspaceVersion(workspaceRoot: string): string {
-  const pkgFile = resolve(workspaceRoot, "package.json");
-  if (existsSync(pkgFile)) {
-    try {
-      const pkg = JSON.parse(readFileSync(pkgFile, "utf8")) as { version?: string };
-      if (pkg.version) return String(pkg.version);
-    } catch {
-      // ignore
+  const candidates = [
+    workspaceRoot,
+    process.cwd(),
+    resolve(__dirname, "..", "..", ".."),
+    resolve(__dirname, "..", "..", "..", ".."),
+  ].filter((dir, index, list) => dir && list.indexOf(dir) === index);
+  for (const candidate of candidates) {
+    const pkgFile = resolve(candidate, "package.json");
+    if (existsSync(pkgFile)) {
+      try {
+        const pkg = JSON.parse(readFileSync(pkgFile, "utf8")) as { version?: string; name?: string };
+        if (pkg.version && (pkg.name === "@silicaclaw/cli" || existsSync(resolve(candidate, "apps", "local-console")))) {
+          return String(pkg.version);
+        }
+      } catch {
+        // ignore
+      }
     }
-  }
-  const versionFile = resolve(workspaceRoot, "VERSION");
-  if (existsSync(versionFile)) {
-    const raw = readFileSync(versionFile, "utf8").trim();
-    if (raw) return raw;
+    const versionFile = resolve(candidate, "VERSION");
+    if (existsSync(versionFile)) {
+      const raw = readFileSync(versionFile, "utf8").trim();
+      if (raw) return raw;
+    }
   }
   return "unknown";
 }
@@ -188,6 +198,14 @@ function resolveWorkspaceRoot(cwd = process.cwd()): string {
 }
 
 function resolveProjectRoot(appRoot: string, cwd = process.cwd()): string {
+  const envAppRoot = String(process.env.SILICACLAW_APP_DIR || "").trim();
+  if (
+    envAppRoot &&
+    existsSync(resolve(envAppRoot, "apps", "local-console", "package.json")) &&
+    existsSync(resolve(envAppRoot, "package.json"))
+  ) {
+    return resolve(envAppRoot);
+  }
   const envRoot = String(process.env.SILICACLAW_WORKSPACE_DIR || "").trim();
   if (envRoot) {
     return resolve(envRoot);
@@ -629,6 +647,8 @@ function hasMeaningfulJson(filePath: string): boolean {
 }
 
 function migrateLegacyDataIfNeeded(appRoot: string, projectRoot: string, storageRoot: string): void {
+  const homeDir = process.env.HOME || homedir();
+  const legacyNpxAppRoots = collectLegacyNpxAppRoots(homeDir);
   const targetDataDir = resolve(storageRoot, "data");
   const legacyDataDirs = [
     resolve(appRoot, "data"),
@@ -636,6 +656,7 @@ function migrateLegacyDataIfNeeded(appRoot: string, projectRoot: string, storage
     resolve(projectRoot, "data"),
     resolve(projectRoot, "apps", "local-console", "data"),
     resolve(process.cwd(), "data"),
+    ...legacyNpxAppRoots.map((root) => resolve(root, "apps", "local-console", "data")),
   ].filter((dir, index, list) => list.indexOf(dir) === index && dir !== targetDataDir);
   const files = [
     "identity.json",
@@ -665,6 +686,7 @@ function migrateLegacyDataIfNeeded(appRoot: string, projectRoot: string, storage
     resolve(projectRoot, ".silicaclaw"),
     resolve(projectRoot, "apps", "local-console", ".silicaclaw"),
     resolve(process.cwd(), ".silicaclaw"),
+    ...legacyNpxAppRoots.map((root) => resolve(root, "apps", "local-console", ".silicaclaw")),
   ].filter((dir, index, list) => list.indexOf(dir) === index && dir !== targetDotDir);
   const dotFiles = ["social.runtime.json", "social.message-governance.json"];
   for (const file of dotFiles) {
@@ -679,6 +701,29 @@ function migrateLegacyDataIfNeeded(appRoot: string, projectRoot: string, storage
       break;
     }
   }
+}
+
+function collectLegacyNpxAppRoots(homeDir: string): string[] {
+  const cacheRoots = [
+    resolve(homeDir, ".silicaclaw", "npm-cache", "_npx"),
+    resolve(homeDir, ".npm", "_npx"),
+  ];
+  const roots: string[] = [];
+  for (const cacheRoot of cacheRoots) {
+    if (!existsSync(cacheRoot)) continue;
+    let entries: string[] = [];
+    try {
+      entries = readdirSync(cacheRoot);
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      const candidate = resolve(cacheRoot, entry, "node_modules", "@silicaclaw", "cli");
+      if (!existsSync(resolve(candidate, "apps", "local-console"))) continue;
+      roots.push(candidate);
+    }
+  }
+  return Array.from(new Set(roots));
 }
 
 function parseListEnv(raw: string): string[] {
@@ -906,6 +951,10 @@ export class LocalNodeService {
   private webrtcSeedPeers: string[] = [];
   private webrtcBootstrapHints: string[] = [];
   private webrtcBootstrapSources: string[] = [];
+  private networkStarted = false;
+  private networkStartupError: string | null = null;
+  private networkReconnectTimer: NodeJS.Timeout | null = null;
+  private networkReconnectDelayMs = 5_000;
   private appVersion = "unknown";
 
   constructor(options?: { workspaceRoot?: string; projectRoot?: string; storageRoot?: string }) {
@@ -956,32 +1005,19 @@ export class LocalNodeService {
     await this.hydrateFromDisk();
 
     this.bindNetworkSubscriptions();
-    await this.network.start();
-    await this.log(
-      "info",
-      `Local node started (${this.adapterMode}, mode=${this.networkMode}, signaling=${this.webrtcSignalingUrls[0] || "-"}, room=${this.webrtcRoom})`
-    );
-
-    if (this.profile?.public_enabled && this.broadcastEnabled) {
-      try {
-        await this.broadcastNow("adapter_start");
-      } catch (error) {
-        await this.log(
-          "warn",
-          `Initial broadcast failed: ${error instanceof Error ? error.message : String(error)}`
-        );
-      }
-    }
-
-    this.startBroadcastLoop();
+    await this.startNetworkAdapterWithRetry("adapter_start");
   }
 
   async stop(): Promise<void> {
+    this.clearNetworkReconnectTimer();
     if (this.broadcaster) {
       clearInterval(this.broadcaster);
       this.broadcaster = null;
     }
-    await this.network.stop();
+    if (this.networkStarted) {
+      await this.network.stop();
+    }
+    this.networkStarted = false;
   }
 
   private ensureLocalDirectoryBaseline(): void {
@@ -1064,6 +1100,8 @@ export class LocalNodeService {
       real_preview_discovery_stats: diagnostics?.discovery_stats ?? null,
       webrtc_preview: relayCapable
         ? {
+            started: this.networkStarted,
+            startup_error: this.networkStartupError,
             signaling_url: network.signaling_url,
             signaling_endpoints: network.signaling_endpoints,
             room: network.room,
@@ -1103,6 +1141,8 @@ export class LocalNodeService {
       adapter_config: diagnostics?.config ?? null,
       adapter_extra: relayCapable
         ? {
+            started: this.networkStarted,
+            startup_error: this.networkStartupError,
             signaling_url: network.signaling_url,
             signaling_endpoints: network.signaling_endpoints,
             room: network.room,
@@ -1145,7 +1185,7 @@ export class LocalNodeService {
         this.adapterMode === "real-preview"
           ? "lan-preview"
           : this.adapterMode === "webrtc-preview" || this.adapterMode === "relay-preview"
-            ? "internet-preview"
+            ? "global-preview"
             : "local-process",
       mode_explainer: this.getModeExplainer(),
     };
@@ -1183,6 +1223,8 @@ export class LocalNodeService {
       adapter_discovery_stats: diagnostics?.discovery_stats ?? null,
       adapter_diagnostics_summary: relayCapable || diagnostics
         ? {
+            started: this.networkStarted,
+            startup_error: this.networkStartupError,
             signaling_url: network.signaling_url,
             signaling_endpoints: network.signaling_endpoints,
             room: network.room,
@@ -1232,6 +1274,8 @@ export class LocalNodeService {
       components: diagnostics.components,
       limits: diagnostics.limits,
       diagnostics_summary: {
+        started: this.networkStarted,
+        startup_error: this.networkStartupError,
         signaling_url: network.signaling_url,
         signaling_endpoints: network.signaling_endpoints,
         room: network.room,
@@ -1327,9 +1371,10 @@ export class LocalNodeService {
 
   getIntegrationStatus(): IntegrationStatusSummary {
     const runtimeGenerated = Boolean(this.socialRuntime && this.socialRuntime.last_loaded_at > 0);
-    const connected = this.socialFound && runtimeGenerated && !this.socialParseError;
-    const configured = connected && this.socialConfig.enabled;
-    const running = configured && this.broadcastEnabled;
+    const runtimeReady = this.socialFound && runtimeGenerated && !this.socialParseError;
+    const connected = runtimeReady && this.networkStarted;
+    const configured = runtimeReady && this.socialConfig.enabled;
+    const running = configured && this.broadcastEnabled && this.networkStarted;
     const publicEnabled = Boolean(this.profile?.public_enabled);
     const discoveryEnabled =
       this.socialConfig.discovery.discoverable &&
@@ -1351,6 +1396,10 @@ export class LocalNodeService {
       ? "running"
       : !configured
         ? "not configured"
+        : this.networkReconnectTimer
+          ? "reconnecting to relay"
+        : this.networkStartupError
+          ? this.networkStartupError
         : !this.broadcastEnabled
           ? "broadcast paused"
           : "not running";
@@ -2388,7 +2437,7 @@ export class LocalNodeService {
       clearInterval(this.broadcaster);
     }
 
-    if (!this.broadcastEnabled) {
+    if (!this.broadcastEnabled || !this.networkStarted) {
       return;
     }
 
@@ -2510,6 +2559,7 @@ export class LocalNodeService {
   }
 
   private async restartNetworkAdapter(reason: string): Promise<void> {
+    this.clearNetworkReconnectTimer();
     const previous = this.network;
     try {
       await previous.stop();
@@ -2522,14 +2572,60 @@ export class LocalNodeService {
     this.adapterMode = next.mode;
     this.networkPort = next.port;
     this.subscriptionsBound = false;
-
-    await this.network.start();
     this.bindNetworkSubscriptions();
-    this.startBroadcastLoop();
+    await this.startNetworkAdapterWithRetry(reason);
+  }
 
-    if (this.broadcastEnabled && this.profile?.public_enabled) {
-      await this.broadcastNow("adapter_restart");
+  private clearNetworkReconnectTimer(): void {
+    if (this.networkReconnectTimer) {
+      clearTimeout(this.networkReconnectTimer);
+      this.networkReconnectTimer = null;
     }
+  }
+
+  private async startNetworkAdapterWithRetry(reason: string): Promise<void> {
+    this.clearNetworkReconnectTimer();
+    try {
+      await this.network.start();
+      this.networkStarted = true;
+      this.networkStartupError = null;
+      this.networkReconnectDelayMs = 5_000;
+      await this.log(
+        "info",
+        `Local node started (${this.adapterMode}, mode=${this.networkMode}, signaling=${this.webrtcSignalingUrls[0] || "-"}, room=${this.webrtcRoom})`
+      );
+      this.startBroadcastLoop();
+      if (this.broadcastEnabled && this.profile?.public_enabled) {
+        try {
+          await this.broadcastNow(reason);
+        } catch (error) {
+          await this.log(
+            "warn",
+            `Initial broadcast failed: ${error instanceof Error ? error.message : String(error)}`
+          );
+        }
+      }
+    } catch (error) {
+      this.networkStarted = false;
+      this.networkStartupError = error instanceof Error ? error.message : String(error);
+      await this.log(
+        "warn",
+        `Network start failed (${this.adapterMode}, mode=${this.networkMode}): ${this.networkStartupError}`
+      );
+      this.scheduleNetworkReconnect();
+    }
+  }
+
+  private scheduleNetworkReconnect(): void {
+    if (this.networkReconnectTimer) {
+      return;
+    }
+    const delayMs = this.networkReconnectDelayMs;
+    this.networkReconnectTimer = setTimeout(() => {
+      this.networkReconnectTimer = null;
+      void this.startNetworkAdapterWithRetry("adapter_reconnect");
+    }, delayMs);
+    this.networkReconnectDelayMs = Math.min(30_000, Math.max(5_000, Math.floor(delayMs * 1.5)));
   }
 
   private compactCacheInMemory(): number {
@@ -3245,7 +3341,6 @@ export async function main() {
   const staticIndexFile = resolve(staticDir, "index.html");
 
   const node = new LocalNodeService();
-  await node.start();
 
   app.use(cors({ origin: true }));
   app.use(express.json());
@@ -3595,6 +3690,8 @@ export async function main() {
     // eslint-disable-next-line no-console
     console.log(`SilicaClaw local-console running: http://localhost:${port}`);
   });
+
+  await node.start();
 
   process.on("SIGINT", async () => {
     await node.stop();

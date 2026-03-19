@@ -83,37 +83,15 @@ export function createOverviewController({
     const bridge = bridgeRes.status === "fulfilled" ? bridgeRes.value.data || {} : {};
     const networkCfg = networkCfgRes.status === "fulfilled" ? networkCfgRes.value.data || {} : {};
     const networkStats = networkStatsRes.status === "fulfilled" ? networkStatsRes.value.data || {} : {};
-    const peerItems = peers.items || [];
-    const mergedById = new Map();
-
-    for (const agent of allProfiles) mergedById.set(agent.agent_id, agent);
-
-    for (const peer of peerItems) {
-      const existing = mergedById.get(peer.peer_id);
-      if (existing) {
-        if (peer.status && !existing.online) existing.online = peer.status === "online";
-        if (peer.last_seen_at && (!existing.updated_at || peer.last_seen_at > existing.updated_at)) {
-          existing.updated_at = peer.last_seen_at;
-        }
-        continue;
-      }
-      mergedById.set(peer.peer_id, {
-        agent_id: peer.peer_id,
-        display_name: shortId(peer.peer_id),
-        online: peer.status === "online",
-        updated_at: peer.last_seen_at || peer.first_seen_at || 0,
-      });
-    }
-
-    const all = Array.from(mergedById.values());
+    const all = Array.isArray(allProfiles) ? allProfiles.slice() : [];
     const filtered = getOnlyShowOnline() ? all.filter((agent) => agent.online) : all;
     setVisibleRemotePublicCount(all.filter((agent) => !agent.is_self && agent.online).length);
     const totalAgentPages = Math.max(1, Math.ceil(filtered.length / 10));
     let agentsPage = Math.min(Math.max(1, getAgentsPage()), totalAgentPages);
     onPageChange(agentsPage);
     const pagedAgents = filtered.slice((agentsPage - 1) * 10, agentsPage * 10);
-    const discoveredCount = Math.max(Number(o.discovered_count || 0), Number(peers.total || 0), all.length);
-    const onlineCount = Math.max(Number(o.online_count || 0), Number(peers.online || 0), all.filter((agent) => agent.online).length);
+    const discoveredCount = Math.max(Number(o.discovered_count || 0), all.length);
+    const onlineCount = Math.max(Number(o.online_count || 0), all.filter((agent) => agent.online).length);
     const offlineCount = Math.max(0, discoveredCount - onlineCount);
 
     const overviewCardsHtml = [

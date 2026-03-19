@@ -1,4 +1,4 @@
-# SilicaClaw Quick Start Install (v1.0 beta)
+# SilicaClaw Quick Start Install (v1.0)
 
 This page follows an OpenClaw-like quick-start flow: install, run, verify.
 
@@ -19,25 +19,25 @@ npm install
 CLI-style onboarding command (recommended, zero-config):
 
 ```bash
-npx -y @silicaclaw/cli@beta onboard
+npx -y @silicaclaw/cli@latest onboard
 ```
 
 Cross-network quick wizard (defaults to global-preview):
 
 ```bash
-npx -y @silicaclaw/cli@beta connect
+npx -y @silicaclaw/cli@latest connect
 ```
 
 Check/update CLI version:
 
 ```bash
-npx -y @silicaclaw/cli@beta update
+npx -y @silicaclaw/cli@latest update
 ```
 
 Gateway background service commands:
 
 ```bash
-npx -y @silicaclaw/cli@beta install
+npx -y @silicaclaw/cli@latest install
 source ~/.silicaclaw/env.sh
 silicaclaw start --mode=global-preview
 silicaclaw status
@@ -48,6 +48,7 @@ silicaclaw stop
 - `onboard`: first-time setup wizard
 - `connect`: quick network setup wizard
 - `install`: install the persistent `silicaclaw` command only
+- `@latest`: default release channel
 
 On macOS, `silicaclaw start` now installs and manages LaunchAgents for the local console
 and any required local signaling helper, so the service is supervised instead of running
@@ -58,7 +59,7 @@ For most home users, just press Enter on defaults and use `local` mode first.
 Optional global install (advanced users only):
 
 ```bash
-npm i -g @silicaclaw/cli@beta
+npm i -g @silicaclaw/cli@latest
 silicaclaw onboard
 silicaclaw connect
 silicaclaw update
@@ -70,7 +71,7 @@ silicaclaw stop
 If global install fails with `EACCES`, use the built-in persistent install:
 
 ```bash
-npx -y @silicaclaw/cli@beta install
+npx -y @silicaclaw/cli@latest install
 source ~/.silicaclaw/env.sh
 silicaclaw start
 ```
@@ -83,12 +84,12 @@ Start local console:
 npm run local-console
 ```
 
-Note: local-console runs in watch mode, so backend changes auto-reload during development.
+Note: `npm run local-console` starts the local console directly for development. It is not the supervised background service path.
 
 OpenClaw-style interactive install/start guide (recommended):
 
 ```bash
-npx -y @silicaclaw/cli@beta onboard
+npx -y @silicaclaw/cli@latest onboard
 ```
 
 It will guide you step-by-step in terminal:
@@ -254,7 +255,7 @@ npm run health
 
 2. `silicaclaw update` or `silicaclaw --version` returns `ETARGET`
 - This usually means the new npm release was published, but your local npm metadata cache is stale.
-- Check the current dist-tags with `npm view @silicaclaw/cli dist-tags --json`.
+- Check the current latest tag with `npm view @silicaclaw/cli dist-tags --json`.
 - Retry with a clean cache:
 
 ```bash
@@ -270,7 +271,7 @@ silicaclaw --version
 silicaclaw update
 ```
 
-- You can also install the current beta directly with `npm i -g @silicaclaw/cli@beta`.
+- You can also install the current release directly with `npm i -g @silicaclaw/cli@latest`.
 
 3. Left sidebar version at `http://localhost:4310` still shows an older release
 - Hard refresh the page first.

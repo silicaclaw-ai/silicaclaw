@@ -179,10 +179,15 @@ function syncManagedRuntime() {
   ensureManagedRuntimeDir();
   const entries = [
     "config",
-    "dist",
     "scripts",
+    "apps/local-console/dist",
+    "apps/local-console/package.json",
     "apps/local-console/public",
+    "apps/public-explorer/dist",
+    "apps/public-explorer/package.json",
     "apps/public-explorer/public",
+    "social.md",
+    ".openclaw",
     "package.json",
     "package-lock.json",
     "VERSION",
@@ -205,8 +210,8 @@ function syncManagedRuntime() {
     source_app_dir: APP_DIR,
     synced_at: Date.now(),
     version: readJson(resolve(APP_DIR, "package.json"))?.version || null,
-    dist_server_mtime: existsSync(resolve(APP_DIR, "dist", "apps", "local-console", "src", "server.js"))
-      ? statSync(resolve(APP_DIR, "dist", "apps", "local-console", "src", "server.js")).mtimeMs
+    dist_server_mtime: existsSync(resolve(APP_DIR, "apps", "local-console", "dist", "apps", "local-console", "src", "server.js"))
+      ? statSync(resolve(APP_DIR, "apps", "local-console", "dist", "apps", "local-console", "src", "server.js")).mtimeMs
       : null,
   };
   writeFileSync(resolve(MANAGED_RUNTIME_DIR, ".silicaclaw-runtime.json"), JSON.stringify(manifest, null, 2));
@@ -318,7 +323,7 @@ function isLaunchctlNotLoadedResult(result) {
 function localConsoleProgramArguments(appDir = APP_DIR) {
   return [
     process.execPath,
-    resolve(appDir, "dist", "apps", "local-console", "src", "server.js"),
+    resolve(appDir, "apps", "local-console", "dist", "apps", "local-console", "src", "server.js"),
   ];
 }
 
@@ -634,6 +639,20 @@ async function waitForCurrentAppListener(port, kind, timeoutMs = 5000) {
   return lastListener;
 }
 
+async function waitForLocalConsoleHealth(timeoutMs = 8000) {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    try {
+      const response = await fetch(`${LOCAL_CONSOLE_BASE_URL}/api/health`);
+      if (response.ok) return true;
+    } catch {
+      // ignore transient startup failures
+    }
+    await sleep(250);
+  }
+  return false;
+}
+
 async function waitForPortToClear(port, timeoutMs = 5000) {
   const startedAt = Date.now();
   while (Date.now() - startedAt < timeoutMs) {
@@ -864,6 +883,7 @@ async function startAll() {
       NETWORK_MODE: mode,
       WEBRTC_SIGNALING_URL: signalingUrl,
       WEBRTC_ROOM: room,
+      SILICACLAW_APP_DIR: APP_DIR,
       SILICACLAW_WORKSPACE_DIR: WORKSPACE_DIR,
     };
     localPid = spawnBackground(
@@ -993,7 +1013,8 @@ async function main() {
   if (cmd === "start") {
     await startAll();
     const listener = await waitForCurrentAppListener(LOCAL_CONSOLE_PORT, "local-console", 15000);
-    if (!listener || !isCurrentAppListener(listener, "local-console")) {
+    const healthy = listener ? await waitForLocalConsoleHealth(8000) : false;
+    if (!listener || !isCurrentAppListener(listener, "local-console") || !healthy) {
       headline();
       console.log("");
       kv("Status", paint("failed to start", COLOR.red));
@@ -1021,7 +1042,8 @@ async function main() {
   if (cmd === "restart") {
     await restartAll();
     const listener = await waitForCurrentAppListener(LOCAL_CONSOLE_PORT, "local-console", 15000);
-    if (!listener || !isCurrentAppListener(listener, "local-console")) {
+    const healthy = listener ? await waitForLocalConsoleHealth(8000) : false;
+    if (!listener || !isCurrentAppListener(listener, "local-console") || !healthy) {
       headline();
       console.log("");
       kv("Status", paint("failed to restart", COLOR.red));

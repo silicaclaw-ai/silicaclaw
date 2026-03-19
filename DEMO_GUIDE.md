@@ -1,4 +1,4 @@
-# SilicaClaw Demo Guide (v1.0 beta)
+# SilicaClaw Demo Guide (v1.0)
 
 This guide provides 3 shortest demo paths.
 

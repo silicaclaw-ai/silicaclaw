@@ -10,6 +10,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const ROOT_DIR = resolve(__dirname, "..");
 const INVOCATION_CWD = process.cwd();
+const LOCAL_CONSOLE_BASE_URL = "http://localhost:4310";
 
 const COLOR = {
   reset: "\x1b[0m",
@@ -109,6 +110,10 @@ function compactOutput(text, limit = 18) {
   return lines.slice(-limit).join("\n");
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function readVersion() {
   return readPackageVersion();
 }
@@ -146,6 +151,25 @@ function userEnvFile() {
 
 function userNpmCacheDir() {
   return resolve(homedir(), ".silicaclaw", "npm-cache");
+}
+
+function shimScriptText(specifier = "latest") {
+  return [
+    "#!/usr/bin/env bash",
+    "set -euo pipefail",
+    'export npm_config_cache="${npm_config_cache:-$HOME/.silicaclaw/npm-cache}"',
+    `exec npx -y @silicaclaw/cli@${specifier} "$@"`,
+    "",
+  ].join("\n");
+}
+
+function ensureUserShim(specifier = "latest") {
+  const shimPath = userShimPath();
+  const binDir = userShimDir();
+  const npmCacheDir = userNpmCacheDir();
+  mkdirSync(binDir, { recursive: true });
+  mkdirSync(npmCacheDir, { recursive: true });
+  writeFileSync(shimPath, shimScriptText(specifier), { encoding: "utf8", mode: 0o755 });
 }
 
 function ensureLineInFile(filePath, block) {
@@ -212,7 +236,7 @@ function shellInitTargets() {
   return targets;
 }
 
-function installPersistentCommand() {
+function installPersistentCommand(specifier = readPackageVersion()) {
   const binDir = userShimDir();
   const shimPath = userShimPath();
   const envFile = userEnvFile();
@@ -232,17 +256,7 @@ function installPersistentCommand() {
   mkdirSync(binDir, { recursive: true });
   mkdirSync(npmCacheDir, { recursive: true });
   writeFileSync(envFile, envBlock, { encoding: "utf8", mode: 0o755 });
-  writeFileSync(
-    shimPath,
-    [
-      "#!/usr/bin/env bash",
-      "set -euo pipefail",
-      'export npm_config_cache="${npm_config_cache:-$HOME/.silicaclaw/npm-cache}"',
-      'exec npx -y @silicaclaw/cli@beta "$@"',
-      "",
-    ].join("\n"),
-    { encoding: "utf8", mode: 0o755 }
-  );
+  writeFileSync(shimPath, shimScriptText(specifier || "latest"), { encoding: "utf8", mode: 0o755 });
   const rcFiles = shellInitTargets();
   const updatedFiles = [];
   const configuredFiles = [];
@@ -306,7 +320,7 @@ function canWriteGlobalPrefix() {
   }
 }
 
-function showUpdateGuide(current, targetVersion, channel = "beta") {
+function showUpdateGuide(current, targetVersion) {
   headline();
   console.log("");
   const upToDate = Boolean(targetVersion) && current === targetVersion;
@@ -318,7 +332,25 @@ function showUpdateGuide(current, targetVersion, channel = "beta") {
   console.log("");
   kv("Start", "silicaclaw start");
   kv("Status", "silicaclaw status");
-  kv("Channel", channel);
+}
+
+function preferredTaggedRelease(tags, current) {
+  const latest = tags.latest ? String(tags.latest) : "";
+  if (latest) return { version: latest, channel: "latest" };
+  return { version: current, channel: "unknown" };
+}
+
+function preferredRegistryRelease(current) {
+  try {
+    const result = runCapture("npm", ["view", "@silicaclaw/cli", "dist-tags", "--json"]);
+    if ((result.status ?? 1) !== 0) return { version: current, channel: "current", tags: null };
+    const text = String(result.stdout || "").trim();
+    const tags = text ? JSON.parse(text) : {};
+    const preferred = preferredTaggedRelease(tags, current);
+    return { ...preferred, tags };
+  } catch {
+    return { version: current, channel: "current", tags: null };
+  }
 }
 
 function getGatewayStatus() {
@@ -380,7 +412,8 @@ function syncCurrentPackageToAppDir(appDir) {
   return true;
 }
 
-function restartGatewayIfRunning() {
+function restartGatewayIfRunning(options = {}) {
+  const preferredSpecifier = String(options.preferredSpecifier || "").trim();
   const status = getGatewayStatus();
   const appDir = status?.app_dir ? String(status.app_dir) : "";
   syncCurrentPackageToAppDir(appDir);
@@ -388,21 +421,73 @@ function restartGatewayIfRunning() {
   const localRunning = Boolean(status?.local_console?.running);
   const signalingRunning = Boolean(status?.signaling?.running);
   if (!localRunning && !signalingRunning) {
-    return;
+    return { restarted: false };
   }
 
   const mode = String(status?.mode || "local");
-  const args = [resolve(ROOT_DIR, "scripts", "silicaclaw-gateway.mjs"), "restart", `--mode=${mode}`];
+  const gatewayArgs = ["gateway", "restart", `--mode=${mode}`];
   if (mode === "global-preview" && status?.signaling?.url) {
-    args.push(`--signaling-url=${status.signaling.url}`);
+    gatewayArgs.push(`--signaling-url=${status.signaling.url}`);
   }
   if (mode === "global-preview" && status?.signaling?.room) {
-    args.push(`--room=${status.signaling.room}`);
+    gatewayArgs.push(`--room=${status.signaling.room}`);
   }
 
   console.log("");
   console.log(paint("Refreshing services", COLOR.bold));
-  runInherit("node", args, { cwd: process.cwd() });
+  const shimPath = userShimPath();
+  const canUseUpdatedShim =
+    preferredSpecifier &&
+    existsSync(shimPath) &&
+    resolve(shimPath) !== process.argv[1];
+
+  if (canUseUpdatedShim) {
+    runInherit(shimPath, gatewayArgs, { cwd: process.cwd() });
+    return { restarted: true, usedUpdatedShim: true };
+  }
+
+  runInherit("node", [resolve(ROOT_DIR, "scripts", "silicaclaw-gateway.mjs"), ...gatewayArgs.slice(1)], {
+    cwd: process.cwd(),
+  });
+  return { restarted: true, usedUpdatedShim: false };
+}
+
+function readLocalConsoleAppVersion() {
+  try {
+    const result = runCapture("curl", ["-sS", `${LOCAL_CONSOLE_BASE_URL}/api/overview`], {
+      cwd: process.cwd(),
+    });
+    if ((result.status ?? 1) !== 0) return "";
+    const text = String(result.stdout || "").trim();
+    if (!text) return "";
+    const payload = JSON.parse(text);
+    return String(payload?.data?.app_version || "").trim();
+  } catch {
+    return "";
+  }
+}
+
+async function waitForLocalConsoleVersion(targetVersion, timeoutMs = 15000) {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    const version = readLocalConsoleAppVersion();
+    if (version === targetVersion) return version;
+    await sleep(400);
+  }
+  return readLocalConsoleAppVersion();
+}
+
+async function ensureRefreshedConsoleVersion(targetVersion) {
+  if (!targetVersion) return "";
+  let observed = await waitForLocalConsoleVersion(targetVersion, 12000);
+  if (observed === targetVersion) return observed;
+
+  const shimPath = userShimPath();
+  if (!existsSync(shimPath)) return observed;
+
+  runInherit(shimPath, ["gateway", "restart"], { cwd: process.cwd() });
+  observed = await waitForLocalConsoleVersion(targetVersion, 12000);
+  return observed;
 }
 
 function tryGlobalUpgrade(version) {
@@ -418,8 +503,8 @@ function tryGlobalUpgrade(version) {
 
   const detail = compactOutput(`${exactResult.stdout || ""}\n${exactResult.stderr || ""}`);
   if (detail.includes("ETARGET") || detail.includes("No matching version found")) {
-    kv("Fallback", "registry metadata is still settling, retrying via @beta tag");
-    const fallbackResult = runInherit("npm", ["i", "-g", "@silicaclaw/cli@beta"]);
+    kv("Fallback", `registry metadata is still settling, retrying via exact version ${version}`);
+    const fallbackResult = runInherit("npm", ["i", "-g", `@silicaclaw/cli@${version}`]);
     return (fallbackResult.status ?? 1) === 0;
   }
 
@@ -430,37 +515,44 @@ function tryGlobalUpgrade(version) {
   return false;
 }
 
-function update() {
+async function update() {
   const current = readPackageVersion();
   try {
-    const result = runCapture("npm", ["view", "@silicaclaw/cli", "dist-tags", "--json"]);
-    if ((result.status ?? 1) !== 0) {
+    const registry = preferredRegistryRelease(current);
+    if (!registry.tags) {
       headline();
       console.log("");
       console.error(paint("Update check failed", COLOR.bold, COLOR.yellow));
-      if (result.stderr) console.error(result.stderr.trim());
       console.log("");
       kv("Try", "npm view @silicaclaw/cli dist-tags --json");
-      process.exit(result.status ?? 1);
+      process.exit(1);
     }
-    const text = String(result.stdout || "").trim();
-    const tags = text ? JSON.parse(text) : {};
-    const beta = tags.beta ? String(tags.beta) : "";
-    showUpdateGuide(current, beta, "beta");
-    const hasNewBeta = Boolean(beta) && beta !== current;
+    const targetVersion = registry.version;
+    ensureUserShim(targetVersion || "latest");
+    showUpdateGuide(current, targetVersion);
+    const hasNewTarget = Boolean(targetVersion) && targetVersion !== current;
     const npxRuntime = isNpxRun();
 
-    if (hasNewBeta) {
+    if (hasNewTarget) {
       if (npxRuntime) {
-        kv("Update", `next run will use ${beta}`);
-      } else if (tryGlobalUpgrade(beta)) {
-        kv("Update", `installed ${beta}`);
+        kv("Update", `next run will use ${targetVersion}`);
       } else {
-        kv("Update", `install ${beta} manually if needed`);
+        kv("Update", `command now points to ${targetVersion}`);
+        if (tryGlobalUpgrade(targetVersion)) {
+          kv("Global", `installed ${targetVersion}`);
+        } else {
+          kv("Global", `install ${targetVersion} manually if needed`);
+        }
       }
     }
 
-    restartGatewayIfRunning();
+    const restartResult = restartGatewayIfRunning({ preferredSpecifier: hasNewTarget ? targetVersion : "" });
+    if (hasNewTarget && restartResult?.restarted) {
+      const observedVersion = await ensureRefreshedConsoleVersion(targetVersion);
+      if (observedVersion && observedVersion !== targetVersion) {
+        kv("Verify", `local console still reports ${observedVersion}`);
+      }
+    }
     process.exit(0);
   } catch (error) {
     headline();
@@ -504,8 +596,8 @@ function help() {
   headline();
   console.log("");
   section("Commands");
-  kv("First Run", "npx -y @silicaclaw/cli@beta onboard");
-  kv("Install", "npx -y @silicaclaw/cli@beta install");
+  kv("First Run", "npx -y @silicaclaw/cli@latest onboard");
+  kv("Install", "npx -y @silicaclaw/cli@latest install");
   kv("Start", "silicaclaw start");
   kv("Status", "silicaclaw status");
   kv("Stop", "silicaclaw stop");
@@ -525,6 +617,7 @@ function help() {
   kv("onboard", "first-time setup wizard");
   kv("connect", "quick network setup wizard");
   kv("install", "install persistent silicaclaw command only");
+  kv("channel", "@latest is the default release channel");
 }
 
 const cmd = String(process.argv[2] || "help").trim().toLowerCase();
@@ -543,10 +636,13 @@ switch (cmd) {
     });
     break;
   case "update":
-    update();
+    await update();
     break;
   case "install":
-    installPersistentCommand();
+    {
+      const preferred = preferredRegistryRelease(readPackageVersion());
+      installPersistentCommand(preferred.version || readPackageVersion());
+    }
     break;
   case "gateway":
     run("node", [resolve(ROOT_DIR, "scripts", "silicaclaw-gateway.mjs"), ...process.argv.slice(3)], {
