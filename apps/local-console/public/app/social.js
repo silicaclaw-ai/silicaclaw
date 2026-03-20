@@ -26,8 +26,11 @@ export function createSocialController({
 }) {
   const SKILLS_SECTION_LIMIT = 4;
   const SKILLS_DIALOGUE_LIMIT = 1;
+  const SOCIAL_MESSAGE_PAGE_SIZE = 20;
   let lastMessagesRenderKey = "";
   let lastLogsRenderKey = "";
+  let socialMessagesPage = 1;
+  let socialMessagesTotal = 0;
   const sectionRenderCache = new Map();
   let skillsQuery = "";
   let skillsFilter = "all";
@@ -194,6 +197,8 @@ export function createSocialController({
         })}`
       : "";
     const nextMeta = `${baseMeta}${governanceMeta}`;
+    const totalPages = Math.max(1, Math.ceil((socialMessagesTotal || 0) / SOCIAL_MESSAGE_PAGE_SIZE));
+    const currentPage = Math.min(socialMessagesPage, totalPages);
 
     if (!filteredMessages.length) {
       const nextHtml = `<div class="empty-state">${t("overview.noMessagesEmpty")}</div>`;
@@ -285,13 +290,27 @@ export function createSocialController({
     hintEl.textContent = governanceHint;
     metaEl.textContent = nextMeta;
     listEl.innerHTML = nextHtml;
+    const pageMetaEl = document.getElementById("socialMessagePageMeta");
+    const prevBtn = document.getElementById("socialMessagePrevPageBtn");
+    const nextBtn = document.getElementById("socialMessageNextPageBtn");
+    if (pageMetaEl) {
+      pageMetaEl.textContent = t("overview.pageStatus", { page: String(currentPage), total: String(totalPages) });
+    }
+    if (prevBtn) {
+      prevBtn.disabled = currentPage <= 1;
+    }
+    if (nextBtn) {
+      nextBtn.disabled = currentPage >= totalPages;
+    }
     lastMessagesRenderKey = renderKey;
   }
 
   async function refreshMessages() {
-    const result = await api("/api/messages?limit=50");
+    const offset = Math.max(0, (socialMessagesPage - 1) * SOCIAL_MESSAGE_PAGE_SIZE);
+    const result = await api(`/api/messages?limit=${SOCIAL_MESSAGE_PAGE_SIZE}&offset=${offset}`);
     setSocialMessagesCache(Array.isArray(result.data?.items) ? result.data.items : []);
     setSocialMessageGovernance(result.data?.governance || null);
+    socialMessagesTotal = Number(result.data?.total || 0);
     renderSocialMessages();
   }
 
@@ -446,6 +465,7 @@ export function createSocialController({
       [t("social.ownerForwardReady"), ownerDelivery.ready ? t("common.yes") : t("common.no")],
       [t("social.ownerForwardCommand"), ownerDelivery.forward_command_configured ? t("common.yes") : t("common.no")],
       [t("social.openclawDetectionMode"), bridge.openclaw_runtime?.detection_mode || "-"],
+      ["Gateway probe", bridge.openclaw_runtime?.gateway_probe_ok ? t("common.yes") : t("common.no")],
       [t("social.openclawGateway"), bridge.openclaw_runtime?.gateway_url || "-"],
       [t("social.installMode"), skillLearning.install_mode || "-"],
       [t("social.installedPath"), skillInstalled ? installedSkillPath : "-"],
@@ -878,6 +898,7 @@ export function createSocialController({
     refreshSocial,
     renderLogs,
     renderSocialMessages,
+    setSocialMessagesPage: (page) => { socialMessagesPage = Math.max(1, Number(page) || 1); },
     setSkillsFilter,
     setSkillsQuery,
     setLogLevelFilter,

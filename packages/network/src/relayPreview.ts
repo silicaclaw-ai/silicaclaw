@@ -34,6 +34,10 @@ type RelayPeer = {
   last_seen_at: number;
   messages_seen: number;
   reconnect_attempts: number;
+  meta?: {
+    signal_queue_size?: number;
+    relay_queue_size?: number;
+  };
 };
 
 type RelayDiagnostics = {
@@ -144,7 +148,8 @@ export class RelayPreviewAdapter implements NetworkAdapter {
 
   private started = false;
   private poller: NodeJS.Timeout | null = null;
-  private handlers = new Map<string, Set<(data: any) => void>>();
+  private handlers = new Map<string, Set<(data: any, meta?: { peerId?: string }) => void>>();
+  private directHandlers = new Map<string, Set<(data: any, meta?: { peerId?: string }) => void>>();
   private peers = new Map<string, RelayPeer>();
   private seenMessageIds = new Set<string>();
   private activeEndpoint = "";
@@ -227,7 +232,6 @@ export class RelayPreviewAdapter implements NetworkAdapter {
     try {
       await this.joinRoom("start");
       this.started = true;
-      await this.refreshPeers();
       await this.pollOnce();
       this.scheduleNextPoll(this.pollIntervalMs);
       this.recordDiscovery("signaling_connected", { endpoint: this.activeEndpoint });
@@ -281,7 +285,43 @@ export class RelayPreviewAdapter implements NetworkAdapter {
     if (!this.handlers.has(key)) {
       this.handlers.set(key, new Set());
     }
-    this.handlers.get(key)?.add(handler);
+    this.handlers.get(key)?.add(handler as (data: any, meta?: { peerId?: string }) => void);
+  }
+
+  async sendDirect(peerId: string, topic: string, data: any): Promise<void> {
+    if (!this.started) return;
+    const targetPeerId = String(peerId || "").trim();
+    if (!targetPeerId) return;
+    await this.maybeRefreshJoin("direct_send");
+    const envelope: NetworkMessageEnvelope = {
+      version: 1,
+      message_id: randomUUID(),
+      topic: `${this.namespace}:${topic}`,
+      source_peer_id: this.peerId,
+      timestamp: Date.now(),
+      payload: this.topicCodec.encode(topic, data),
+    };
+    const raw = this.envelopeCodec.encode(envelope);
+    if (raw.length > this.maxMessageBytes) {
+      this.stats.dropped_oversized += 1;
+      return;
+    }
+    await this.post("/direct/send", {
+      room: this.room,
+      from_peer_id: this.peerId,
+      to_peer_id: targetPeerId,
+      envelope,
+    });
+    this.lastPublishAt = Date.now();
+    this.signalingMessagesSentTotal += 1;
+  }
+
+  subscribeDirect(topic: string, handler: (data: any, meta?: { peerId?: string }) => void): void {
+    const key = `${this.namespace}:${topic}`;
+    if (!this.directHandlers.has(key)) {
+      this.directHandlers.set(key, new Set());
+    }
+    this.directHandlers.get(key)?.add(handler);
   }
 
   getDiagnostics(): RelayDiagnostics {
@@ -354,6 +394,15 @@ export class RelayPreviewAdapter implements NetworkAdapter {
         this.signalingMessagesReceivedTotal += 1;
         this.onEnvelope(message?.envelope);
       }
+      let directMessages = Array.isArray(payload?.direct_messages) ? payload.direct_messages : null;
+      if (!directMessages) {
+        const directPayload = await this.get(`/direct/poll?room=${encodeURIComponent(this.room)}&peer_id=${encodeURIComponent(this.peerId)}`);
+        directMessages = Array.isArray(directPayload?.messages) ? directPayload.messages : [];
+      }
+      for (const message of directMessages) {
+        this.signalingMessagesReceivedTotal += 1;
+        this.onDirectEnvelope(message?.envelope, { peerId: String(message?.from_peer_id || "") || undefined });
+      }
       if (Array.isArray(payload?.peers)) {
         this.updatePeersFromList(payload.peers);
       } else if (!this.lastPeerRefreshAt || Date.now() - this.lastPeerRefreshAt >= this.peerRefreshIntervalMs) {
@@ -375,11 +424,25 @@ export class RelayPreviewAdapter implements NetworkAdapter {
     const payload = await this.get(`/peers?room=${encodeURIComponent(this.room)}`);
     this.lastPeerRefreshAt = Date.now();
     this.stats.peers_refresh_succeeded += 1;
-    const peerIds = Array.isArray(payload?.peers) ? payload.peers : [];
-    this.updatePeersFromList(peerIds);
+    const peerItems = Array.isArray(payload?.peer_details) && payload.peer_details.length
+      ? payload.peer_details
+      : Array.isArray(payload?.peers) ? payload.peers : [];
+    this.updatePeersFromList(peerItems);
   }
 
   private onEnvelope(envelope: unknown): void {
+    this.dispatchEnvelope(envelope, this.handlers);
+  }
+
+  private onDirectEnvelope(envelope: unknown, meta?: { peerId?: string }): void {
+    this.dispatchEnvelope(envelope, this.directHandlers, meta);
+  }
+
+  private dispatchEnvelope(
+    envelope: unknown,
+    handlersByTopic: Map<string, Set<(data: any, meta?: { peerId?: string }) => void>>,
+    meta?: { peerId?: string }
+  ): void {
     this.stats.received_total += 1;
     const validated = validateNetworkMessageEnvelope(envelope, {
       max_future_drift_ms: this.maxFutureDriftMs,
@@ -416,7 +479,7 @@ export class RelayPreviewAdapter implements NetworkAdapter {
 
     const topicKey = message.topic;
     const topic = topicKey.slice(this.namespace.length + 1);
-    const handlers = this.handlers.get(topicKey);
+    const handlers = handlersByTopic.get(topicKey);
     if (!handlers || handlers.size === 0) return;
 
     const peer = this.peers.get(message.source_peer_id);
@@ -434,7 +497,7 @@ export class RelayPreviewAdapter implements NetworkAdapter {
     }
     for (const handler of handlers) {
       try {
-        handler(payload);
+        handler(payload, meta || { peerId: message.source_peer_id });
         this.stats.delivered_total += 1;
       } catch {
         this.stats.dropped_handler_error += 1;
@@ -457,9 +520,13 @@ export class RelayPreviewAdapter implements NetworkAdapter {
 
   private async joinRoom(reason: string): Promise<void> {
     this.stats.join_attempted += 1;
-    await this.post("/join", { room: this.room, peer_id: this.peerId });
+    const payload = await this.post("/join", { room: this.room, peer_id: this.peerId });
     this.lastJoinAt = Date.now();
     this.stats.join_succeeded += 1;
+    if (Array.isArray(payload?.peers)) {
+      this.updatePeersFromList(payload.peers);
+      this.lastPeerRefreshAt = this.lastJoinAt;
+    }
     this.recordDiscovery("join_ok", { endpoint: this.activeEndpoint, detail: reason });
   }
 
@@ -528,13 +595,38 @@ export class RelayPreviewAdapter implements NetworkAdapter {
   }
 
   private updatePeersFromList(values: unknown[]): void {
-    const peerIds = values.map((value) => String(value || "").trim()).filter(Boolean);
+    const parsedPeers: Array<{ peer_id: string; meta?: RelayPeer["meta"] }> = [];
+    for (const value of values) {
+      if (typeof value === "string") {
+        const peerId = String(value || "").trim();
+        if (peerId) {
+          parsedPeers.push({ peer_id: peerId });
+        }
+        continue;
+      }
+      if (value && typeof value === "object") {
+        const raw = value as Record<string, unknown>;
+        const peerId = String(raw.peer_id || "").trim();
+        if (!peerId) {
+          continue;
+        }
+        parsedPeers.push({
+          peer_id: peerId,
+          meta: {
+            signal_queue_size: Number(raw.signal_queue_size ?? 0),
+            relay_queue_size: Number(raw.relay_queue_size ?? 0),
+          },
+        });
+      }
+    }
+    const peerIds = parsedPeers.map((peer) => peer.peer_id);
     if (!peerIds.includes(this.peerId)) {
       void this.joinRoom("self_missing_from_peers").catch(() => {});
     }
     const now = Date.now();
     const next = new Map<string, RelayPeer>();
-    for (const peerId of peerIds) {
+    for (const peerInfo of parsedPeers) {
+      const peerId = peerInfo.peer_id;
       if (peerId === this.peerId) continue;
       const existing = this.peers.get(peerId);
       if (!existing) {
@@ -547,6 +639,7 @@ export class RelayPreviewAdapter implements NetworkAdapter {
         last_seen_at: now,
         messages_seen: existing?.messages_seen ?? 0,
         reconnect_attempts: existing?.reconnect_attempts ?? 0,
+        meta: peerInfo.meta || existing?.meta,
       });
     }
     for (const peerId of this.peers.keys()) {

@@ -2,6 +2,60 @@
 
 ## v1.0 beta - 2026-03-20
 
+### 2026.3.20-13
+
+- release build:
+  - prepared another fresh latest-channel package build without publishing
+  - regenerated the npm tarball through the verified release packing workflow
+
+### 2026.3.20-12
+
+- release build:
+  - prepared another fresh latest-channel package build without publishing
+  - regenerated the npm tarball through the verified release packing workflow
+
+### 2026.3.20-11
+
+- release build:
+  - prepared another fresh latest-channel package build without publishing
+  - regenerated the npm tarball through the verified release packing workflow
+
+### 2026.3.20-10
+
+- release build:
+  - prepared another fresh latest-channel package build without publishing
+  - regenerated the npm tarball through the verified release packing workflow
+
+### 2026.3.20-9
+
+- release build:
+  - prepared another fresh latest-channel package build without publishing
+  - regenerated the npm tarball through the verified release packing workflow
+
+### 2026.3.20-8
+
+- release build:
+  - prepared another fresh latest-channel package build without publishing
+  - regenerated the npm tarball through the verified release packing workflow
+
+### 2026.3.20-7
+
+- release build:
+  - prepared another fresh latest-channel package build without publishing
+  - regenerated the npm tarball through the verified release packing workflow
+
+### 2026.3.20-6
+
+- release build:
+  - prepared another fresh latest-channel package build without publishing
+  - regenerated the npm tarball through the verified release packing workflow
+
+### 2026.3.20-5
+
+- release build:
+  - prepared another fresh latest-channel package build without publishing
+  - regenerated the npm tarball through the verified release packing workflow
+
 ### 2026.3.20-4
 
 - release build:

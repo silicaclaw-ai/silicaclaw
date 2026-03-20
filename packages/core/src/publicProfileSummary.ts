@@ -10,9 +10,11 @@ export type ProfileVisibility = {
 
 export type PublicProfileSummary = {
   agent_id: string;
+  is_self: boolean;
   display_name: string;
   bio: string;
   avatar_url?: string;
+  private_encryption_public_key?: string;
   public_enabled: boolean;
   updated_at: number;
   online: boolean;
@@ -33,6 +35,7 @@ export type PublicProfileSummary = {
     display_name: string;
     bio: string;
     avatar_url?: string;
+    private_encryption_public_key?: string;
     tags: string[];
     public_enabled: boolean;
     profile_version: string;
@@ -73,6 +76,7 @@ export function deriveCapabilitiesSummary(tags: string[]): string[] {
 
 export function buildPublicProfileSummary(args: {
   profile: PublicProfile;
+  is_self?: boolean;
   online: boolean;
   last_seen_at: number | null;
   network_mode?: string;
@@ -130,9 +134,11 @@ export function buildPublicProfileSummary(args: {
 
   return {
     agent_id: args.profile.agent_id,
+    is_self: Boolean(args.is_self),
     display_name: args.profile.display_name,
     bio: args.profile.bio,
     avatar_url: args.profile.avatar_url,
+    private_encryption_public_key: args.profile.private_encryption_public_key,
     public_enabled: args.profile.public_enabled,
     updated_at: args.profile.updated_at,
     online: args.online,
@@ -153,6 +159,7 @@ export function buildPublicProfileSummary(args: {
       display_name: args.profile.display_name,
       bio: args.profile.bio,
       avatar_url: args.profile.avatar_url,
+      private_encryption_public_key: args.profile.private_encryption_public_key,
       tags,
       public_enabled: args.profile.public_enabled,
       profile_version: args.profile_version ?? "v1",

@@ -66,12 +66,11 @@ export function createOverviewController({
     setOverviewMode,
     setVisibleRemotePublicCount,
   }) {
-    const [overviewRes, discoveredRes, peerRes, profileRes, bridgeRes, networkCfgRes, networkStatsRes] = await Promise.allSettled([
+    const [overviewRes, discoveredRes, peerRes, profileRes, networkCfgRes, networkStatsRes] = await Promise.allSettled([
       api("/api/overview"),
       api("/api/search?q="),
       api("/api/peers"),
       api("/api/profile"),
-      api("/api/openclaw/bridge"),
       api("/api/network/config"),
       api("/api/network/stats"),
     ]);
@@ -82,7 +81,6 @@ export function createOverviewController({
     const allProfiles = discoveredRes.status === "fulfilled" ? discoveredRes.value.data || [] : [];
     const peers = peerRes.status === "fulfilled" ? peerRes.value.data || {} : {};
     const currentProfile = profileRes.status === "fulfilled" ? profileRes.value.data || {} : {};
-    const bridge = bridgeRes.status === "fulfilled" ? bridgeRes.value.data || {} : {};
     const networkCfg = networkCfgRes.status === "fulfilled" ? networkCfgRes.value.data || {} : {};
     const networkStats = networkStatsRes.status === "fulfilled" ? networkStatsRes.value.data || {} : {};
     const all = Array.isArray(allProfiles) ? allProfiles.slice() : [];
@@ -145,9 +143,10 @@ export function createOverviewController({
     document.getElementById("pillBroadcast").textContent = pillBroadcastText;
     document.getElementById("pillBroadcast").className = pillBroadcastClassName;
 
-    const openclawRunning = !!bridge.openclaw_runtime?.running;
-    const openclawDetected = !!bridge.openclaw_installation?.detected || openclawRunning || !!bridge.openclaw_runtime?.gateway_reachable;
-    const skillInstalled = !!bridge.skill_learning?.installed;
+    const openclaw = o.openclaw || {};
+    const openclawRunning = !!openclaw.running;
+    const openclawDetected = !!openclaw.detected || openclawRunning;
+    const skillInstalled = !!openclaw.skill_installed;
     const globalMode = heroModeText === "global-preview";
     const lastNetworkError = String(networkDiag.last_error || o.last_broadcast_error || "").trim();
     const broadcastHealthy = o.broadcast_enabled && !lastNetworkError;
@@ -281,6 +280,9 @@ export function createOverviewController({
               ${renderTags(a)}
             </div>
             <div class="${a.online ? "online" : "offline"}">${a.online ? t("overview.online") : t("overview.offline")}</div>
+            <div class="agent-card__actions">
+              ${!a.is_self ? `<button class="secondary" type="button" data-private-agent="${escapeHtml(a.agent_id)}" data-private-name="${escapeHtml(a.display_name || "")}" data-private-key="${escapeHtml(a.private_encryption_public_key || "")}" ${a.private_encryption_public_key ? "" : "disabled title=\"Private messaging unavailable for this agent yet\""}>${t("actions.messageAgentPrivately")}</button>` : ""}
+            </div>
             <div class="agent-card__meta"><div class="agent-card__updated">${ago(a.updated_at)}</div></div>
           </div>
         `).join("")}

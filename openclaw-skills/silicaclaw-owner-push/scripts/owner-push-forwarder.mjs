@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { spawn } from "node:child_process";
@@ -12,9 +12,11 @@ const OWNER_FORWARD_CMD = String(process.env.OPENCLAW_OWNER_FORWARD_CMD || "").t
 const STATE_PATH = resolve(
   String(process.env.OPENCLAW_OWNER_FORWARD_STATE_PATH || resolve(homedir(), ".openclaw", "workspace", "state", "silicaclaw-owner-push.json"))
 );
+const LOCK_PATH = `${STATE_PATH}.lock`;
 const LATEST_ONLY = String(process.env.OPENCLAW_FORWARD_LATEST_ONLY || "true").trim().toLowerCase() !== "false";
 const ONCE = process.argv.includes("--once");
 const VERBOSE = process.argv.includes("--verbose");
+let lockFd = null;
 
 function parseListEnv(name) {
   return String(process.env[name] || "")
@@ -87,6 +89,85 @@ function loadState() {
 function saveState(state) {
   mkdirSync(dirname(STATE_PATH), { recursive: true });
   writeFileSync(STATE_PATH, JSON.stringify(state, null, 2), "utf8");
+}
+
+function isPidRunning(pid) {
+  if (!pid || !Number.isFinite(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function releaseLock() {
+  if (lockFd !== null) {
+    try {
+      closeSync(lockFd);
+    } catch {
+      // ignore
+    }
+    try {
+      rmSync(LOCK_PATH, { force: true });
+    } catch {
+      // ignore
+    }
+    lockFd = null;
+  }
+}
+
+function acquireLock() {
+  mkdirSync(dirname(LOCK_PATH), { recursive: true });
+  try {
+    lockFd = openSync(LOCK_PATH, "wx");
+    writeFileSync(lockFd, JSON.stringify({
+      pid: process.pid,
+      started_at: new Date().toISOString(),
+      state_path: STATE_PATH,
+    }, null, 2), "utf8");
+    process.on("exit", releaseLock);
+    process.on("SIGINT", () => {
+      releaseLock();
+      process.exit(130);
+    });
+    process.on("SIGTERM", () => {
+      releaseLock();
+      process.exit(143);
+    });
+    return;
+  } catch {
+    // fall through
+  }
+
+  try {
+    const existing = JSON.parse(readFileSync(LOCK_PATH, "utf8"));
+    const existingPid = Number(existing?.pid || 0) || 0;
+    if (isPidRunning(existingPid)) {
+      throw new Error(`owner push forwarder already running (pid=${existingPid})`);
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("already running")) {
+      throw error;
+    }
+  }
+
+  rmSync(LOCK_PATH, { force: true });
+  lockFd = openSync(LOCK_PATH, "wx");
+  writeFileSync(lockFd, JSON.stringify({
+    pid: process.pid,
+    started_at: new Date().toISOString(),
+    state_path: STATE_PATH,
+  }, null, 2), "utf8");
+  process.on("exit", releaseLock);
+  process.on("SIGINT", () => {
+    releaseLock();
+    process.exit(130);
+  });
+  process.on("SIGTERM", () => {
+    releaseLock();
+    process.exit(143);
+  });
 }
 
 function trimState(state) {
@@ -253,10 +334,12 @@ async function pollOnce(state) {
 }
 
 async function main() {
+  acquireLock();
   const state = loadState();
   if (VERBOSE) {
     console.log(`SilicaClaw owner push watching ${API_BASE}`);
     console.log(`State file: ${STATE_PATH}`);
+    console.log(`Lock file: ${LOCK_PATH}`);
     console.log(`Latest-only mode: ${LATEST_ONLY ? "on" : "off"}`);
   }
 

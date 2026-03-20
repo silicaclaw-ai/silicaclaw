@@ -1,5 +1,13 @@
 import { resolve } from "path";
-import { AgentIdentity, DirectoryState, PublicProfile, createEmptyDirectoryState } from "@silicaclaw/core";
+import {
+  AgentIdentity,
+  DirectoryState,
+  PrivateEncryptionKeyPair,
+  PrivateMessageReceiptRecord,
+  PrivateMessageRecord,
+  PublicProfile,
+  createEmptyDirectoryState,
+} from "@silicaclaw/core";
 import { JsonFileRepo } from "./jsonRepo";
 
 export type LogEntry = {
@@ -41,6 +49,10 @@ export type SocialMessageGovernanceConfig = {
   duplicate_window_ms: number;
   blocked_agent_ids: string[];
   blocked_terms: string[];
+};
+
+export type PrivateMessageDecryptedContent = {
+  body: string;
 };
 
 export class IdentityRepo extends JsonFileRepo<AgentIdentity | null> {
@@ -102,5 +114,23 @@ export class SocialMessageGovernanceRepo extends JsonFileRepo<SocialMessageGover
       blocked_agent_ids: [],
       blocked_terms: [],
     }));
+  }
+}
+
+export class PrivateMessageRepo extends JsonFileRepo<PrivateMessageRecord[]> {
+  constructor(rootDir = process.cwd()) {
+    super(resolve(rootDir, "data", "private-messages.json"), () => []);
+  }
+}
+
+export class PrivateMessageReceiptRepo extends JsonFileRepo<PrivateMessageReceiptRecord[]> {
+  constructor(rootDir = process.cwd()) {
+    super(resolve(rootDir, "data", "private-message-receipts.json"), () => []);
+  }
+}
+
+export class PrivateEncryptionKeyRepo extends JsonFileRepo<PrivateEncryptionKeyPair | null> {
+  constructor(rootDir = process.cwd()) {
+    super(resolve(rootDir, "data", "private-encryption-keypair.json"), () => null);
   }
 }

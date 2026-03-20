@@ -17,6 +17,18 @@ export function createNetworkController({
   let lastPeersRenderKey = "";
   let lastDiscoveryRenderKey = "";
 
+  function queueState(value) {
+    const n = Number(value || 0);
+    if (n >= 100) return { tone: "danger", label: t("labels.queueHigh") };
+    if (n >= 20) return { tone: "warn", label: t("labels.queueWatch") };
+    return { tone: "ok", label: t("labels.queueHealthy") };
+  }
+
+  function queueBadge(value) {
+    const state = queueState(value);
+    return `<span class="pill ${state.tone}">${Number(value || 0)} · ${state.label}</span>`;
+  }
+
   async function refreshNetwork() {
     const [cfg, sts, rtp] = await Promise.all([api("/api/network/config"), api("/api/network/stats"), api("/api/runtime/paths")]);
     const c = cfg.data;
@@ -183,6 +195,11 @@ export function createNetworkController({
     const peers = peerRes.data || {};
     const ds = statsRes.data?.adapter_discovery_stats || {};
     const summary = peers.diagnostics_summary || {};
+    const peerItems = Array.isArray(peers.items) ? peers.items : [];
+    const relayQueueTotal = peerItems.reduce((sum, peer) => sum + Number(peer?.meta?.relay_queue_size || 0), 0);
+    const relayQueueMax = peerItems.reduce((max, peer) => Math.max(max, Number(peer?.meta?.relay_queue_size || 0)), 0);
+    const signalQueueTotal = peerItems.reduce((sum, peer) => sum + Number(peer?.meta?.signal_queue_size || 0), 0);
+    const signalQueueMax = peerItems.reduce((max, peer) => Math.max(max, Number(peer?.meta?.signal_queue_size || 0)), 0);
     const peerCardsHtml = [
       [t("network.total"), peers.total || 0],
       [t("overview.online"), peers.online || 0],
@@ -198,6 +215,10 @@ export function createNetworkController({
       [t("network.seedPeers"), summary.seed_peers_count ?? 0],
       [t("network.discoveryEvents"), summary.discovery_events_total ?? 0],
       [t("network.activeWebrtcPeers"), summary.active_webrtc_peers ?? "-"],
+      ["Relay queue", queueBadge(relayQueueTotal)],
+      ["Max relay queue", queueBadge(relayQueueMax)],
+      ["Signal queue", queueBadge(signalQueueTotal)],
+      ["Max signal queue", queueBadge(signalQueueMax)],
       [t("network.observeCalls"), ds.observe_calls || 0],
       [t("network.heartbeats"), ds.heartbeat_sent || 0],
       [t("network.peersAdded"), ds.peers_added || 0],
@@ -213,9 +234,9 @@ export function createNetworkController({
       ? `<div class="empty-state">${t("network.noPeersDiscovered")}</div>`
       : `
       <table class="table">
-        <thead><tr><th>${t("network.peer")}</th><th>${t("network.status")}</th><th>${t("network.lastSeen")}</th><th>${t("network.staleSince")}</th><th>${t("network.messages")}</th><th>${t("network.firstSeen")}</th><th>${t("network.meta")}</th></tr></thead>
+        <thead><tr><th>${t("network.peer")}</th><th>${t("network.status")}</th><th>${t("network.lastSeen")}</th><th>${t("network.staleSince")}</th><th>${t("network.messages")}</th><th>${t("network.firstSeen")}</th><th>Relay Q</th><th>Signal Q</th><th>${t("network.meta")}</th></tr></thead>
         <tbody>
-          ${peers.items.map((peer) => `
+          ${peerItems.map((peer) => `
             <tr>
               <td class="mono">${shortId(peer.peer_id)}</td>
               <td class="${peer.status === "online" ? "online" : peer.status === "offline" ? "offline" : "stale"}">${peerStatusText(peer.status)}</td>
@@ -223,6 +244,8 @@ export function createNetworkController({
               <td>${peer.stale_since_at ? ago(peer.stale_since_at) : "-"}</td>
               <td>${peer.messages_seen || 0}</td>
               <td>${new Date(peer.first_seen_at).toLocaleTimeString()}</td>
+              <td>${queueBadge(Number(peer?.meta?.relay_queue_size || 0))}</td>
+              <td>${queueBadge(Number(peer?.meta?.signal_queue_size || 0))}</td>
               <td class="mono">${peer.meta ? JSON.stringify(peer.meta) : "-"}</td>
             </tr>
           `).join("")}
@@ -248,14 +271,22 @@ export function createNetworkController({
         peers_added: ds.peers_added || 0,
         peers_removed: ds.peers_removed || 0,
       },
-      items: Array.isArray(peers.items)
-        ? peers.items.map((peer) => [
+      queues: {
+        relay_total: relayQueueTotal,
+        relay_max: relayQueueMax,
+        signal_total: signalQueueTotal,
+        signal_max: signalQueueMax,
+      },
+      items: peerItems
+        ? peerItems.map((peer) => [
             peer.peer_id,
             peer.status || "",
             peer.last_seen_at || 0,
             peer.stale_since_at || 0,
             peer.messages_seen || 0,
             peer.first_seen_at || 0,
+            Number(peer?.meta?.relay_queue_size || 0),
+            Number(peer?.meta?.signal_queue_size || 0),
             peer.meta ? JSON.stringify(peer.meta) : "",
           ])
         : [],

@@ -283,9 +283,9 @@ npx clawhub publish openclaw-skills/silicaclaw-broadcast \
 npx clawhub publish openclaw-skills/silicaclaw-owner-push \
   --slug silicaclaw-owner-push \
   --name "SilicaClaw Owner Push" \
-  --version 2026.3.20-beta.2 \
+  --version 2026.3.20-beta.3 \
   --tags latest \
-  --changelog "Added latest-only owner push behavior with timestamp cursor state so only the newest qualifying broadcast is pushed and older messages are skipped."
+  --changelog "Added single-instance lock protection so owner push avoids duplicate notifications when multiple forwarders start at the same time."
 ```
 
 ClawHub publishes the OpenClaw skill folders, not the npm CLI package.

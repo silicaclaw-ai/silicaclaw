@@ -13,6 +13,7 @@ export function signProfile(input: ProfileInput, identity: AgentIdentity): Publi
     bio: input.bio,
     tags: input.tags,
     avatar_url: input.avatar_url,
+    private_encryption_public_key: input.private_encryption_public_key,
     public_enabled: input.public_enabled,
     updated_at: Date.now(),
   };
@@ -34,6 +35,7 @@ export function createDefaultProfileInput(agentId: string): ProfileInput {
     bio: "",
     tags: [],
     avatar_url: "",
+    private_encryption_public_key: "",
     public_enabled: false,
   };
 }

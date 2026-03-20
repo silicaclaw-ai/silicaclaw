@@ -59,6 +59,8 @@ const APP_UPDATE_SESSION_KEY = 'silicaclaw_pending_updated_version';
         setText('[data-tab="agent"] .tab-copy', t('labels.agentTabCopy'));
         setText('[data-tab="chat"] .tab-title', t('pageMeta.chat.title'));
         setText('[data-tab="chat"] .tab-copy', t('labels.chatTabCopy'));
+        setText('[data-tab="private"] .tab-title', t('pageMeta.private.title'));
+        setText('[data-tab="private"] .tab-copy', t('labels.privateTabCopy'));
         setText('[data-tab="skills"] .tab-title', t('pageMeta.skills.title'));
         setText('[data-tab="skills"] .tab-copy', t('labels.skillsTabCopy'));
         setText('[data-tab="profile"] .tab-title', t('pageMeta.profile.title'));
@@ -72,6 +74,7 @@ const APP_UPDATE_SESSION_KEY = 'silicaclaw_pending_updated_version';
         document.querySelector('.sidebar-version').title = t('common.version');
         setText('.sidebar-version__label', t('common.version'));
         document.getElementById('brandUpdateHint').textContent = t('labels.versionChecking');
+        document.getElementById('brandRelayHint').textContent = t('labels.relayQueuesHealthy');
         document.getElementById('brandCheckUpdateBtn').textContent = t('actions.checkUpdate');
         document.getElementById('brandUpdateBtn').textContent = t('actions.updateNow');
         document.getElementById('integrationStatusBar').textContent = t('social.barStatus', {
@@ -107,6 +110,16 @@ const APP_UPDATE_SESSION_KEY = 'silicaclaw_pending_updated_version';
         document.getElementById('chatBannerBody').textContent = t('hints.chatBannerBody');
         document.getElementById('chatBannerFeedLabel').textContent = t('hints.chatBannerFeed');
         document.getElementById('chatComposerTitle').textContent = t('actions.sendPublicMessage');
+        document.getElementById('privateBannerEyebrow').textContent = t('pageMeta.private.title');
+        document.getElementById('privateBannerTitle').textContent = t('pageMeta.private.body');
+        document.getElementById('privateBannerBody').textContent = t('pageMeta.private.body');
+        document.getElementById('privateBannerStateLabel').textContent = t('labels.state');
+        document.getElementById('privateConversationsTitle').textContent = t('pageMeta.private.title');
+        document.getElementById('privateComposerTitle').textContent = t('actions.sendPrivateMessage');
+        document.getElementById('privateTargetLabel').textContent = t('labels.target');
+        document.getElementById('privateTargetIdLabel').textContent = t('social.agentId');
+        document.getElementById('privateMessageSendBtn').textContent = t('actions.sendPrivateMessage');
+        document.getElementById('privateRefreshBtn').textContent = t('actions.refreshPrivate');
         document.getElementById('chatFeedHint').textContent = t('hints.chatFeedHint');
         document.getElementById('overviewGuideTitle').textContent = t('overview.guideTitle');
         document.getElementById('overviewGuideBody').textContent = t('overview.guideBody');
@@ -325,6 +338,8 @@ const APP_UPDATE_SESSION_KEY = 'silicaclaw_pending_updated_version';
       } = shell;
       let appUpdatePollTimer = null;
       let appUpdateCheckInFlight = false;
+      let relayQueueCheckInFlight = false;
+      let lastRelayQueueCheckAt = 0;
 
       function setAppUpdateUi({
         hint,
@@ -357,6 +372,45 @@ const APP_UPDATE_SESSION_KEY = 'silicaclaw_pending_updated_version';
         if (platform === 'darwin') return t('labels.versionPlatformMac');
         if (platform === 'linux') return t('labels.versionPlatformLinux');
         return t('labels.versionPlatformOther');
+      }
+
+      function setRelayQueueUi({ hint = '', tone = 'ok', visible = false }) {
+        const hintEl = document.getElementById('brandRelayHint');
+        if (!hintEl) return;
+        hintEl.textContent = hint;
+        hintEl.classList.toggle('hidden', !visible || !hint);
+        hintEl.classList.remove('warn', 'danger');
+        if (tone === 'warn' || tone === 'danger') {
+          hintEl.classList.add(tone);
+        }
+      }
+
+      async function refreshRelayQueueStatus({ force = false } = {}) {
+        const now = Date.now();
+        if (relayQueueCheckInFlight) return null;
+        if (!force && now - lastRelayQueueCheckAt < 15_000) return null;
+        relayQueueCheckInFlight = true;
+        try {
+          const result = await api('/api/peers');
+          const peers = result.data || {};
+          const peerItems = Array.isArray(peers.items) ? peers.items : [];
+          const relayQueueMax = peerItems.reduce((max, peer) => Math.max(max, Number(peer?.meta?.relay_queue_size || 0)), 0);
+          const signalQueueMax = peerItems.reduce((max, peer) => Math.max(max, Number(peer?.meta?.signal_queue_size || 0)), 0);
+          const queueMax = Math.max(relayQueueMax, signalQueueMax);
+          if (queueMax >= 100) {
+            setRelayQueueUi({ hint: t('labels.relayQueuesHigh'), tone: 'danger', visible: true });
+          } else if (queueMax >= 20) {
+            setRelayQueueUi({ hint: t('labels.relayQueuesWatch'), tone: 'warn', visible: true });
+          } else {
+            setRelayQueueUi({ hint: t('labels.relayQueuesHealthy'), tone: 'ok', visible: true });
+          }
+          lastRelayQueueCheckAt = now;
+          return { relayQueueMax, signalQueueMax };
+        } catch (_error) {
+          return null;
+        } finally {
+          relayQueueCheckInFlight = false;
+        }
       }
 
       async function refreshAppUpdateStatus({ silent = false } = {}) {
@@ -505,6 +559,11 @@ const APP_UPDATE_SESSION_KEY = 'silicaclaw_pending_updated_version';
       let visibleRemotePublicCount = 0;
       let socialMessageFilter = 'all';
       let socialMessageGovernance = null;
+      let privateState = null;
+      let privateConversations = [];
+      let privateMessages = [];
+      let privateTarget = null;
+      let selectedPrivateConversationId = '';
       let overviewMode = 'lan';
       let onlyShowOnline = false;
       let agentsPage = 1;
@@ -588,7 +647,7 @@ const APP_UPDATE_SESSION_KEY = 'silicaclaw_pending_updated_version';
         }
         activeTab = tab;
         document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
-        ['overview', 'agent', 'chat', 'skills', 'profile', 'network', 'social'].forEach((k) => {
+        ['overview', 'agent', 'chat', 'private', 'skills', 'profile', 'network', 'social'].forEach((k) => {
           document.getElementById(`view-${k}`).classList.toggle('active', k === tab);
         });
         const meta = pageMeta[tab] || pageMeta.overview;
@@ -607,6 +666,8 @@ const APP_UPDATE_SESSION_KEY = 'silicaclaw_pending_updated_version';
           refreshOverview().catch(() => {});
         } else if (tab === 'chat') {
           refreshMessages().catch(() => {});
+        } else if (tab === 'private') {
+          refreshPrivate().catch(() => {});
         } else if (tab === 'skills') {
           refreshSkills().catch(() => {});
         } else if (tab === 'network') {
@@ -630,6 +691,81 @@ const APP_UPDATE_SESSION_KEY = 'silicaclaw_pending_updated_version';
         });
       }
 
+      function renderPrivate() {
+        const privateDeliveryLabel = (status) => {
+          if (status === 'direct-sent') return 'Direct';
+          if (status === 'fallback-sent') return 'Fallback';
+          if (status === 'received') return 'Received';
+          if (status === 'read') return 'Read';
+          return 'Sent';
+        };
+        document.getElementById('privateStateMeta').textContent = privateState?.enabled
+          ? `${privateConversations.length} conversation(s)`
+          : 'Private messaging unavailable';
+        document.getElementById('privateTargetName').value = privateTarget?.display_name || '';
+        document.getElementById('privateTargetAgentId').value = privateTarget?.agent_id || '';
+        document.getElementById('privateConversationList').innerHTML = privateConversations.length
+          ? privateConversations.map((item) => `
+              <button class="agent-card" type="button" data-private-conversation="${escapeHtml(item.conversation_id)}">
+                <div class="agent-card__avatar-fallback">${escapeHtml(((item.peer_display_name || item.peer_agent_id || '?')[0] || '?').toUpperCase())}</div>
+                <div class="agent-card__main">
+                  <div class="agent-card__row">
+                    <div class="agent-card__name">${escapeHtml(item.peer_display_name || item.peer_agent_id || 'Unknown')}</div>
+                    <div class="agent-card__id mono">${escapeHtml(shortId(item.peer_agent_id || ''))}</div>
+                  </div>
+                </div>
+              </button>
+            `).join('')
+          : `<div class="empty-state">No private conversations yet.</div>`;
+        document.getElementById('privateMessageList').innerHTML = privateMessages.length
+          ? privateMessages.map((item) => `
+              <div class="log-item">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                  <div>
+                    <strong>${item.is_self ? 'Me' : escapeHtml(privateTarget?.display_name || item.from_agent_id || 'Unknown')}</strong>
+                    <span class="tag-chip" style="margin-left:8px;">${escapeHtml(privateDeliveryLabel(item.delivery_status))}</span>
+                  </div>
+                  <div class="mono" style="color:#90a2c3;">${new Date(item.created_at).toLocaleString()}</div>
+                </div>
+                <div style="margin-top:8px; line-height:1.6;">${formatMessageBody(item.body || '')}</div>
+              </div>
+            `).join('')
+          : `<div class="empty-state">No private messages yet.</div>`;
+      }
+
+      async function refreshPrivate() {
+        const [stateRes, conversationsRes] = await Promise.all([
+          api('/api/private/state'),
+          api('/api/private/conversations'),
+        ]);
+        privateState = stateRes.data || null;
+        privateConversations = Array.isArray(conversationsRes.data) ? conversationsRes.data : [];
+        if ((!privateTarget || privateTarget.agent_id === privateState?.agent_id) && privateConversations[0]) {
+          const first = privateConversations[0];
+          privateTarget = {
+            agent_id: first.peer_agent_id,
+            display_name: first.peer_display_name,
+            private_encryption_public_key: first.peer_public_key,
+          };
+          selectedPrivateConversationId = first.conversation_id;
+        }
+        const selectedConversation = privateConversations.find((item) => item.conversation_id === selectedPrivateConversationId);
+        if (selectedConversation) {
+          privateTarget = {
+            agent_id: selectedConversation.peer_agent_id,
+            display_name: selectedConversation.peer_display_name,
+            private_encryption_public_key: selectedConversation.peer_public_key,
+          };
+        }
+        if (selectedPrivateConversationId) {
+          const messageRes = await api(`/api/private/messages?conversation_id=${encodeURIComponent(selectedPrivateConversationId)}&limit=100`);
+          privateMessages = Array.isArray(messageRes.data) ? messageRes.data : [];
+        } else {
+          privateMessages = [];
+        }
+        renderPrivate();
+      }
+
       const renderSocialMessages = socialController.renderSocialMessages;
       const refreshMessages = socialController.refreshMessages;
 
@@ -646,13 +782,15 @@ const APP_UPDATE_SESSION_KEY = 'silicaclaw_pending_updated_version';
       let autoRefreshInFlight = false;
 
       async function refreshActiveView() {
-        const tasks = [refreshPublicProfilePreview()];
+        const tasks = [refreshPublicProfilePreview(), refreshRelayQueueStatus()];
         if (activeTab === 'overview') {
-          tasks.push(refreshOverview(), refreshMessages(), refreshSocial());
+          tasks.push(refreshOverview(), refreshMessages());
         } else if (activeTab === 'agent') {
           tasks.push(refreshOverview());
         } else if (activeTab === 'chat') {
           tasks.push(refreshMessages());
+        } else if (activeTab === 'private') {
+          tasks.push(refreshPrivate());
         } else if (activeTab === 'skills') {
           tasks.push(refreshSkills());
         } else if (activeTab === 'network') {
@@ -682,19 +820,7 @@ const APP_UPDATE_SESSION_KEY = 'silicaclaw_pending_updated_version';
       }
 
       async function refreshAll() {
-        const tasks = [refreshOverview(), refreshNetwork(), refreshSocial(), refreshSkills(), refreshPublicProfilePreview(), refreshMessages()];
-        if (activeTab === 'network') {
-          tasks.push(refreshPeers(), refreshDiscovery(), refreshLogs());
-        }
-        const shouldRefreshProfile = !(activeTab === 'profile' && profileController.isDirty());
-        if (shouldRefreshProfile) {
-          tasks.push(refreshProfile());
-        }
-        const results = await Promise.allSettled(tasks);
-        const firstError = results.find((result) => result.status === 'rejected');
-        if (firstError && firstError.status === 'rejected') {
-          setFeedback('networkFeedback', firstError.reason instanceof Error ? firstError.reason.message : t('common.unknownError'), 'error');
-        }
+        await refreshActiveView();
       }
 
       bindAppEvents({
@@ -736,6 +862,69 @@ const APP_UPDATE_SESSION_KEY = 'silicaclaw_pending_updated_version';
         toPrettyJson,
       });
 
+      document.getElementById('agentsWrap').addEventListener('click', (event) => {
+        const button = event.target?.closest?.('[data-private-agent]');
+        if (!button) return;
+        privateTarget = {
+          agent_id: String(button.getAttribute('data-private-agent') || ''),
+          display_name: String(button.getAttribute('data-private-name') || ''),
+          private_encryption_public_key: String(button.getAttribute('data-private-key') || ''),
+        };
+        selectedPrivateConversationId = [privateState?.agent_id || '', privateTarget.agent_id].sort().join(':');
+        switchTab('private');
+      });
+
+      document.getElementById('privateConversationList').addEventListener('click', async (event) => {
+        const button = event.target?.closest?.('[data-private-conversation]');
+        if (!button) return;
+        selectedPrivateConversationId = String(button.getAttribute('data-private-conversation') || '');
+        const selectedConversation = privateConversations.find((item) => item.conversation_id === selectedPrivateConversationId);
+        if (selectedConversation) {
+          privateTarget = {
+            agent_id: selectedConversation.peer_agent_id,
+            display_name: selectedConversation.peer_display_name,
+            private_encryption_public_key: selectedConversation.peer_public_key,
+          };
+        }
+        await refreshPrivate();
+      });
+
+      document.getElementById('privateRefreshBtn').addEventListener('click', async () => {
+        await refreshPrivate();
+      });
+
+      document.getElementById('privateMessageSendBtn').addEventListener('click', async () => {
+        const body = String(document.getElementById('privateMessageInput').value || '').trim();
+        if (!privateTarget?.agent_id || !privateTarget?.private_encryption_public_key) {
+          setFeedback('privateFeedback', 'Pick an agent with private messaging support first.', 'warn');
+          return;
+        }
+        if (privateTarget.agent_id === privateState?.agent_id) {
+          setFeedback('privateFeedback', 'Private messages must target another agent.', 'warn');
+          return;
+        }
+        if (!body) {
+          setFeedback('privateFeedback', t('feedback.messageEmpty'), 'warn');
+          return;
+        }
+        setFeedback('privateFeedback', 'Sending private message...');
+        try {
+          const result = await api('/api/private/messages/send', {
+            method: 'POST',
+            body: JSON.stringify({
+              to_agent_id: privateTarget.agent_id,
+              recipient_encryption_public_key: privateTarget.private_encryption_public_key,
+              body,
+            }),
+          });
+          document.getElementById('privateMessageInput').value = '';
+          setFeedback('privateFeedback', result.meta?.message || 'Private message sent.');
+          await refreshPrivate();
+        } catch (error) {
+          setFeedback('privateFeedback', error instanceof Error ? error.message : 'Private message failed.', 'error');
+        }
+      });
+
       applyTheme(localStorage.getItem('silicaclaw_theme_mode') || 'dark');
       hydrateCachedShell();
       document.getElementById('brandUpdateBtn').addEventListener('click', () => {
@@ -756,6 +945,7 @@ const APP_UPDATE_SESSION_KEY = 'silicaclaw_pending_updated_version';
         if (!document.hidden) {
           refreshAuto().catch(() => {});
           refreshAppUpdateStatus({ silent: true }).catch(() => {});
+          refreshRelayQueueStatus({ force: true }).catch(() => {});
         }
       });
       setInterval(refreshAuto, 4000);

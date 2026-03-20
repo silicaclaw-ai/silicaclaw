@@ -11,19 +11,24 @@ import {
   AgentIdentity,
   DirectoryState,
   IndexRefRecord,
+  PrivateEncryptionKeyPair,
+  PrivateMessageReceiptRecord,
+  PrivateMessageRecord,
   PresenceRecord,
   ProfileInput,
   PublicProfile,
   PublicProfileSummary,
   SignedProfileRecord,
   buildPublicProfileSummary,
-  buildIndexRecords,
   cleanupExpiredPresence,
   createDefaultProfileInput,
   createEmptyDirectoryState,
   createIdentity,
+  createPrivateEncryptionKeyPair,
   dedupeIndex,
+  decryptPrivatePayload,
   ensureDefaultSocialMd,
+  encryptPrivatePayload,
   ingestIndexRecord,
   ingestPresenceRecord,
   ingestProfileRecord,
@@ -34,6 +39,8 @@ import {
   resolveIdentityWithSocial,
   resolveProfileInputWithSocial,
   searchDirectory,
+  signPrivateMessage,
+  signPrivateMessageReceipt,
   signSocialMessage,
   signSocialMessageObservation,
   signPresence,
@@ -46,6 +53,8 @@ import {
   verifySocialMessage,
   verifySocialMessageObservation,
   verifyPresence,
+  verifyPrivateMessage,
+  verifyPrivateMessageReceipt,
   verifyProfile,
 } from "@silicaclaw/core";
 import {
@@ -62,6 +71,9 @@ import {
   CacheRepo,
   IdentityRepo,
   LogRepo,
+  PrivateEncryptionKeyRepo,
+  PrivateMessageReceiptRepo,
+  PrivateMessageRepo,
   ProfileRepo,
   SocialMessageGovernanceConfig,
   SocialMessageGovernanceRepo,
@@ -89,6 +101,8 @@ const DEFAULT_GLOBAL_ROOM = defaults.network.global_preview.room;
 const DEFAULT_BRIDGE_API_BASE = defaults.bridge.api_base;
 const OPENCLAW_GATEWAY_PORT = defaults.ports.openclaw_gateway;
 const OPENCLAW_GATEWAY_URL = `http://${OPENCLAW_GATEWAY_HOST}:${OPENCLAW_GATEWAY_PORT}/`;
+const OPENCLAW_RUNTIME_CACHE_MS = 15_000;
+const OPENCLAW_BRIDGE_STATUS_CACHE_MS = 5_000;
 const NETWORK_PEER_REMOVE_AFTER_MS = Number(process.env.NETWORK_PEER_REMOVE_AFTER_MS || 180_000);
 const DIRECTORY_REMOTE_PROFILE_SOFT_LIMIT = Number(process.env.DIRECTORY_REMOTE_PROFILE_SOFT_LIMIT || 1000);
 const NETWORK_UDP_BIND_ADDRESS = process.env.NETWORK_UDP_BIND_ADDRESS || "0.0.0.0";
@@ -103,6 +117,12 @@ const WEBRTC_BOOTSTRAP_HINTS = process.env.WEBRTC_BOOTSTRAP_HINTS || "";
 const PROFILE_VERSION = "v0.9";
 const SOCIAL_MESSAGE_TOPIC = "social.message";
 const SOCIAL_MESSAGE_OBSERVATION_TOPIC = "social.message.observation";
+const PRIVATE_MESSAGE_TOPIC = "private.message";
+const PRIVATE_MESSAGE_RECEIPT_TOPIC = "private.message.receipt";
+const PRIVATE_MESSAGE_HISTORY_LIMIT = Number(process.env.PRIVATE_MESSAGE_HISTORY_LIMIT || 1000);
+const PRIVATE_MESSAGE_RECEIPT_HISTORY_LIMIT = Number(process.env.PRIVATE_MESSAGE_RECEIPT_HISTORY_LIMIT || 2000);
+const PRIVATE_MESSAGE_QUERY_LIMIT = Number(process.env.PRIVATE_MESSAGE_QUERY_LIMIT || 100);
+const PRIVATE_MESSAGE_PERSIST_DEBOUNCE_MS = Number(process.env.PRIVATE_MESSAGE_PERSIST_DEBOUNCE_MS || 750);
 const DEFAULT_SOCIAL_MESSAGE_CHANNEL = "global";
 const SOCIAL_MESSAGE_MAX_BODY_CHARS = Number(process.env.SOCIAL_MESSAGE_MAX_BODY_CHARS || 500);
 const SOCIAL_MESSAGE_HISTORY_LIMIT = Number(process.env.SOCIAL_MESSAGE_HISTORY_LIMIT || 100);
@@ -116,6 +136,12 @@ const SOCIAL_MESSAGE_MAX_AGE_MS = Number(process.env.SOCIAL_MESSAGE_MAX_AGE_MS |
 const SOCIAL_MESSAGE_OBSERVATION_HISTORY_LIMIT = Number(process.env.SOCIAL_MESSAGE_OBSERVATION_HISTORY_LIMIT || 500);
 const SOCIAL_MESSAGE_REPLAY_WINDOW_MS = Number(process.env.SOCIAL_MESSAGE_REPLAY_WINDOW_MS || 10 * 60_000);
 const SOCIAL_MESSAGE_REPLAY_MAX_PER_BROADCAST = Number(process.env.SOCIAL_MESSAGE_REPLAY_MAX_PER_BROADCAST || 3);
+const SOCIAL_MESSAGE_REPLAY_REFRESH_INTERVAL_MS = Number(
+  process.env.SOCIAL_MESSAGE_REPLAY_REFRESH_INTERVAL_MS || 120_000
+);
+const PROFILE_RELAY_REFRESH_INTERVAL_MS = Number(
+  process.env.PROFILE_RELAY_REFRESH_INTERVAL_MS || 120_000
+);
 const SOCIAL_MESSAGE_BLOCKED_AGENT_IDS = new Set(
   dedupeStrings(parseListEnv(process.env.SOCIAL_MESSAGE_BLOCKED_AGENT_IDS || ""))
 );
@@ -193,6 +219,10 @@ function compareVersionTokens(left: unknown, right: unknown): number {
 
 function userNpmCacheDir(): string {
   return resolve(homedir(), ".silicaclaw", "npm-cache");
+}
+
+function userShimPath(): string {
+  return resolve(homedir(), ".silicaclaw", "bin", "silicaclaw");
 }
 
 function resolveWorkspaceRoot(cwd = process.cwd()): string {
@@ -450,45 +480,66 @@ function readOpenClawConfiguredGateway(workspaceRoot: string) {
   } as const;
 }
 
+function resolveOpenClawStatusCommand(workspaceRoot: string) {
+  const explicitBin = String(process.env.OPENCLAW_BIN || "").trim();
+  if (explicitBin) {
+    return { cmd: explicitBin, args: ["status"] } as const;
+  }
+
+  const configuredSourceDir = String(process.env.OPENCLAW_SOURCE_DIR || "").trim();
+  const defaultSourceDir = defaultOpenClawSourceDir(workspaceRoot);
+  const sourceDir = configuredSourceDir || defaultSourceDir;
+  const sourceEntry = existingPathOrNull(resolve(sourceDir, "openclaw.mjs"));
+  if (sourceEntry) {
+    return { cmd: process.execPath, args: [sourceEntry, "status"] } as const;
+  }
+
+  const commandPath = resolveExecutableInPath("openclaw");
+  if (commandPath) {
+    return { cmd: commandPath, args: ["status"] } as const;
+  }
+
+  return null;
+}
+
+function resolveOpenClawGatewayProbeCommand(workspaceRoot: string) {
+  const explicitBin = String(process.env.OPENCLAW_BIN || "").trim();
+  if (explicitBin) {
+    return { cmd: explicitBin, args: ["gateway", "probe"] } as const;
+  }
+
+  const configuredSourceDir = String(process.env.OPENCLAW_SOURCE_DIR || "").trim();
+  const defaultSourceDir = defaultOpenClawSourceDir(workspaceRoot);
+  const sourceDir = configuredSourceDir || defaultSourceDir;
+  const sourceEntry = existingPathOrNull(resolve(sourceDir, "openclaw.mjs"));
+  if (sourceEntry) {
+    return { cmd: process.execPath, args: [sourceEntry, "gateway", "probe"] } as const;
+  }
+
+  const commandPath = resolveExecutableInPath("openclaw");
+  if (commandPath) {
+    return { cmd: commandPath, args: ["gateway", "probe"] } as const;
+  }
+
+  return null;
+}
+
 function detectOpenClawRuntime(workspaceRoot: string) {
   const configuredGateway = readOpenClawConfiguredGateway(workspaceRoot);
-  const result = spawnSync("ps", ["-Ao", "pid=,ppid=,command="], {
+  const statusCommand = resolveOpenClawStatusCommand(workspaceRoot);
+  const statusLooksConfigured = Boolean(
+    statusCommand ||
+    configuredGateway.config_path ||
+    detectOpenClawInstallation(workspaceRoot).detected
+  );
+  const gatewayProbeCommand = ["lsof", "-nP", `-iTCP:${configuredGateway.gateway_port}`, "-sTCP:LISTEN"];
+  const gatewayProbe = spawnSync(gatewayProbeCommand[0], gatewayProbeCommand.slice(1), {
     encoding: "utf8",
+    timeout: 1200,
   });
-  const stdout = String(result.stdout || "");
-  const lines = stdout
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  const processes = lines
-    .map((line) => {
-      const match = line.match(/^(\d+)\s+(\d+)\s+(.+)$/);
-      if (!match) return null;
-      const command = match[3] || "";
-      const lower = command.toLowerCase();
-      const isOpenClaw =
-        lower.includes(" openclaw ") ||
-        lower.endsWith(" openclaw") ||
-        lower.includes("/openclaw ") ||
-        lower.includes("openclaw.mjs") ||
-        lower.includes("openclaw gateway") ||
-        lower.includes("openclaw agent") ||
-        lower.includes("openclaw message");
-      if (!isOpenClaw) return null;
-      return {
-        pid: Number(match[1]),
-        ppid: Number(match[2]),
-        command,
-      };
-    })
-    .filter((item): item is { pid: number; ppid: number; command: string } => Boolean(item));
-
-  const openclawPids = new Set(processes.map((item) => item.pid));
-  const gatewayProbe = spawnSync("lsof", ["-nP", "-iTCP", "-sTCP:LISTEN"], {
-    encoding: "utf8",
-  });
-  const gatewayLines = String(gatewayProbe.stdout || "")
+  const gatewayStatusStdout = String(gatewayProbe.stdout || "");
+  const gatewayStatusStderr = String(gatewayProbe.stderr || "");
+  const gatewayLines = gatewayStatusStdout
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
@@ -498,14 +549,9 @@ function detectOpenClawRuntime(workspaceRoot: string) {
       const parts = line.split(/\s+/);
       const pid = Number(parts[1] || 0);
       const command = parts[0] || "";
-      const lowerCommand = command.toLowerCase();
       const endpoint = parts[8] || parts[parts.length - 1] || "";
       const portMatch = endpoint.match(/:(\d+)(?:\s*\(|$)/);
       if (!pid || !command || !portMatch) return null;
-      const isOpenClawListener =
-        openclawPids.has(pid) ||
-        lowerCommand.includes("openclaw");
-      if (!isOpenClawListener) return null;
       const port = Number(portMatch[1]);
       if (!Number.isFinite(port) || port <= 0) return null;
       return {
@@ -516,46 +562,106 @@ function detectOpenClawRuntime(workspaceRoot: string) {
       };
     })
     .filter((item): item is { pid: number; ppid: number; port: number; command: string } => Boolean(item));
+  const gatewayProbeOk = gatewayListeners.length > 0;
+  let processes: Array<{ pid: number; ppid: number; command: string }> = gatewayListeners.map((item) => ({
+    pid: item.pid,
+    ppid: item.ppid,
+    command: item.command,
+  }));
+  let processResult: ReturnType<typeof spawnSync> | null = null;
+  if (!gatewayProbeOk) {
+    processResult = spawnSync("ps", ["-Ao", "pid=,ppid=,command="], {
+      encoding: "utf8",
+      timeout: 1200,
+    });
+    const stdout = String(processResult.stdout || "");
+    const lines = stdout
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+    processes = lines
+      .map((line) => {
+        const match = line.match(/^(\d+)\s+(\d+)\s+(.+)$/);
+        if (!match) return null;
+        const command = match[3] || "";
+        const lower = command.toLowerCase();
+        const isOpenClaw =
+          lower.includes(" openclaw ") ||
+          lower.endsWith(" openclaw") ||
+          lower.includes("/openclaw ") ||
+          lower.includes("openclaw.mjs") ||
+          lower.includes("openclaw gateway") ||
+          lower.includes("openclaw agent") ||
+          lower.includes("openclaw message");
+        if (!isOpenClaw) return null;
+        return {
+          pid: Number(match[1]),
+          ppid: Number(match[2]),
+          command,
+        };
+      })
+      .filter((item): item is { pid: number; ppid: number; command: string } => Boolean(item));
+  }
+
   const preferredListener =
     gatewayListeners.find((item) => item.port === configuredGateway.gateway_port) ||
     gatewayListeners[0] ||
     null;
-
-  const combinedProcesses = new Map<number, { pid: number; ppid: number; command: string }>();
-  for (const process of [...processes, ...gatewayListeners]) {
-    if (!combinedProcesses.has(process.pid)) {
-      combinedProcesses.set(process.pid, process);
-      continue;
-    }
-    const current = combinedProcesses.get(process.pid);
-    if (current && current.command.length < process.command.length) {
-      combinedProcesses.set(process.pid, process);
-    }
-  }
-  const allProcesses = Array.from(combinedProcesses.values());
-  const gatewayReachable = gatewayListeners.length > 0;
+  const allProcesses = processes.slice(0, 10);
+  const gatewayReachable = gatewayProbeOk;
   const detectionNotes = [];
-  if (result.status !== 0) detectionNotes.push(String(result.stderr || "ps failed").trim());
   if (gatewayProbe.status !== 0 && gatewayLines.length === 0) {
-    detectionNotes.push(String(gatewayProbe.stderr || "lsof failed").trim());
+    detectionNotes.push(String(gatewayStatusStderr || "openclaw gateway probe failed").trim());
+  }
+  if (processResult && processResult.status !== 0) {
+    detectionNotes.push(String(processResult.stderr || "ps failed").trim());
   }
   const gatewayPort = preferredListener?.port || configuredGateway.gateway_port;
   const gatewayUrl = `http://${OPENCLAW_GATEWAY_HOST}:${gatewayPort}/`;
 
   return {
-    running: allProcesses.length > 0 || gatewayReachable,
+    running: gatewayProbeOk || allProcesses.length > 0 || gatewayReachable,
     process_count: allProcesses.length,
     processes: allProcesses.slice(0, 10),
     detection_error: detectionNotes.filter(Boolean).join(" | ") || null,
     gateway_url: gatewayUrl,
     gateway_port: gatewayPort,
     gateway_reachable: gatewayReachable,
+    status_command: statusCommand ? [statusCommand.cmd, ...statusCommand.args].join(" ") : null,
+    status_ok: statusLooksConfigured,
+    status_summary: statusLooksConfigured
+      ? configuredGateway.config_path
+        ? `configured via ${configuredGateway.config_path}`
+        : statusCommand
+          ? `command available: ${[statusCommand.cmd, ...statusCommand.args].join(" ")}`
+          : "OpenClaw environment detected"
+      : null,
+    gateway_probe_command: gatewayProbeCommand.join(" "),
+    gateway_probe_ok: gatewayProbeOk,
+    gateway_probe_summary: gatewayProbeOk
+      ? gatewayStatusStdout
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .slice(0, 4)
+          .join(" | ")
+      : null,
     configured_gateway_url: configuredGateway.gateway_url,
     configured_gateway_port: configuredGateway.gateway_port,
     configured_gateway_bind: configuredGateway.gateway_bind,
     configured_gateway_config_path: configuredGateway.config_path,
     detection_mode:
-      processes.length > 0 && gatewayReachable
+      gatewayProbeOk
+        ? (
+          processes.length > 0 && gatewayReachable
+            ? "gateway-probe+process+gateway"
+            : gatewayReachable
+              ? "gateway-probe+gateway"
+              : processes.length > 0
+                ? "gateway-probe+process"
+                : "gateway-probe"
+        )
+        : processes.length > 0 && gatewayReachable
         ? "process+gateway"
         : gatewayReachable
           ? "gateway"
@@ -785,6 +891,17 @@ type SocialMessageView = SocialMessageRecord & {
   delivery_status: "local-only" | "remote-observed";
 };
 
+type PrivateMessageView = {
+  message_id: string;
+  conversation_id: string;
+  from_agent_id: string;
+  to_agent_id: string;
+  body: string;
+  created_at: number;
+  is_self: boolean;
+  delivery_status: "sent" | "direct-sent" | "fallback-sent" | "received" | "read";
+};
+
 type RuntimeMessageGovernance = SocialMessageGovernanceConfig;
 
 type OpenClawBridgeStatus = {
@@ -828,11 +945,17 @@ type OpenClawBridgeStatus = {
     gateway_url: string;
     gateway_port: number;
     gateway_reachable: boolean;
+    status_command: string | null;
+    status_ok: boolean;
+    status_summary: string | null;
+    gateway_probe_command: string | null;
+    gateway_probe_ok: boolean;
+    gateway_probe_summary: string | null;
     configured_gateway_url: string;
     configured_gateway_port: number;
     configured_gateway_bind: string | null;
     configured_gateway_config_path: string | null;
-    detection_mode: "process" | "gateway" | "process+gateway" | "not_running";
+    detection_mode: "gateway-probe" | "gateway-probe+process" | "gateway-probe+gateway" | "gateway-probe+process+gateway" | "process" | "gateway" | "process+gateway" | "not_running";
   };
   skill_learning: {
     available: boolean;
@@ -909,6 +1032,9 @@ export class LocalNodeService {
   private socialMessageGovernanceRepo: SocialMessageGovernanceRepo;
   private socialMessageRepo: SocialMessageRepo;
   private socialMessageObservationRepo: SocialMessageObservationRepo;
+  private privateMessageRepo: PrivateMessageRepo;
+  private privateMessageReceiptRepo: PrivateMessageReceiptRepo;
+  private privateEncryptionKeyRepo: PrivateEncryptionKeyRepo;
   private socialRuntimeRepo: SocialRuntimeRepo;
 
   private identity: AgentIdentity | null = null;
@@ -916,12 +1042,26 @@ export class LocalNodeService {
   private directory: DirectoryState = createEmptyDirectoryState();
   private socialMessages: SocialMessageRecord[] = [];
   private socialMessageObservations: SocialMessageObservationRecord[] = [];
+  private privateMessages: PrivateMessageRecord[] = [];
+  private privateMessageReceipts: PrivateMessageReceiptRecord[] = [];
+  private privateEncryptionKeyPair: PrivateEncryptionKeyPair | null = null;
+  private privatePeerRoutes: Record<string, string> = {};
+  private privateMessageBodyCache = new Map<string, string>();
+  private privateMessageDeliveryStatusCache = new Map<string, PrivateMessageView["delivery_status"]>();
   private messageGovernance: RuntimeMessageGovernance;
+  private privateMessagesPersistDirty = false;
+  private privateMessageReceiptsPersistDirty = false;
+  private privateMessagesPersistTimer: NodeJS.Timeout | null = null;
+  private privateMessageReceiptsPersistTimer: NodeJS.Timeout | null = null;
 
   private receivedCount = 0;
   private broadcastCount = 0;
   private lastMessageAt = 0;
   private lastBroadcastAt = 0;
+  private lastProfileBroadcastAt = 0;
+  private lastProfileBroadcastSignature = "";
+  private lastReplayBroadcastAt = 0;
+  private lastReplayBroadcastSignature = "";
   private lastBroadcastErrorAt = 0;
   private lastBroadcastError: string | null = null;
   private broadcastFailureCount = 0;
@@ -969,6 +1109,8 @@ export class LocalNodeService {
   private networkReconnectTimer: NodeJS.Timeout | null = null;
   private networkReconnectDelayMs = 5_000;
   private appVersion = "unknown";
+  private openclawRuntimeCache: { value: ReturnType<typeof detectOpenClawRuntime>; expiresAt: number } | null = null;
+  private openclawBridgeStatusCache: { value: OpenClawBridgeStatus; expiresAt: number } | null = null;
 
   constructor(options?: { workspaceRoot?: string; projectRoot?: string; storageRoot?: string }) {
     this.workspaceRoot = options?.workspaceRoot || resolveWorkspaceRoot();
@@ -984,6 +1126,9 @@ export class LocalNodeService {
     this.socialMessageGovernanceRepo = new SocialMessageGovernanceRepo(this.storageRoot);
     this.socialMessageRepo = new SocialMessageRepo(this.storageRoot);
     this.socialMessageObservationRepo = new SocialMessageObservationRepo(this.storageRoot);
+    this.privateMessageRepo = new PrivateMessageRepo(this.storageRoot);
+    this.privateMessageReceiptRepo = new PrivateMessageReceiptRepo(this.storageRoot);
+    this.privateEncryptionKeyRepo = new PrivateEncryptionKeyRepo(this.storageRoot);
     this.socialRuntimeRepo = new SocialRuntimeRepo(this.storageRoot);
     this.messageGovernance = this.defaultMessageGovernance();
 
@@ -1014,6 +1159,24 @@ export class LocalNodeService {
     this.networkPort = resolved.port;
   }
 
+  private getCachedOpenClawRuntime() {
+    const now = Date.now();
+    if (this.openclawRuntimeCache && this.openclawRuntimeCache.expiresAt > now) {
+      return this.openclawRuntimeCache.value;
+    }
+    const value = detectOpenClawRuntime(this.projectRoot);
+    this.openclawRuntimeCache = {
+      value,
+      expiresAt: now + OPENCLAW_RUNTIME_CACHE_MS,
+    };
+    return value;
+  }
+
+  private invalidateOpenClawCaches() {
+    this.openclawRuntimeCache = null;
+    this.openclawBridgeStatusCache = null;
+  }
+
   async start(): Promise<void> {
     await this.hydrateFromDisk();
 
@@ -1027,6 +1190,7 @@ export class LocalNodeService {
       clearInterval(this.broadcaster);
       this.broadcaster = null;
     }
+    await this.flushPrivatePersistence();
     if (this.networkStarted) {
       await this.network.stop();
     }
@@ -1047,6 +1211,9 @@ export class LocalNodeService {
   getOverview() {
     const discovered = this.search("");
     const onlineCount = discovered.filter((profile) => profile.online).length;
+    const openclawInstallation = detectOpenClawInstallation(this.projectRoot);
+    const openclawRuntime = this.getCachedOpenClawRuntime();
+    const openclawSkillInstallation = detectOpenClawSkillInstallation();
 
     return {
       app_version: this.appVersion,
@@ -1063,6 +1230,15 @@ export class LocalNodeService {
       init_state: this.initState,
       presence_ttl_ms: PRESENCE_TTL_MS,
       onboarding: this.getOnboardingSummary(),
+      openclaw: {
+        detected: openclawInstallation.detected,
+        running: openclawRuntime.running,
+        detection_mode: openclawRuntime.detection_mode,
+        gateway_url: openclawRuntime.gateway_url,
+        gateway_probe_ok: openclawRuntime.gateway_probe_ok,
+        status_ok: openclawRuntime.status_ok,
+        skill_installed: openclawSkillInstallation.installed,
+      },
       social: {
         found: this.socialFound,
         enabled: this.socialConfig.enabled,
@@ -1422,8 +1598,10 @@ export class LocalNodeService {
         reason: status.check_error || "already_current",
       };
     }
+    const shimPath = userShimPath();
     const scriptPath = resolve(this.workspaceRoot, "scripts", "silicaclaw-cli.mjs");
-    if (!existsSync(scriptPath)) {
+    const useShim = existsSync(shimPath);
+    if (!useShim && !existsSync(scriptPath)) {
       return {
         started: false,
         target_version: status.latest_version,
@@ -1431,7 +1609,9 @@ export class LocalNodeService {
         reason: "missing_cli_script",
       };
     }
-    const child = spawn(process.execPath, [scriptPath, "update"], {
+    const command = useShim ? shimPath : process.execPath;
+    const args = useShim ? ["update"] : [scriptPath, "update"];
+    const child = spawn(command, args, {
       cwd: this.projectRoot,
       detached: true,
       stdio: "ignore",
@@ -1719,7 +1899,7 @@ export class LocalNodeService {
     return this.identity;
   }
 
-  getSocialMessages(limit = 50, options?: { agent_id?: string | null }): {
+  getSocialMessages(limit = 50, options?: { agent_id?: string | null; offset?: number | null }): {
     total: number;
     items: SocialMessageView[];
     governance: {
@@ -1731,6 +1911,7 @@ export class LocalNodeService {
     };
   } {
     const resolvedLimit = Math.max(1, Math.min(200, Number(limit) || 50));
+    const resolvedOffset = Math.max(0, Number(options?.offset) || 0);
     this.ensureLocalDirectoryBaseline();
     this.compactCacheInMemory();
     const agentId = String(options?.agent_id || "").trim();
@@ -1739,7 +1920,7 @@ export class LocalNodeService {
       : this.socialMessages;
     return {
       total: filtered.length,
-      items: filtered.slice(0, resolvedLimit).map((message) => {
+      items: filtered.slice(resolvedOffset, resolvedOffset + resolvedLimit).map((message) => {
         const profile = this.directory.profiles[message.agent_id];
         const lastSeenAt = this.directory.presence[message.agent_id] ?? 0;
         const observations = this.socialMessageObservations.filter((item) => item.message_id === message.message_id);
@@ -1768,10 +1949,164 @@ export class LocalNodeService {
     };
   }
 
+  getPrivateMessagingState() {
+    return {
+      enabled: Boolean(this.identity && this.privateEncryptionKeyPair),
+      agent_id: this.identity?.agent_id || "",
+      encryption_public_key: this.privateEncryptionKeyPair?.public_key || "",
+      conversation_count: this.getPrivateConversations().length,
+      message_count: this.privateMessages.length,
+    };
+  }
+
+  getPrivateConversations(): Array<{
+    conversation_id: string;
+    peer_agent_id: string;
+    peer_display_name: string;
+    peer_avatar_url: string;
+    peer_public_key: string;
+    last_message_at: number | null;
+    unread_count: number;
+  }> {
+    const conversations = new Map<string, {
+      conversation_id: string;
+      peer_agent_id: string;
+      peer_display_name: string;
+      peer_avatar_url: string;
+      peer_public_key: string;
+      last_message_at: number | null;
+      unread_count: number;
+    }>();
+    for (const message of this.privateMessages) {
+      if (message.from_agent_id === message.to_agent_id) {
+        continue;
+      }
+      const peerAgentId = message.from_agent_id === this.identity?.agent_id ? message.to_agent_id : message.from_agent_id;
+      if (!peerAgentId || peerAgentId === this.identity?.agent_id) {
+        continue;
+      }
+      const peerProfile = this.directory.profiles[peerAgentId];
+      const current = conversations.get(message.conversation_id);
+      const nextLast = Math.max(current?.last_message_at || 0, message.created_at || 0) || null;
+      conversations.set(message.conversation_id, {
+        conversation_id: message.conversation_id,
+        peer_agent_id: peerAgentId,
+        peer_display_name: peerProfile?.display_name || peerAgentId,
+        peer_avatar_url: peerProfile?.avatar_url || "",
+        peer_public_key: peerProfile?.private_encryption_public_key || "",
+        last_message_at: nextLast,
+        unread_count: current?.unread_count || 0,
+      });
+    }
+    return Array.from(conversations.values()).sort((a, b) => (b.last_message_at || 0) - (a.last_message_at || 0));
+  }
+
+  getPrivateMessages(conversationId: string, limit = PRIVATE_MESSAGE_QUERY_LIMIT, offset = 0): {
+    total: number;
+    items: PrivateMessageView[];
+  } {
+    const normalizedConversationId = String(conversationId || "").trim();
+    const resolvedLimit = Math.max(1, Math.min(PRIVATE_MESSAGE_QUERY_LIMIT, Number(limit) || PRIVATE_MESSAGE_QUERY_LIMIT));
+    const resolvedOffset = Math.max(0, Number(offset) || 0);
+    const receiptsByMessageId = new Map(
+      this.privateMessageReceipts.map((receipt) => [receipt.message_id, receipt.status] as const)
+    );
+    const filtered = this.privateMessages
+      .filter((message) => {
+        if (message.from_agent_id === message.to_agent_id) {
+          return false;
+        }
+        const peerAgentId = message.from_agent_id === this.identity?.agent_id ? message.to_agent_id : message.from_agent_id;
+        if (!peerAgentId || peerAgentId === this.identity?.agent_id) {
+          return false;
+        }
+        return !normalizedConversationId || message.conversation_id === normalizedConversationId;
+      })
+      .sort((a, b) => a.created_at - b.created_at);
+    const total = filtered.length;
+    const paged = filtered.slice(Math.max(0, total - resolvedOffset - resolvedLimit), Math.max(0, total - resolvedOffset));
+    return {
+      total,
+      items: paged.map((message) => ({
+        message_id: message.message_id,
+        conversation_id: message.conversation_id,
+        from_agent_id: message.from_agent_id,
+        to_agent_id: message.to_agent_id,
+        body: this.decryptPrivateMessageBody(message),
+        created_at: message.created_at,
+        is_self: message.from_agent_id === this.identity?.agent_id,
+        delivery_status:
+          receiptsByMessageId.get(message.message_id) ||
+          this.privateMessageDeliveryStatusCache.get(message.message_id) ||
+          (message.from_agent_id === this.identity?.agent_id ? "fallback-sent" : "sent"),
+      })),
+    };
+  }
+
+  async sendPrivateMessage(input: {
+    to_agent_id: string;
+    recipient_encryption_public_key: string;
+    body: string;
+  }): Promise<{ sent: boolean; reason: string; message?: PrivateMessageView }> {
+    if (!this.identity || !this.privateEncryptionKeyPair) {
+      return { sent: false, reason: "missing_identity_or_private_key" };
+    }
+    const toAgentId = String(input.to_agent_id || "").trim();
+    const recipientKey = String(input.recipient_encryption_public_key || "").trim();
+    const body = String(input.body || "").trim();
+    if (toAgentId === this.identity.agent_id) {
+      return { sent: false, reason: "self_private_message_not_allowed" };
+    }
+    const toPeerId = this.privatePeerRoutes[toAgentId] || "";
+    if (!toAgentId || !recipientKey || !body) {
+      return { sent: false, reason: "invalid_private_message_input" };
+    }
+    const encrypted = encryptPrivatePayload({
+      plaintext: body,
+      recipient_public_key: recipientKey,
+      sender_keypair: this.privateEncryptionKeyPair,
+    });
+    const message = signPrivateMessage({
+      identity: this.identity,
+      message_id: createHash("sha256").update(`${this.identity.agent_id}:${toAgentId}:${Date.now()}:${body}:${Math.random()}`, "utf8").digest("hex"),
+      conversation_id: this.buildPrivateConversationId(this.identity.agent_id, toAgentId),
+      to_agent_id: toAgentId,
+      sender_encryption_public_key: encrypted.sender_encryption_public_key,
+      recipient_encryption_public_key: recipientKey,
+      ciphertext: encrypted.ciphertext,
+      nonce: encrypted.nonce,
+      created_at: Date.now(),
+    });
+    this.privateMessageBodyCache.set(message.message_id, body);
+    this.ingestPrivateMessage(message);
+    await this.persistPrivateMessages();
+    let reason = "fallback-sent";
+    if (toPeerId && typeof this.network.sendDirect === "function") {
+      try {
+        await this.network.sendDirect(toPeerId, PRIVATE_MESSAGE_TOPIC, message);
+        reason = "direct-sent";
+      } catch {
+        await this.publish(PRIVATE_MESSAGE_TOPIC, message);
+      }
+    } else {
+      await this.publish(PRIVATE_MESSAGE_TOPIC, message);
+    }
+    this.privateMessageDeliveryStatusCache.set(message.message_id, reason as PrivateMessageView["delivery_status"]);
+    const view = this.getPrivateMessages(message.conversation_id, PRIVATE_MESSAGE_QUERY_LIMIT, 0).items.find((item) => item.message_id === message.message_id);
+    if (view) {
+      view.delivery_status = reason as PrivateMessageView["delivery_status"];
+    }
+    return { sent: true, reason, message: view };
+  }
+
   getOpenClawBridgeStatus(): OpenClawBridgeStatus {
+    const now = Date.now();
+    if (this.openclawBridgeStatusCache && this.openclawBridgeStatusCache.expiresAt > now) {
+      return this.openclawBridgeStatusCache.value;
+    }
     const integration = this.getIntegrationStatus();
     const openclawInstallation = detectOpenClawInstallation(this.projectRoot);
-    const openclawRuntime = detectOpenClawRuntime(this.projectRoot);
+    const openclawRuntime = this.getCachedOpenClawRuntime();
     const skillInstallation = detectOpenClawSkillInstallation();
     const ownerDelivery = detectOwnerDeliveryStatus({
       workspaceRoot: this.projectRoot,
@@ -1779,7 +2114,7 @@ export class LocalNodeService {
       openclawRunning: openclawRuntime.running,
       skillInstalled: skillInstallation.installed,
     });
-    return {
+    const value: OpenClawBridgeStatus = {
       enabled: this.socialConfig.enabled,
       connected_to_silicaclaw: integration.connected_to_silicaclaw,
       public_enabled: integration.public_enabled,
@@ -1835,6 +2170,11 @@ export class LocalNodeService {
         install_skill: "/api/openclaw/bridge/skill-install",
       },
     };
+    this.openclawBridgeStatusCache = {
+      value,
+      expiresAt: now + OPENCLAW_BRIDGE_STATUS_CACHE_MS,
+    };
+    return value;
   }
 
   async installOpenClawSkill(skillName?: string) {
@@ -1849,6 +2189,7 @@ export class LocalNodeService {
       maxBuffer: 1024 * 1024,
     });
     const parsed = JSON.parse(String(stdout || "{}"));
+    this.invalidateOpenClawCaches();
     return {
       ...parsed,
       bridge: this.getOpenClawBridgeStatus(),
@@ -1870,7 +2211,7 @@ export class LocalNodeService {
     const workspaceSkillDir = resolve(homeDir, "workspace", "skills");
     const legacySkillDir = resolve(homeDir, "skills");
     const openclawSourceDir = defaultOpenClawSourceDir(this.projectRoot);
-    const openclawRuntime = detectOpenClawRuntime(this.projectRoot);
+    const openclawRuntime = this.getCachedOpenClawRuntime();
 
     return {
       bridge_api_base: DEFAULT_BRIDGE_API_BASE,
@@ -2280,15 +2621,14 @@ export class LocalNodeService {
       profile: this.profile,
     };
     const presenceRecord = signPresence(this.identity, Date.now());
-    const indexRecords = buildIndexRecords(this.profile);
-    const replayMessages = this.getReplayableSelfSocialMessages();
+    const shouldPublishProfile = this.shouldPublishProfileRecord(profileRecord, reason, presenceRecord.timestamp);
+    const replayMessages = this.getReplayableSelfSocialMessages(reason);
 
     try {
-      await this.publish("profile", profileRecord);
-      await this.publish("presence", presenceRecord);
-      for (const record of indexRecords) {
-        await this.publish("index", record);
+      if (shouldPublishProfile) {
+        await this.publish("profile", profileRecord);
       }
+      await this.publish("presence", presenceRecord);
       for (const message of replayMessages) {
         await this.publish(SOCIAL_MESSAGE_TOPIC, message);
       }
@@ -2311,17 +2651,35 @@ export class LocalNodeService {
 
     this.directory = ingestProfileRecord(this.directory, profileRecord);
     this.directory = ingestPresenceRecord(this.directory, presenceRecord);
-    for (const record of indexRecords) {
-      this.directory = ingestIndexRecord(this.directory, record);
-    }
     this.compactCacheInMemory();
     await this.persistCache();
 
     await this.log(
       "info",
-      `Broadcast sent (${indexRecords.length} index refs, replayed_messages=${replayMessages.length}, reason=${reason})`
+      `Broadcast sent (${shouldPublishProfile ? "profile + " : ""}presence, replayed_messages=${replayMessages.length}, reason=${reason})`
     );
     return { sent: true, reason };
+  }
+
+  private shouldPublishProfileRecord(
+    profileRecord: SignedProfileRecord,
+    reason: string,
+    now = Date.now()
+  ): boolean {
+    if (reason !== "interval") {
+      this.lastProfileBroadcastSignature = profileRecord.profile.signature;
+      this.lastProfileBroadcastAt = now;
+      return true;
+    }
+    const signature = profileRecord.profile.signature;
+    const changedSinceLastPublish = signature !== this.lastProfileBroadcastSignature;
+    const refreshDue = now - this.lastProfileBroadcastAt >= PROFILE_RELAY_REFRESH_INTERVAL_MS;
+    if (!changedSinceLastPublish && !refreshDue) {
+      return false;
+    }
+    this.lastProfileBroadcastSignature = signature;
+    this.lastProfileBroadcastAt = now;
+    return true;
   }
 
   private async maybeRecoverFromBroadcastFailure(reason: string, errorMessage: string): Promise<void> {
@@ -2387,6 +2745,8 @@ export class LocalNodeService {
       await this.log("info", `Bound existing OpenClaw identity: ${resolvedIdentity.openclaw_source_path}`);
     }
     await this.identityRepo.set(this.identity);
+    this.privateEncryptionKeyPair = (await this.privateEncryptionKeyRepo.get()) || createPrivateEncryptionKeyPair();
+    await this.privateEncryptionKeyRepo.set(this.privateEncryptionKeyPair);
 
     const existingProfile = await this.profileRepo.get();
     const profileInput = resolveProfileInputWithSocial({
@@ -2395,7 +2755,10 @@ export class LocalNodeService {
       existingProfile: existingProfile && existingProfile.agent_id === this.identity.agent_id ? existingProfile : null,
       rootDir: this.projectRoot,
     });
-    this.profile = signProfile(profileInput, this.identity);
+    this.profile = signProfile({
+      ...profileInput,
+      private_encryption_public_key: this.privateEncryptionKeyPair?.public_key || profileInput.private_encryption_public_key || "",
+    }, this.identity);
     if (!existingProfile || existingProfile.agent_id !== this.identity.agent_id) {
       this.initState.profile_auto_created = true;
       await this.log("info", "profile.json missing/invalid, initialized from social/default profile");
@@ -2409,6 +2772,8 @@ export class LocalNodeService {
     };
     this.socialMessages = this.normalizeSocialMessages(await this.socialMessageRepo.get());
     this.socialMessageObservations = this.normalizeSocialMessageObservations(await this.socialMessageObservationRepo.get());
+    this.privateMessages = this.normalizePrivateMessages(await this.privateMessageRepo.get());
+    this.privateMessageReceipts = this.normalizePrivateMessageReceipts(await this.privateMessageReceiptRepo.get());
     this.directory = ingestProfileRecord(this.directory, { type: "profile", profile: this.profile });
     this.compactCacheInMemory();
     await this.persistCache();
@@ -2427,7 +2792,10 @@ export class LocalNodeService {
       existingProfile: this.profile,
       rootDir: this.projectRoot,
     });
-    const nextProfile = signProfile(nextProfileInput, this.identity);
+    const nextProfile = signProfile({
+      ...nextProfileInput,
+      private_encryption_public_key: this.privateEncryptionKeyPair?.public_key || nextProfileInput.private_encryption_public_key || "",
+    }, this.identity);
     this.profile = nextProfile;
     await this.profileRepo.set(nextProfile);
 
@@ -2492,7 +2860,8 @@ export class LocalNodeService {
 
   private async onMessage(
     topic: "profile" | "presence" | "index" | "social.message" | "social.message.observation",
-    data: unknown
+    data: unknown,
+    meta?: { peerId?: string }
   ): Promise<void> {
     this.receivedCount += 1;
     this.receivedByTopic[topic] = (this.receivedByTopic[topic] ?? 0) + 1;
@@ -2509,6 +2878,9 @@ export class LocalNodeService {
           await this.log("warn", "Rejected self profile with invalid signature");
           return;
         }
+      }
+      if (meta?.peerId && record.profile.agent_id) {
+        this.privatePeerRoutes[record.profile.agent_id] = meta.peerId;
       }
 
       this.directory = ingestProfileRecord(this.directory, record);
@@ -2529,6 +2901,9 @@ export class LocalNodeService {
           return;
         }
       }
+      if (meta?.peerId && record.agent_id) {
+        this.privatePeerRoutes[record.agent_id] = meta.peerId;
+      }
 
       this.directory = ingestPresenceRecord(this.directory, record);
       this.compactCacheInMemory();
@@ -2544,6 +2919,9 @@ export class LocalNodeService {
       if (!verifySocialMessage(record)) {
         await this.log("warn", `Rejected social message with invalid signature (${record.message_id.slice(0, 10)})`);
         return;
+      }
+      if (meta?.peerId && record.agent_id) {
+        this.privatePeerRoutes[record.agent_id] = meta.peerId;
       }
       if (this.hasSocialMessage(record.message_id)) {
         await this.publishObservationForMessage(record);
@@ -2583,6 +2961,36 @@ export class LocalNodeService {
     await this.persistCache();
   }
 
+  private async onDirectMessage(
+    topic: "private.message" | "private.message.receipt",
+    data: unknown,
+    meta?: { peerId?: string }
+  ): Promise<void> {
+    if (topic === PRIVATE_MESSAGE_TOPIC) {
+      const record = this.normalizeIncomingPrivateMessage(data);
+      if (!record || !verifyPrivateMessage(record)) {
+        return;
+      }
+      if (record.to_agent_id !== this.identity?.agent_id || this.hasPrivateMessage(record.message_id)) {
+        return;
+      }
+      this.ingestPrivateMessage(record);
+      await this.persistPrivateMessages();
+      await this.sendPrivateMessageReceipt(record, meta?.peerId);
+      return;
+    }
+
+    const receipt = this.normalizeIncomingPrivateMessageReceipt(data);
+    if (!receipt || !verifyPrivateMessageReceipt(receipt)) {
+      return;
+    }
+    if (receipt.to_agent_id !== this.identity?.agent_id) {
+      return;
+    }
+    this.ingestPrivateMessageReceipt(receipt);
+    await this.persistPrivateMessageReceipts();
+  }
+
   private startBroadcastLoop(): void {
     if (this.broadcaster) {
       clearInterval(this.broadcaster);
@@ -2608,21 +3016,35 @@ export class LocalNodeService {
     if (this.subscriptionsBound) {
       return;
     }
-    this.network.subscribe("profile", (data: SignedProfileRecord) => {
-      this.onMessage("profile", data);
+    this.network.subscribe("profile", (data: SignedProfileRecord, meta?: { peerId?: string }) => {
+      this.onMessage("profile", data, meta);
     });
-    this.network.subscribe("presence", (data: PresenceRecord) => {
-      this.onMessage("presence", data);
+    this.network.subscribe("presence", (data: PresenceRecord, meta?: { peerId?: string }) => {
+      this.onMessage("presence", data, meta);
     });
-    this.network.subscribe("index", (data: IndexRefRecord) => {
-      this.onMessage("index", data);
+    this.network.subscribe("index", (data: IndexRefRecord, meta?: { peerId?: string }) => {
+      this.onMessage("index", data, meta);
     });
-    this.network.subscribe(SOCIAL_MESSAGE_TOPIC, (data: SocialMessageRecord) => {
-      this.onMessage(SOCIAL_MESSAGE_TOPIC, data);
+    this.network.subscribe(SOCIAL_MESSAGE_TOPIC, (data: SocialMessageRecord, meta?: { peerId?: string }) => {
+      this.onMessage(SOCIAL_MESSAGE_TOPIC, data, meta);
     });
-    this.network.subscribe(SOCIAL_MESSAGE_OBSERVATION_TOPIC, (data: SocialMessageObservationRecord) => {
-      this.onMessage(SOCIAL_MESSAGE_OBSERVATION_TOPIC, data);
+    this.network.subscribe(SOCIAL_MESSAGE_OBSERVATION_TOPIC, (data: SocialMessageObservationRecord, meta?: { peerId?: string }) => {
+      this.onMessage(SOCIAL_MESSAGE_OBSERVATION_TOPIC, data, meta);
     });
+    this.network.subscribe(PRIVATE_MESSAGE_TOPIC, (data: PrivateMessageRecord, meta?: { peerId?: string }) => {
+      this.onDirectMessage(PRIVATE_MESSAGE_TOPIC, data, meta);
+    });
+    this.network.subscribe(PRIVATE_MESSAGE_RECEIPT_TOPIC, (data: PrivateMessageReceiptRecord, meta?: { peerId?: string }) => {
+      this.onDirectMessage(PRIVATE_MESSAGE_RECEIPT_TOPIC, data, meta);
+    });
+    if (typeof this.network.subscribeDirect === "function") {
+      this.network.subscribeDirect(PRIVATE_MESSAGE_TOPIC, (data: PrivateMessageRecord, meta?: { peerId?: string }) => {
+        this.onDirectMessage(PRIVATE_MESSAGE_TOPIC, data, meta);
+      });
+      this.network.subscribeDirect(PRIVATE_MESSAGE_RECEIPT_TOPIC, (data: PrivateMessageReceiptRecord, meta?: { peerId?: string }) => {
+        this.onDirectMessage(PRIVATE_MESSAGE_RECEIPT_TOPIC, data, meta);
+      });
+    }
     this.subscriptionsBound = true;
   }
 
@@ -2874,6 +3296,57 @@ export class LocalNodeService {
     await this.socialMessageObservationRepo.set(this.socialMessageObservations);
   }
 
+  private async persistPrivateMessages(): Promise<void> {
+    this.privateMessagesPersistDirty = true;
+    if (this.privateMessagesPersistTimer) {
+      return;
+    }
+    this.privateMessagesPersistTimer = setTimeout(() => {
+      this.flushPrivateMessagesPersist().catch(() => {});
+    }, PRIVATE_MESSAGE_PERSIST_DEBOUNCE_MS);
+  }
+
+  private async persistPrivateMessageReceipts(): Promise<void> {
+    this.privateMessageReceiptsPersistDirty = true;
+    if (this.privateMessageReceiptsPersistTimer) {
+      return;
+    }
+    this.privateMessageReceiptsPersistTimer = setTimeout(() => {
+      this.flushPrivateMessageReceiptsPersist().catch(() => {});
+    }, PRIVATE_MESSAGE_PERSIST_DEBOUNCE_MS);
+  }
+
+  private async flushPrivatePersistence(): Promise<void> {
+    await Promise.all([
+      this.flushPrivateMessagesPersist(),
+      this.flushPrivateMessageReceiptsPersist(),
+    ]);
+  }
+
+  private async flushPrivateMessagesPersist(): Promise<void> {
+    if (this.privateMessagesPersistTimer) {
+      clearTimeout(this.privateMessagesPersistTimer);
+      this.privateMessagesPersistTimer = null;
+    }
+    if (!this.privateMessagesPersistDirty) {
+      return;
+    }
+    this.privateMessagesPersistDirty = false;
+    await this.privateMessageRepo.set(this.privateMessages);
+  }
+
+  private async flushPrivateMessageReceiptsPersist(): Promise<void> {
+    if (this.privateMessageReceiptsPersistTimer) {
+      clearTimeout(this.privateMessageReceiptsPersistTimer);
+      this.privateMessageReceiptsPersistTimer = null;
+    }
+    if (!this.privateMessageReceiptsPersistDirty) {
+      return;
+    }
+    this.privateMessageReceiptsPersistDirty = false;
+    await this.privateMessageReceiptRepo.set(this.privateMessageReceipts);
+  }
+
   private async log(level: "info" | "warn" | "error", message: string): Promise<void> {
     await this.logRepo.append({
       level,
@@ -2930,6 +3403,7 @@ export class LocalNodeService {
 
     return buildPublicProfileSummary({
       profile,
+      is_self: isSelf,
       online,
       last_seen_at: lastSeenAt || null,
       network_mode: isSelf ? this.networkMode : "unknown",
@@ -2983,6 +3457,7 @@ export class LocalNodeService {
             updated_at: message.created_at,
             signature: "",
           },
+          is_self: message.agent_id === this.identity?.agent_id,
           online: false,
           last_seen_at: null,
           network_mode: "unknown",
@@ -3188,6 +3663,34 @@ export class LocalNodeService {
       .trim();
   }
 
+  private buildPrivateConversationId(leftAgentId: string, rightAgentId: string): string {
+    return [String(leftAgentId || "").trim(), String(rightAgentId || "").trim()].sort().join(":");
+  }
+
+  private decryptPrivateMessageBody(message: PrivateMessageRecord): string {
+    const cached = this.privateMessageBodyCache.get(message.message_id);
+    if (typeof cached === "string") {
+      return cached;
+    }
+    if (!this.privateEncryptionKeyPair) {
+      return "[encrypted]";
+    }
+    const decrypted = decryptPrivatePayload({
+      ciphertext: message.ciphertext,
+      nonce: message.nonce,
+      sender_encryption_public_key: message.sender_encryption_public_key,
+      recipient_private_key: this.privateEncryptionKeyPair.private_key,
+    }) || "[encrypted]";
+    this.privateMessageBodyCache.set(message.message_id, decrypted);
+    if (this.privateMessageBodyCache.size > PRIVATE_MESSAGE_HISTORY_LIMIT * 2) {
+      const firstKey = this.privateMessageBodyCache.keys().next().value;
+      if (firstKey) {
+        this.privateMessageBodyCache.delete(firstKey);
+      }
+    }
+    return decrypted;
+  }
+
   private normalizeWindowTimestamps(timestamps: number[], windowMs: number, now = Date.now()): number[] {
     return timestamps.filter((timestamp) => now - timestamp <= windowMs);
   }
@@ -3213,18 +3716,32 @@ export class LocalNodeService {
     return this.socialMessages.some((item) => item.message_id === messageId);
   }
 
-  private getReplayableSelfSocialMessages(now = Date.now()): SocialMessageRecord[] {
+  private getReplayableSelfSocialMessages(reason = "manual", now = Date.now()): SocialMessageRecord[] {
     const maxCount = Math.max(0, SOCIAL_MESSAGE_REPLAY_MAX_PER_BROADCAST);
     if (!this.identity || maxCount === 0) {
       return [];
     }
-    return this.socialMessages
+    const replayable = this.socialMessages
       .filter((item) => (
         item.agent_id === this.identity?.agent_id &&
         now - item.created_at <= SOCIAL_MESSAGE_REPLAY_WINDOW_MS
       ))
       .sort((a, b) => a.created_at - b.created_at)
       .slice(-maxCount);
+    if (!replayable.length) {
+      this.lastReplayBroadcastSignature = "";
+      return [];
+    }
+    const signature = replayable.map((item) => item.message_id).join(",");
+    const isIntervalReplay = reason === "interval";
+    const changedSinceLastReplay = signature !== this.lastReplayBroadcastSignature;
+    const refreshDue = now - this.lastReplayBroadcastAt >= SOCIAL_MESSAGE_REPLAY_REFRESH_INTERVAL_MS;
+    if (isIntervalReplay && !changedSinceLastReplay && !refreshDue) {
+      return [];
+    }
+    this.lastReplayBroadcastSignature = signature;
+    this.lastReplayBroadcastAt = now;
+    return replayable;
   }
 
   private hasRecentDuplicateMessage(agentId: string, body: string, topic: string, now = Date.now()): boolean {
@@ -3297,6 +3814,189 @@ export class LocalNodeService {
     this.ingestSocialMessageObservation(observation);
     await this.publish(SOCIAL_MESSAGE_OBSERVATION_TOPIC, observation);
     await this.persistSocialMessageObservations();
+  }
+
+  private async sendPrivateMessageReceipt(message: PrivateMessageRecord, replyPeerId?: string): Promise<void> {
+    if (!this.identity || typeof this.network.sendDirect !== "function" || !replyPeerId) {
+      return;
+    }
+    const receipt = signPrivateMessageReceipt({
+      identity: this.identity,
+      receipt_id: createHash("sha256").update(`${message.message_id}:${this.identity.agent_id}:${Date.now()}`, "utf8").digest("hex"),
+      message_id: message.message_id,
+      conversation_id: message.conversation_id,
+      to_agent_id: message.from_agent_id,
+      status: "received",
+      created_at: Date.now(),
+    });
+    this.ingestPrivateMessageReceipt(receipt);
+    try {
+      await this.network.sendDirect(replyPeerId, PRIVATE_MESSAGE_RECEIPT_TOPIC, receipt);
+    } catch {
+      await this.publish(PRIVATE_MESSAGE_RECEIPT_TOPIC, receipt);
+    }
+    await this.persistPrivateMessageReceipts();
+  }
+
+  private normalizeIncomingPrivateMessage(value: unknown): PrivateMessageRecord | null {
+    if (typeof value !== "object" || value === null) {
+      return null;
+    }
+    const record = value as Partial<PrivateMessageRecord>;
+    const createdAt = Number(record.created_at || 0);
+    const fromAgentId = String(record.from_agent_id || "").trim();
+    const toAgentId = String(record.to_agent_id || "").trim();
+    const conversationId = String(record.conversation_id || "").trim();
+    if (
+      record.type !== PRIVATE_MESSAGE_TOPIC ||
+      !String(record.message_id || "").trim() ||
+      !conversationId ||
+      !fromAgentId ||
+      !toAgentId ||
+      !String(record.sender_public_key || "").trim() ||
+      !String(record.sender_encryption_public_key || "").trim() ||
+      !String(record.recipient_encryption_public_key || "").trim() ||
+      !String(record.ciphertext || "").trim() ||
+      !String(record.nonce || "").trim() ||
+      String(record.cipher_scheme || "") !== "nacl-box-v1" ||
+      !String(record.signature || "").trim() ||
+      !Number.isFinite(createdAt)
+    ) {
+      return null;
+    }
+    if (fromAgentId === toAgentId) {
+      return null;
+    }
+    if (conversationId !== this.buildPrivateConversationId(fromAgentId, toAgentId)) {
+      return null;
+    }
+    return {
+      type: PRIVATE_MESSAGE_TOPIC,
+      message_id: String(record.message_id).trim(),
+      conversation_id: conversationId,
+      from_agent_id: fromAgentId,
+      to_agent_id: toAgentId,
+      sender_public_key: String(record.sender_public_key).trim(),
+      sender_encryption_public_key: String(record.sender_encryption_public_key).trim(),
+      recipient_encryption_public_key: String(record.recipient_encryption_public_key).trim(),
+      cipher_scheme: "nacl-box-v1",
+      ciphertext: String(record.ciphertext).trim(),
+      nonce: String(record.nonce).trim(),
+      created_at: createdAt,
+      signature: String(record.signature).trim(),
+    };
+  }
+
+  private normalizePrivateMessages(items: unknown): PrivateMessageRecord[] {
+    if (!Array.isArray(items)) {
+      return [];
+    }
+    const deduped = new Set<string>();
+    return items
+      .map((item) => this.normalizeIncomingPrivateMessage(item))
+      .filter((item): item is PrivateMessageRecord => Boolean(item))
+      .sort((a, b) => a.created_at - b.created_at)
+      .filter((item) => {
+        if (deduped.has(item.message_id)) {
+          return false;
+        }
+        deduped.add(item.message_id);
+        return true;
+      })
+      .slice(-PRIVATE_MESSAGE_HISTORY_LIMIT);
+  }
+
+  private normalizeIncomingPrivateMessageReceipt(value: unknown): PrivateMessageReceiptRecord | null {
+    if (typeof value !== "object" || value === null) {
+      return null;
+    }
+    const record = value as Partial<PrivateMessageReceiptRecord>;
+    const createdAt = Number(record.created_at || 0);
+    const status = String(record.status || "").trim();
+    if (
+      record.type !== PRIVATE_MESSAGE_RECEIPT_TOPIC ||
+      !String(record.receipt_id || "").trim() ||
+      !String(record.message_id || "").trim() ||
+      !String(record.conversation_id || "").trim() ||
+      !String(record.from_agent_id || "").trim() ||
+      !String(record.to_agent_id || "").trim() ||
+      !String(record.sender_public_key || "").trim() ||
+      (status !== "received" && status !== "read") ||
+      !String(record.signature || "").trim() ||
+      !Number.isFinite(createdAt)
+    ) {
+      return null;
+    }
+    return {
+      type: PRIVATE_MESSAGE_RECEIPT_TOPIC,
+      receipt_id: String(record.receipt_id).trim(),
+      message_id: String(record.message_id).trim(),
+      conversation_id: String(record.conversation_id).trim(),
+      from_agent_id: String(record.from_agent_id).trim(),
+      to_agent_id: String(record.to_agent_id).trim(),
+      sender_public_key: String(record.sender_public_key).trim(),
+      status: status as "received" | "read",
+      created_at: createdAt,
+      signature: String(record.signature).trim(),
+    };
+  }
+
+  private normalizePrivateMessageReceipts(items: unknown): PrivateMessageReceiptRecord[] {
+    if (!Array.isArray(items)) {
+      return [];
+    }
+    const deduped = new Set<string>();
+    return items
+      .map((item) => this.normalizeIncomingPrivateMessageReceipt(item))
+      .filter((item): item is PrivateMessageReceiptRecord => Boolean(item))
+      .sort((a, b) => a.created_at - b.created_at)
+      .filter((item) => {
+        if (deduped.has(item.receipt_id)) {
+          return false;
+        }
+        deduped.add(item.receipt_id);
+        return true;
+      })
+      .slice(-PRIVATE_MESSAGE_RECEIPT_HISTORY_LIMIT);
+  }
+
+  private hasPrivateMessage(messageId: string): boolean {
+    return this.privateMessages.some((item) => item.message_id === messageId);
+  }
+
+  private ingestPrivateMessage(message: PrivateMessageRecord): void {
+    const existing = this.privateMessages.findIndex((item) => item.message_id === message.message_id);
+    if (existing >= 0) {
+      this.privateMessages[existing] = message;
+    } else {
+      this.privateMessages.push(message);
+    }
+    this.privateMessages = this.normalizePrivateMessages(this.privateMessages);
+    const validIds = new Set(this.privateMessages.map((item) => item.message_id));
+    if (message.from_agent_id !== this.identity?.agent_id) {
+      this.privateMessageBodyCache.delete(message.message_id);
+    }
+    for (const key of Array.from(this.privateMessageBodyCache.keys())) {
+      if (!validIds.has(key)) {
+        this.privateMessageBodyCache.delete(key);
+      }
+    }
+    for (const key of Array.from(this.privateMessageDeliveryStatusCache.keys())) {
+      if (!validIds.has(key)) {
+        this.privateMessageDeliveryStatusCache.delete(key);
+      }
+    }
+  }
+
+  private ingestPrivateMessageReceipt(receipt: PrivateMessageReceiptRecord): void {
+    const existing = this.privateMessageReceipts.findIndex((item) => item.receipt_id === receipt.receipt_id);
+    if (existing >= 0) {
+      this.privateMessageReceipts[existing] = receipt;
+    } else {
+      this.privateMessageReceipts.push(receipt);
+    }
+    this.privateMessageReceipts = this.normalizePrivateMessageReceipts(this.privateMessageReceipts);
+    this.privateMessageDeliveryStatusCache.set(receipt.message_id, receipt.status);
   }
 
   private normalizeIncomingSocialMessage(value: unknown): SocialMessageRecord | null {
@@ -3757,9 +4457,43 @@ export async function main() {
 
   app.get("/api/messages", (req, res) => {
     const limit = Number(req.query.limit ?? 50);
+    const offset = Number(req.query.offset ?? 0);
     const agentId = String(req.query.agent_id ?? "").trim();
-    sendOk(res, node.getSocialMessages(limit, { agent_id: agentId || null }));
+    sendOk(res, node.getSocialMessages(limit, { agent_id: agentId || null, offset }));
   });
+
+  app.get("/api/private/state", (_req, res) => {
+    sendOk(res, node.getPrivateMessagingState());
+  });
+
+  app.get("/api/private/conversations", (_req, res) => {
+    sendOk(res, node.getPrivateConversations());
+  });
+
+  app.get("/api/private/messages", (req, res) => {
+    const conversationId = String(req.query.conversation_id ?? "").trim();
+    const limit = Number(req.query.limit ?? PRIVATE_MESSAGE_QUERY_LIMIT);
+    const offset = Number(req.query.offset ?? 0);
+    sendOk(res, node.getPrivateMessages(conversationId, limit, offset));
+  });
+
+  app.post(
+    "/api/private/messages/send",
+    asyncRoute(async (req, res) => {
+      const result = await node.sendPrivateMessage({
+        to_agent_id: String(req.body?.to_agent_id || ""),
+        recipient_encryption_public_key: String(req.body?.recipient_encryption_public_key || ""),
+        body: String(req.body?.body || ""),
+      });
+      sendOk(res, result, {
+        message: result.sent
+          ? (result.reason === "direct-sent"
+            ? "Private message sent directly"
+            : "Private message sent via encrypted fallback")
+          : `Private message skipped: ${result.reason}`,
+      });
+    })
+  );
 
   app.get("/api/openclaw/bridge", (_req, res) => {
     sendOk(res, node.getOpenClawBridgeStatus());

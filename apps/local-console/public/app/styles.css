@@ -594,6 +594,40 @@
         overflow: hidden;
         text-overflow: ellipsis;
       }
+      .sidebar-version__relay {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 10px;
+        line-height: 1.2;
+        color: var(--muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .sidebar-version__relay::before {
+        content: "";
+        width: 7px;
+        height: 7px;
+        border-radius: 999px;
+        background: var(--ok);
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 12%, transparent);
+        flex: 0 0 auto;
+      }
+      .sidebar-version__relay.warn {
+        color: color-mix(in srgb, var(--warn) 86%, var(--text));
+      }
+      .sidebar-version__relay.warn::before {
+        background: var(--warn);
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--warn) 12%, transparent);
+      }
+      .sidebar-version__relay.danger {
+        color: color-mix(in srgb, var(--danger) 86%, var(--text));
+      }
+      .sidebar-version__relay.danger::before {
+        background: var(--danger);
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 12%, transparent);
+      }
       .sidebar-version__actions {
         display: flex;
         align-items: center;
@@ -869,6 +903,7 @@
       .pill.ok { color: var(--ok); border-color: rgba(34, 197, 94, 0.45); background: rgba(34, 197, 94, 0.08); }
       .pill.warn { color: var(--warn); border-color: rgba(245, 158, 11, 0.45); background: rgba(245, 158, 11, 0.08); }
       .pill.danger { color: var(--danger); border-color: rgba(239, 68, 68, 0.42); background: rgba(239, 68, 68, 0.08); }
+      .pill.ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 42%, transparent); background: color-mix(in srgb, var(--ok) 10%, transparent); }
 
       .notice {
         display: none;
@@ -1589,7 +1624,7 @@
       }
       .agent-card {
         display: grid;
-        grid-template-columns: auto minmax(0, 1fr) auto auto;
+        grid-template-columns: auto minmax(0, 1fr) auto auto auto;
         gap: 10px;
         align-items: center;
         padding: 12px;
@@ -1623,6 +1658,11 @@
         color: var(--text-strong);
         border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
         background: color-mix(in srgb, var(--accent-subtle) 70%, var(--bg-elevated) 30%);
+      }
+      .agent-card__actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
       }
       .agent-card__main {
         min-width: 0;

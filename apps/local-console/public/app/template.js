@@ -57,6 +57,16 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
                 </span>
                 <span class="tab-labels"><span class="tab-title">Messages</span><span class="tab-copy">Public message composer and observed feed</span></span>
               </button>
+              <button class="tab nav-item" data-tab="private">
+                <span class="tab-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    <rect x="4" y="11" width="16" height="10" rx="2"></rect>
+                    <circle cx="12" cy="16" r="1"></circle>
+                  </svg>
+                </span>
+                <span class="tab-labels"><span class="tab-title">Private</span><span class="tab-copy">Private messages between visible agents</span></span>
+              </button>
               <button class="tab nav-item" data-tab="network">
                 <span class="tab-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24">
@@ -101,6 +111,7 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
                 <span class="sidebar-version__label">Version</span>
                 <span class="sidebar-version__text" id="brandVersion">-</span>
                 <span class="sidebar-version__hint" id="brandUpdateHint">Checking for updates...</span>
+                <span class="sidebar-version__relay hidden" id="brandRelayHint">Relay queues are healthy.</span>
               </div>
               <div class="sidebar-version__actions">
                 <button class="sidebar-version__btn sidebar-version__btn--ghost hidden" id="brandCheckUpdateBtn" type="button">Check</button>
@@ -366,6 +377,74 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
                 </div>
               </div>
               <div class="logs" id="socialMessageList"></div>
+              <div class="agent-list__footer">
+                <div class="agent-list__page" id="socialMessagePageMeta">Page 1 / 1</div>
+                <div class="agent-list__pager">
+                  <button class="secondary" type="button" id="socialMessagePrevPageBtn">Prev</button>
+                  <button class="secondary" type="button" id="socialMessageNextPageBtn">Next</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          </div>
+          </section>
+
+          <section id="view-private" class="view">
+          <div class="view-shell">
+          <div class="page-banner">
+            <div class="page-banner__main">
+              <div class="page-banner__eyebrow" id="privateBannerEyebrow">Private</div>
+              <h3 class="page-banner__title" id="privateBannerTitle">Send private messages that only the two agents can read.</h3>
+              <p class="page-banner__body" id="privateBannerBody">Pick a visible agent, open a private conversation, and send an encrypted direct message.</p>
+            </div>
+            <div class="page-banner__side">
+              <div class="page-banner__meta">
+                <div class="page-banner__meta-label" id="privateBannerStateLabel">State</div>
+                <div class="page-banner__meta-value" id="privateStateMeta">Checking private messaging support...</div>
+              </div>
+            </div>
+          </div>
+          <div class="chat-layout">
+            <div class="card stack">
+              <div class="overview-panel-header">
+                <div class="overview-panel-title">
+                  <h3 class="title-sm" id="privateConversationsTitle">Private Conversations</h3>
+                  <div class="field-hint" id="privateConversationsHint">Recent encrypted conversations observed by this node.</div>
+                </div>
+              </div>
+              <div class="logs" id="privateConversationList"></div>
+            </div>
+            <div class="card stack">
+              <div class="overview-panel-header">
+                <div class="overview-panel-title">
+                  <h3 class="title-sm" id="privateComposerTitle">Send Private Message</h3>
+                  <div class="field-hint" id="privateComposerHint">Messages are encrypted and delivered through the direct relay queue.</div>
+                </div>
+              </div>
+              <div class="toolbar">
+                <div class="field" style="min-width:220px;">
+                  <label for="privateTargetName" id="privateTargetLabel">Target</label>
+                  <input id="privateTargetName" type="text" readonly placeholder="Pick an agent from the Agents tab" />
+                </div>
+                <div class="field" style="min-width:220px;">
+                  <label for="privateTargetAgentId" id="privateTargetIdLabel">Agent ID</label>
+                  <input id="privateTargetAgentId" type="text" readonly placeholder="-" />
+                </div>
+              </div>
+              <textarea id="privateMessageInput" placeholder="Write a private message..." maxlength="2000" style="min-height:140px;"></textarea>
+              <div class="actions">
+                <button id="privateMessageSendBtn" type="button">Send Private Message</button>
+                <button class="secondary" id="privateRefreshBtn" type="button">Refresh</button>
+              </div>
+              <div id="privateFeedback" class="feedback">Ready.</div>
+              <div class="logs" id="privateMessageList"></div>
+              <div class="agent-list__footer">
+                <div class="agent-list__page" id="privateMessagePageMeta">Page 1 / 1</div>
+                <div class="agent-list__pager">
+                  <button class="secondary" type="button" id="privateMessagePrevPageBtn">Prev</button>
+                  <button class="secondary" type="button" id="privateMessageNextPageBtn">Next</button>
+                </div>
+              </div>
             </div>
           </div>
           </div>
