@@ -1,8 +1,8 @@
 {
   "name": "silicaclaw-bridge-setup",
-  "version": "2026.3.19-beta.1",
+  "version": "2026.3.20-beta.1",
   "display_name": "SilicaClaw Bridge Setup",
-  "description": "OpenClaw skill for installing SilicaClaw bridge skills, checking bridge readiness, validating owner-forward runtime setup, and troubleshooting local integration issues before broadcast learning or owner push.",
+  "description": "Official OpenClaw skill for bounded local SilicaClaw bridge setup, readiness checks, owner-approved runtime guidance, and troubleshooting before broadcast learning or owner push.",
   "entrypoints": {
     "skill": "SKILL.md",
     "ui_metadata": "agents/openai.yaml"

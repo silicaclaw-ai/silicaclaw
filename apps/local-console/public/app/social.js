@@ -26,6 +26,9 @@ export function createSocialController({
 }) {
   const SKILLS_SECTION_LIMIT = 4;
   const SKILLS_DIALOGUE_LIMIT = 1;
+  let lastMessagesRenderKey = "";
+  let lastLogsRenderKey = "";
+  const sectionRenderCache = new Map();
   let skillsQuery = "";
   let skillsFilter = "all";
   const skillsExpanded = {
@@ -132,6 +135,23 @@ export function createSocialController({
     });
   }
 
+  function setCachedContent(id, value, mode = "html") {
+    const cacheKey = `${mode}:${id}`;
+    if (sectionRenderCache.get(cacheKey) === value) {
+      return;
+    }
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (mode === "text") {
+      el.textContent = value;
+    } else if (mode === "class") {
+      el.className = value;
+    } else {
+      el.innerHTML = value;
+    }
+    sectionRenderCache.set(cacheKey, value);
+  }
+
   function renderSocialMessages() {
     const listEl = document.getElementById("socialMessageList");
     const metaEl = document.getElementById("socialMessageMeta");
@@ -145,10 +165,16 @@ export function createSocialController({
           seconds: String(Math.floor((governance.send_limit?.window_ms || 60000) / 1000)),
         })}`
       : t("overview.messageHint");
-    hintEl.textContent = governanceHint;
     if (!socialMessagesCache.length) {
-      metaEl.textContent = t("overview.noMessagesMeta");
-      listEl.innerHTML = `<div class="empty-state">${t("overview.noMessagesEmpty")}</div>`;
+      const nextMeta = t("overview.noMessagesMeta");
+      const nextHtml = `<div class="empty-state">${t("overview.noMessagesEmpty")}</div>`;
+      const renderKey = JSON.stringify({ hint: governanceHint, meta: nextMeta, html: nextHtml });
+      if (renderKey !== lastMessagesRenderKey) {
+        hintEl.textContent = governanceHint;
+        metaEl.textContent = nextMeta;
+        listEl.innerHTML = nextHtml;
+        lastMessagesRenderKey = renderKey;
+      }
       return;
     }
 
@@ -167,14 +193,21 @@ export function createSocialController({
           seconds: String(Math.floor((governance.send_limit?.window_ms || 60000) / 1000)),
         })}`
       : "";
-    metaEl.textContent = `${baseMeta}${governanceMeta}`;
+    const nextMeta = `${baseMeta}${governanceMeta}`;
 
     if (!filteredMessages.length) {
-      listEl.innerHTML = `<div class="empty-state">${t("overview.noMessagesEmpty")}</div>`;
+      const nextHtml = `<div class="empty-state">${t("overview.noMessagesEmpty")}</div>`;
+      const renderKey = JSON.stringify({ hint: governanceHint, meta: nextMeta, html: nextHtml });
+      if (renderKey !== lastMessagesRenderKey) {
+        hintEl.textContent = governanceHint;
+        metaEl.textContent = nextMeta;
+        listEl.innerHTML = nextHtml;
+        lastMessagesRenderKey = renderKey;
+      }
       return;
     }
 
-    listEl.innerHTML = filteredMessages
+    const nextHtml = filteredMessages
       .map((item) => {
         const visibleRemoteCount = getVisibleRemotePublicCount();
         const avatarUrl = String(item.avatar_url || "").trim();
@@ -234,6 +267,25 @@ export function createSocialController({
         `;
       })
       .join("");
+    const renderKey = JSON.stringify({
+      hint: governanceHint,
+      meta: nextMeta,
+      filter: socialMessageFilter,
+      messages: filteredMessages.map((item) => [
+        item.message_id,
+        item.updated_at || item.created_at,
+        item.remote_observation_count || 0,
+        item.online ? 1 : 0,
+      ]),
+      visibleRemoteCount: getVisibleRemotePublicCount(),
+    });
+    if (renderKey === lastMessagesRenderKey) {
+      return;
+    }
+    hintEl.textContent = governanceHint;
+    metaEl.textContent = nextMeta;
+    listEl.innerHTML = nextHtml;
+    lastMessagesRenderKey = renderKey;
   }
 
   async function refreshMessages() {
@@ -278,19 +330,29 @@ export function createSocialController({
     const publicDiscoveryText = status.public_enabled ? t("social.publicDiscoveryEnabled") : t("social.publicDiscoveryDisabled");
 
     const namespaceText = `${status.connected_to_silicaclaw ? t("social.connectedToSilicaClaw") : t("social.notConnected")} · ${publicDiscoveryText} · ${t("social.mode")} ${mode}`;
-    document.getElementById("socialStatusLine").textContent = summaryLine;
-    document.getElementById("socialStatusSubline").textContent = namespaceText;
+    setCachedContent("socialStatusLine", summaryLine, "text");
+    setCachedContent("socialStatusSubline", namespaceText, "text");
     const bar = document.getElementById("integrationStatusBar");
-    bar.className = `integration-strip ${status.connected_to_silicaclaw && status.public_enabled ? "ok" : "warn"}${getActiveTab() === "overview" ? "" : " hidden"}`;
-    bar.textContent = t("social.barStatus", {
+    const barClassName = `integration-strip ${status.connected_to_silicaclaw && status.public_enabled ? "ok" : "warn"}${getActiveTab() === "overview" ? "" : " hidden"}`;
+    const barText = t("social.barStatus", {
       connected: status.connected_to_silicaclaw ? t("common.yes") : t("common.no"),
       mode,
       public: status.public_enabled ? t("common.on") : t("common.off"),
     });
-    document.getElementById("brandStatusDot").className = `sidebar-version__status ${status.connected_to_silicaclaw ? "ok" : "warn"}`;
+    if (bar.className !== barClassName) {
+      bar.className = barClassName;
+    }
+    if (bar.textContent !== barText) {
+      bar.textContent = barText;
+    }
+    const brandStatusDot = document.getElementById("brandStatusDot");
+    const brandStatusClassName = `sidebar-version__status ${status.connected_to_silicaclaw ? "ok" : "warn"}`;
+    if (brandStatusDot.className !== brandStatusClassName) {
+      brandStatusDot.className = brandStatusClassName;
+    }
     writeUiCache("silicaclaw_ui_social", {
-      integrationStatusText: bar.textContent,
-      integrationStatusClassName: bar.className,
+      integrationStatusText: barText,
+      integrationStatusClassName: barClassName,
       socialStatusLineText: summaryLine,
       socialStatusSublineText: namespaceText,
     });
@@ -298,14 +360,14 @@ export function createSocialController({
     if (!status.configured && status.configured_reason) reasons.push(t("social.configuredReason", { reason: status.configured_reason }));
     if (!status.running && status.running_reason) reasons.push(t("social.runningReason", { reason: status.running_reason }));
     if (!status.discoverable && status.discoverable_reason) reasons.push(t("social.discoverableReasonFull", { reason: status.discoverable_reason }));
-    document.getElementById("socialStateHint").textContent = reasons.length ? reasons.join(" · ") : t("hints.allIntegrationChecksPassed");
+    setCachedContent("socialStateHint", reasons.length ? reasons.join(" · ") : t("hints.allIntegrationChecksPassed"), "text");
     const modeSelect = document.getElementById("socialModeSelect");
     const displayedSelectedMode = getSocialModeDirty() && getSocialModePending() ? getSocialModePending() : selectedMode;
     if (modeSelect && displayedSelectedMode !== "-") modeSelect.value = displayedSelectedMode;
     renderSocialModeHint(displayedSelectedMode, mode, !!social.network_requires_restart, getSocialModeDirty());
     setSocialModePendingState(getSocialModeDirty());
 
-    document.getElementById("socialPrimaryCards").innerHTML = [
+    setCachedContent("socialPrimaryCards", [
       [t("social.configured"), status.configured ? t("common.yes") : t("common.no")],
       [t("social.running"), status.running ? t("common.yes") : t("common.no")],
       [t("social.discoverable"), discoverable ? t("common.yes") : t("common.no")],
@@ -313,9 +375,9 @@ export function createSocialController({
       [t("social.networkMode"), mode],
       [t("labels.adapter"), effectiveAdapter],
       [t("social.discoverableReason"), status.discoverable_reason || "-"],
-    ].map(([k, v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join("");
+    ].map(([k, v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join(""));
 
-    document.getElementById("socialIntegrationCards").innerHTML = [
+    setCachedContent("socialIntegrationCards", [
       [t("social.connected"), bridge.connected_to_silicaclaw ? t("common.yes") : t("common.no")],
       [t("social.messageBroadcast"), bridge.message_broadcast_enabled ? t("common.on") : t("common.off")],
       [t("social.displayName"), status.display_name || t("overview.unnamed")],
@@ -323,9 +385,9 @@ export function createSocialController({
       [t("social.socialFound"), summary.social_md_found ? t("common.yes") : t("common.no")],
       [t("social.socialSource"), summary.social_md_source_path || "-"],
       [t("social.reuseOpenClawIdentity"), summary.reused_openclaw_identity ? t("common.yes") : t("common.no")],
-    ].map(([k, v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join("");
+    ].map(([k, v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join(""));
 
-    document.getElementById("socialMessagePathCards").innerHTML = [
+    setCachedContent("socialMessagePathCards", [
       [t("social.messageBroadcast"), bridge.message_broadcast_enabled ? t("common.on") : t("common.off")],
       [t("social.publicDiscovery"), status.public_enabled ? t("common.on") : t("common.off")],
       [t("social.namespace"), effectiveNamespace],
@@ -334,7 +396,7 @@ export function createSocialController({
       [t("network.lastPoll"), networkDiag.last_poll_at ? new Date(networkDiag.last_poll_at).toLocaleTimeString() : "-"],
       [t("network.lastPublish"), networkDiag.last_publish_at ? new Date(networkDiag.last_publish_at).toLocaleTimeString() : "-"],
       [t("network.lastError"), networkDiag.last_error || t("network.none")],
-    ].map(([k, v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${escapeHtml(String(v))}</div></div>`).join("");
+    ].map(([k, v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${escapeHtml(String(v))}</div></div>`).join(""));
 
     const skillLearning = bridge.skill_learning || {};
     const ownerDelivery = bridge.owner_delivery || {};
@@ -362,21 +424,21 @@ export function createSocialController({
       ownerDeliveryHeadline = t("feedback.openclawRoleNotRunning");
       ownerDeliveryBody = ownerDelivery.reason || "-";
     }
-    document.getElementById("socialOwnerDeliveryStatus").className = `feedback ${ownerDeliveryTone}`;
-    document.getElementById("socialOwnerDeliveryStatus").textContent = ownerDeliveryHeadline;
-    document.getElementById("socialOwnerDeliverySubline").textContent = [
+    setCachedContent("socialOwnerDeliveryStatus", `feedback ${ownerDeliveryTone}`, "class");
+    setCachedContent("socialOwnerDeliveryStatus", ownerDeliveryHeadline, "text");
+    setCachedContent("socialOwnerDeliverySubline", [
       `${t("social.broadcastReadable")}: ${ownerDelivery.bridge_messages_readable ? t("common.yes") : t("common.no")}`,
       `${t("social.ownerForwardCommand")}: ${ownerDelivery.forward_command_configured ? t("common.yes") : t("common.no")}`,
       `${t("social.ownerForwardReady")}: ${ownerDelivery.ready ? t("common.yes") : t("common.no")}`,
-    ].join(" · ");
-    document.getElementById("socialOwnerDeliveryReason").textContent = ownerDeliveryBody;
-    document.getElementById("socialCapabilityCards").innerHTML = [
+    ].join(" · "), "text");
+    setCachedContent("socialOwnerDeliveryReason", ownerDeliveryBody, "text");
+    setCachedContent("socialCapabilityCards", [
       [t("socialCapability.publicBroadcast"), bridge.message_broadcast_enabled ? t("common.yes") : t("common.no")],
       [t("socialCapability.monitorBroadcasts"), ownerDelivery.bridge_messages_readable ? t("common.yes") : t("common.no")],
       [t("socialCapability.autoPushToOwner"), ownerDelivery.ready ? t("common.yes") : t("common.no")],
       [t("socialCapability.ownerPrivateBoundary"), t("socialCapability.ownerPrivateBoundaryValue")],
-    ].map(([k, v]) => `<div class="card"><div class="label">${escapeHtml(String(k))}</div><div class="value" style="font-size:17px;">${escapeHtml(String(v))}</div></div>`).join("");
-    document.getElementById("openclawSkillCards").innerHTML = [
+    ].map(([k, v]) => `<div class="card"><div class="label">${escapeHtml(String(k))}</div><div class="value" style="font-size:17px;">${escapeHtml(String(v))}</div></div>`).join(""));
+    setCachedContent("openclawSkillCards", [
       [t("social.openclawInstalled"), openclawDetected ? t("common.yes") : t("common.no")],
       [t("social.running"), openclawRunning ? t("common.yes") : t("common.no")],
       [t("social.skillInstalled"), skillInstalled ? t("common.yes") : t("common.no")],
@@ -387,13 +449,13 @@ export function createSocialController({
       [t("social.openclawGateway"), bridge.openclaw_runtime?.gateway_url || "-"],
       [t("social.installMode"), skillLearning.install_mode || "-"],
       [t("social.installedPath"), skillInstalled ? installedSkillPath : "-"],
-    ].map(([k, v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${escapeHtml(v)}</div></div>`).join("");
-    document.getElementById("openclawSkillPath").textContent = ownerDelivery.forward_command
+    ].map(([k, v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${escapeHtml(v)}</div></div>`).join(""));
+    setCachedContent("openclawSkillPath", ownerDelivery.forward_command
       ? `${ownerDelivery.forward_command}${ownerDelivery.owner_channel ? ` · ${ownerDelivery.owner_channel}` : ""}${ownerDelivery.owner_target ? ` · ${ownerDelivery.owner_target}` : ""}`
       : skillInstalled
         ? installedSkillPath
-        : `${installAction.recommended_command || "-"}${bridge.openclaw_runtime?.gateway_url ? ` · detect ${bridge.openclaw_runtime.gateway_url}` : ""}`;
-    document.getElementById("openclawSkillHint").textContent = !openclawDetected
+        : `${installAction.recommended_command || "-"}${bridge.openclaw_runtime?.gateway_url ? ` · detect ${bridge.openclaw_runtime.gateway_url}` : ""}`, "text");
+    setCachedContent("openclawSkillHint", !openclawDetected
       ? t("feedback.openclawRoleBroadcasterOnly")
       : !openclawRunning
         ? t("feedback.openclawRoleNotRunning")
@@ -401,11 +463,11 @@ export function createSocialController({
           ? t("feedback.openclawRoleReadyToLearn")
           : ownerDelivery.ready
             ? t("feedback.openclawRoleOwnerReady")
-            : ownerDelivery.bridge_messages_readable && !ownerDelivery.forward_command_configured
-              ? t("feedback.openclawRoleLearningOnly")
-              : ownerDelivery.bridge_messages_readable
-                ? t("feedback.openclawRoleNeedsOwnerRoute")
-                : t("feedback.openclawRoleLearned");
+          : ownerDelivery.bridge_messages_readable && !ownerDelivery.forward_command_configured
+            ? t("feedback.openclawRoleLearningOnly")
+            : ownerDelivery.bridge_messages_readable
+              ? t("feedback.openclawRoleNeedsOwnerRoute")
+                : t("feedback.openclawRoleLearned"), "text");
     const skillInstallBtn = document.getElementById("openclawSkillInstallBtn");
     skillInstallBtn.textContent = !openclawDetected
       ? t("actions.openclawNotInstalled")
@@ -426,33 +488,33 @@ export function createSocialController({
     document.getElementById("governanceDuplicateWindowInput").value = String(Math.floor((policy.duplicate_window_ms ?? 180000) / 1000));
     document.getElementById("governanceBlockedAgentsInput").value = blockedAgentIds.join(", ");
     document.getElementById("governanceBlockedTermsInput").value = blockedTerms.join(", ");
-    document.getElementById("socialGovernanceCards").innerHTML = [
+    setCachedContent("socialGovernanceCards", [
       [t("labels.sendLimit"), `${policy.send_limit?.max ?? "-"} / ${Math.floor((policy.send_limit?.window_ms ?? 60000) / 1000)}s`],
       [t("labels.receiveLimit"), `${policy.receive_limit?.max ?? "-"} / ${Math.floor((policy.receive_limit?.window_ms ?? 60000) / 1000)}s`],
       [t("labels.duplicateWindowSeconds"), `${Math.floor((policy.duplicate_window_ms ?? 0) / 1000)}s`],
       [t("labels.blockedAgentIds"), blockedAgentIds.length],
       [t("labels.blockedTerms"), blockedTerms.length],
-    ].map(([k, v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join("");
+    ].map(([k, v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join(""));
 
     const moderationEvents = Array.isArray(governance.recent_events) ? governance.recent_events : [];
-    document.getElementById("socialModerationList").innerHTML = moderationEvents.length === 0
+    setCachedContent("socialModerationList", moderationEvents.length === 0
       ? `<div class="empty-state">${t("network.noModerationEvents")}</div>`
       : moderationEvents.map((event) => `
           <div class="log-item">
             <div class="log-${event.level || "warn"}">[${String(event.level || "warn").toUpperCase()}] ${escapeHtml(event.message || "-")}</div>
             <div class="mono" style="color:#90a2c3;">${new Date(event.timestamp).toLocaleString()}</div>
           </div>
-        `).join("");
+        `).join(""));
 
-    document.getElementById("socialAdvancedCards").innerHTML = [
+    setCachedContent("socialAdvancedCards", [
       [t("labels.adapter"), effectiveAdapter],
       [t("social.namespace"), effectiveNamespace],
       [t("labels.room"), effectiveRoom],
       [t("social.bridgeStatus"), bridge.connected_to_silicaclaw ? t("common.yes") : t("common.no")],
       [t("social.messageBroadcast"), bridge.message_broadcast_enabled ? t("common.on") : t("common.off")],
       [t("social.restartRequired"), social.network_requires_restart ? t("common.yes") : t("common.no")],
-    ].map(([k, v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join("");
-    document.getElementById("socialAdvancedWrap").textContent = toPrettyJson({
+    ].map(([k, v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join(""));
+    setCachedContent("socialAdvancedWrap", toPrettyJson({
       effective_runtime: {
         mode: effectiveMode,
         adapter: effectiveAdapter,
@@ -474,17 +536,17 @@ export function createSocialController({
         social_md_found: summary.social_md_found,
         social_md_source_path: summary.social_md_source_path,
       },
-    });
+    }), "text");
 
-    document.getElementById("socialSourceWrap").textContent = toPrettyJson({
+    setCachedContent("socialSourceWrap", toPrettyJson({
       found: social.found,
       source_path: social.source_path,
       parse_error: social.parse_error,
-    });
-    document.getElementById("socialRawWrap").textContent = toPrettyJson({
+    }), "text");
+    setCachedContent("socialRawWrap", toPrettyJson({
       raw_frontmatter: social.raw_frontmatter || null,
-    });
-    document.getElementById("socialRuntimeWrap").textContent = toPrettyJson(runtime);
+    }), "text");
+    setCachedContent("socialRuntimeWrap", toPrettyJson(runtime), "text");
   }
 
   async function exportSocialTemplate() {
@@ -499,23 +561,43 @@ export function createSocialController({
     const logLevelFilter = getLogLevelFilter();
     const el = document.getElementById("logList");
     if (!logsCache.length) {
-      el.innerHTML = `<div class="empty-state">${t("network.noLogsYet")}</div>`;
+      const nextHtml = `<div class="empty-state">${t("network.noLogsYet")}</div>`;
+      if (nextHtml !== lastLogsRenderKey) {
+        el.innerHTML = nextHtml;
+        lastLogsRenderKey = nextHtml;
+      }
       return;
     }
     const filtered = logLevelFilter === "all" ? logsCache : logsCache.filter((item) => String(item.level || "").toLowerCase() === logLevelFilter);
     if (!filtered.length) {
-      el.innerHTML = `<div class="empty-state">${t("network.noLogsForLevel", { level: logLevelFilter })}</div>`;
+      const nextHtml = `<div class="empty-state">${t("network.noLogsForLevel", { level: logLevelFilter })}</div>`;
+      if (nextHtml !== lastLogsRenderKey) {
+        el.innerHTML = nextHtml;
+        lastLogsRenderKey = nextHtml;
+      }
       return;
     }
-    el.innerHTML = filtered.map((item) => `
+    const nextHtml = filtered.map((item) => `
       <div class="log-item">
         <div class="log-${item.level}">[${String(item.level).toUpperCase()}] ${item.message}</div>
         <div class="mono" style="color:#90a2c3;">${new Date(item.timestamp).toLocaleString()}</div>
       </div>
     `).join("");
+    const renderKey = JSON.stringify({
+      level: logLevelFilter,
+      items: filtered.map((item) => [item.timestamp, item.level, item.message]),
+    });
+    if (renderKey === lastLogsRenderKey) {
+      return;
+    }
+    el.innerHTML = nextHtml;
+    lastLogsRenderKey = renderKey;
   }
 
   async function refreshLogs() {
+    if (getActiveTab() !== "network") {
+      return;
+    }
     setLogsCache((await api("/api/logs")).data || []);
     renderLogs();
   }

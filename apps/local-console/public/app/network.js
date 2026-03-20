@@ -13,6 +13,9 @@ export function createNetworkController({
     room: "",
   };
   let quickConnectDefaults = { ...fallbackQuickConnectDefaults };
+  let lastNetworkRenderKey = "";
+  let lastPeersRenderKey = "";
+  let lastDiscoveryRenderKey = "";
 
   async function refreshNetwork() {
     const [cfg, sts, rtp] = await Promise.all([api("/api/network/config"), api("/api/network/stats"), api("/api/runtime/paths")]);
@@ -25,6 +28,10 @@ export function createNetworkController({
     const transportStats = s.adapter_transport_stats || {};
     const d = s.adapter_discovery_stats || {};
     const dx = s.adapter_diagnostics_summary || {};
+    const runtimeDiag = s.runtime_diagnostics || {};
+    const runtimeMemory = runtimeDiag.memory_mib || {};
+    const runtimeDirectory = runtimeDiag.directory || {};
+    const runtimeSocial = runtimeDiag.social || {};
     const ac = s.adapter_config || c.adapter_config || {};
     quickConnectDefaults = {
       signalingUrl: String(
@@ -59,7 +66,7 @@ export function createNetworkController({
       heroRoomText: dx.room || "-",
       pillAdapterText: `${t("labels.adapter")}: ${c.adapter || "-"}`,
     });
-    document.getElementById("networkCards").innerHTML = [
+    const networkCardsHtml = [
       [t("labels.adapter"), c.adapter],
       [t("labels.namespace"), c.namespace || "-"],
       [t("labels.port"), c.port ?? "-"],
@@ -75,12 +82,18 @@ export function createNetworkController({
       [t("network.sent"), msg.broadcast_total ?? 0],
       [t("network.peers"), p.total ?? 0],
       [t("network.onlinePeers"), p.online ?? 0],
+      ["RSS", runtimeMemory.rss ?? "-"],
+      ["Heap", runtimeMemory.heap_used ?? "-"],
+      ["Profiles", runtimeDirectory.profile_count ?? "-"],
+      ["Index keys", runtimeDirectory.index_key_count ?? "-"],
+      ["Messages", runtimeSocial.message_count ?? "-"],
+      ["Observations", runtimeSocial.observation_count ?? "-"],
       [t("network.activeWebrtcPeers"), dx.active_webrtc_peers ?? "-"],
       [t("network.reconnectAttempts"), dx.reconnect_attempts_total ?? "-"],
       [t("network.lastInbound"), ago(msg.last_message_at)],
       [t("network.lastOutbound"), ago(msg.last_broadcast_at)],
     ].map(([k, v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join("");
-    document.getElementById("networkSummaryList").innerHTML = [
+    const networkSummaryHtml = [
       [t("labels.mode"), describeCurrentMode(t, c.mode || "lan")],
       [t("network.relayHealth"), relayHealth],
       [t("network.currentRelay"), dx.signaling_url || "-"],
@@ -93,7 +106,7 @@ export function createNetworkController({
 
     const comp = c.components || {};
     const lim = c.limits || {};
-    document.getElementById("networkComponents").textContent = [
+    const networkComponentsText = [
       `demo_mode: ${c.demo_mode || "-"}`,
       `transport: ${comp.transport || "-"}`,
       `discovery: ${comp.discovery || "-"}`,
@@ -130,12 +143,39 @@ export function createNetworkController({
       `last_discovery_event_at: ${dx.last_discovery_event_at ? new Date(dx.last_discovery_event_at).toISOString() : "-"}`,
     ].join("\n");
 
-    document.getElementById("networkConfigSnapshot").textContent = toPrettyJson({
+    const networkConfigSnapshotText = toPrettyJson({
       config: c,
       adapter_config: ac,
       runtime_paths: runtimePaths,
     });
-    document.getElementById("networkStatsSnapshot").textContent = toPrettyJson({ stats: s });
+    const networkStatsSnapshotText = toPrettyJson({ stats: s });
+    const renderKey = JSON.stringify({
+      adapter: c.adapter || "",
+      mode: c.mode || "",
+      namespace: c.namespace || "",
+      port: c.port ?? null,
+      signaling_url: dx.signaling_url || "",
+      room: dx.room || "",
+      relay_health: relayHealth,
+      last_poll_at: dx.last_poll_at || 0,
+      last_publish_at: dx.last_publish_at || 0,
+      last_error: dx.last_error || "",
+      msg_received_total: msg.received_total ?? 0,
+      msg_broadcast_total: msg.broadcast_total ?? 0,
+      peers_total: p.total ?? 0,
+      peers_online: p.online ?? 0,
+      reconnect_attempts_total: dx.reconnect_attempts_total ?? 0,
+      active_webrtc_peers: dx.active_webrtc_peers ?? 0,
+    });
+    if (renderKey === lastNetworkRenderKey) {
+      return;
+    }
+    document.getElementById("networkCards").innerHTML = networkCardsHtml;
+    document.getElementById("networkSummaryList").innerHTML = networkSummaryHtml;
+    document.getElementById("networkComponents").textContent = networkComponentsText;
+    document.getElementById("networkConfigSnapshot").textContent = networkConfigSnapshotText;
+    document.getElementById("networkStatsSnapshot").textContent = networkStatsSnapshotText;
+    lastNetworkRenderKey = renderKey;
   }
 
   async function refreshPeers() {
@@ -143,8 +183,7 @@ export function createNetworkController({
     const peers = peerRes.data || {};
     const ds = statsRes.data?.adapter_discovery_stats || {};
     const summary = peers.diagnostics_summary || {};
-
-    document.getElementById("peerCards").innerHTML = [
+    const peerCardsHtml = [
       [t("network.total"), peers.total || 0],
       [t("overview.online"), peers.online || 0],
       [t("network.stale"), peers.stale || 0],
@@ -164,17 +203,15 @@ export function createNetworkController({
       [t("network.peersAdded"), ds.peers_added || 0],
       [t("network.peersRemoved"), ds.peers_removed || 0],
     ].map(([k, v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join("");
+    const peerStatsText = toPrettyJson({
+      discovery_stats: ds,
+      diagnostics_summary: summary,
+      adapter_stats: statsRes.data?.adapter_stats || {},
+    });
 
-    if (!peers.items || !peers.items.length) {
-      document.getElementById("peerTableWrap").innerHTML = `<div class="empty-state">${t("network.noPeersDiscovered")}</div>`;
-      document.getElementById("peerStatsWrap").textContent = toPrettyJson({
-        discovery_stats: ds,
-        diagnostics_summary: summary,
-      });
-      return;
-    }
-
-    document.getElementById("peerTableWrap").innerHTML = `
+    const peerTableHtml = !peers.items || !peers.items.length
+      ? `<div class="empty-state">${t("network.noPeersDiscovered")}</div>`
+      : `
       <table class="table">
         <thead><tr><th>${t("network.peer")}</th><th>${t("network.status")}</th><th>${t("network.lastSeen")}</th><th>${t("network.staleSince")}</th><th>${t("network.messages")}</th><th>${t("network.firstSeen")}</th><th>${t("network.meta")}</th></tr></thead>
         <tbody>
@@ -192,19 +229,51 @@ export function createNetworkController({
         </tbody>
       </table>
     `;
-    document.getElementById("peerStatsWrap").textContent = toPrettyJson({
-      discovery_stats: ds,
-      diagnostics_summary: summary,
-      adapter_stats: statsRes.data?.adapter_stats || {},
+    const renderKey = JSON.stringify({
+      total: peers.total || 0,
+      online: peers.online || 0,
+      stale: peers.stale || 0,
+      namespace: peers.namespace || "",
+      summary: {
+        signaling_url: summary.signaling_url || "",
+        room: summary.room || "",
+        last_join_at: summary.last_join_at || 0,
+        last_poll_at: summary.last_poll_at || 0,
+        last_publish_at: summary.last_publish_at || 0,
+        last_error: summary.last_error || "",
+      },
+      ds: {
+        observe_calls: ds.observe_calls || 0,
+        heartbeat_sent: ds.heartbeat_sent || 0,
+        peers_added: ds.peers_added || 0,
+        peers_removed: ds.peers_removed || 0,
+      },
+      items: Array.isArray(peers.items)
+        ? peers.items.map((peer) => [
+            peer.peer_id,
+            peer.status || "",
+            peer.last_seen_at || 0,
+            peer.stale_since_at || 0,
+            peer.messages_seen || 0,
+            peer.first_seen_at || 0,
+            peer.meta ? JSON.stringify(peer.meta) : "",
+          ])
+        : [],
     });
+    if (renderKey === lastPeersRenderKey) {
+      return;
+    }
+    document.getElementById("peerCards").innerHTML = peerCardsHtml;
+    document.getElementById("peerTableWrap").innerHTML = peerTableHtml;
+    document.getElementById("peerStatsWrap").textContent = peerStatsText;
+    lastPeersRenderKey = renderKey;
   }
 
   async function refreshDiscovery() {
     const eventsRes = await api("/api/discovery/events");
     const payload = eventsRes.data || {};
     const items = Array.isArray(payload.items) ? payload.items : [];
-
-    document.getElementById("discoveryCards").innerHTML = [
+    const discoveryCardsHtml = [
       [t("labels.adapter"), payload.adapter || "-"],
       [t("labels.namespace"), payload.namespace || "-"],
       [t("network.eventsTotal"), payload.total ?? 0],
@@ -212,11 +281,9 @@ export function createNetworkController({
       [t("network.signalingEndpoints"), (payload.signaling_endpoints || []).length || 0],
       [t("network.seedPeers"), payload.seed_peers_count ?? 0],
     ].map(([k, v]) => `<div class="card"><div class="label">${k}</div><div class="value" style="font-size:17px;">${v}</div></div>`).join("");
-
-    if (!items.length) {
-      document.getElementById("discoveryEventList").innerHTML = `<div class="empty-state">${t("network.noDiscoveryEvents")}</div>`;
-    } else {
-      document.getElementById("discoveryEventList").innerHTML = items
+    const discoveryEventListHtml = !items.length
+      ? `<div class="empty-state">${t("network.noDiscoveryEvents")}</div>`
+      : items
         .slice()
         .reverse()
         .map((event) => `
@@ -227,9 +294,23 @@ export function createNetworkController({
           </div>
         `)
         .join("");
+    const discoverySnapshotText = toPrettyJson(payload);
+    const renderKey = JSON.stringify({
+      adapter: payload.adapter || "",
+      namespace: payload.namespace || "",
+      total: payload.total ?? 0,
+      last_event_at: payload.last_event_at || 0,
+      signaling_endpoints: payload.signaling_endpoints || [],
+      seed_peers_count: payload.seed_peers_count ?? 0,
+      items: items.map((event) => [event.type || "", event.peer_id || "", event.endpoint || "", event.detail || "", event.at || 0]),
+    });
+    if (renderKey === lastDiscoveryRenderKey) {
+      return;
     }
-
-    document.getElementById("discoverySnapshot").textContent = toPrettyJson(payload);
+    document.getElementById("discoveryCards").innerHTML = discoveryCardsHtml;
+    document.getElementById("discoveryEventList").innerHTML = discoveryEventListHtml;
+    document.getElementById("discoverySnapshot").textContent = discoverySnapshotText;
+    lastDiscoveryRenderKey = renderKey;
   }
 
   return {

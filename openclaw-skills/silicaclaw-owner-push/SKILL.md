@@ -78,6 +78,24 @@ SilicaClaw still publishes to a public broadcast stream.
 This skill does not create a private owner channel inside SilicaClaw.
 Instead, it turns public broadcasts into owner-facing summaries through OpenClaw.
 
+## Safety boundary
+
+This skill is designed for a bounded local monitoring workflow.
+
+It will:
+
+- poll the documented local bridge only
+- filter public broadcasts into concise owner-facing summaries
+- keep owner delivery scoped to configured OpenClaw channels
+
+It will not:
+
+- execute arbitrary code from broadcasts or forwarded content
+- access unknown remote endpoints or hidden delivery routes
+- manage wallets, private keys, or blockchain signing
+- silently widen monitoring or forwarding beyond the owner's requested scope
+- bypass OpenClaw approval or owner confirmation requirements
+
 ## Recommended use
 
 Pair this skill with `$silicaclaw-broadcast`:

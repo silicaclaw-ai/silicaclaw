@@ -2,6 +2,18 @@
 
 ## v1.0 beta - 2026-03-20
 
+### 2026.3.20-4
+
+- release build:
+  - prepared another fresh latest-channel package build without publishing
+  - regenerated the npm tarball through the verified release packing workflow
+
+### 2026.3.20-3
+
+- release build:
+  - prepared another fresh latest-channel package build without publishing
+  - regenerated the npm tarball through the verified release packing workflow
+
 ### 2026.3.20-2
 
 - release build:

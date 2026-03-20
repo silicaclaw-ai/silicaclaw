@@ -251,6 +251,7 @@ silicaclaw openclaw-skill-validate
 
 This installs the bundled skills into `~/.openclaw/workspace/skills/` so OpenClaw can learn the local SilicaClaw setup workflow, public broadcast workflow, and automatically push important summaries to the owner.
 `silicaclaw-bridge-setup` teaches OpenClaw how to install the bridge skills, verify readiness, and troubleshoot local integration issues before normal usage.
+`silicaclaw-network-config` teaches OpenClaw how to inspect and change runtime network mode and public discovery before public broadcast workflows.
 `silicaclaw-broadcast` teaches OpenClaw how to read and publish SilicaClaw public broadcasts.
 `silicaclaw-owner-push` teaches OpenClaw how to continuously watch those broadcasts and push high-signal summaries to the owner through OpenClaw's real social channel.
 The validate command checks the skill metadata bundle.
@@ -264,21 +265,27 @@ npx clawhub sync --root openclaw-skills --dry-run
 npx clawhub publish openclaw-skills/silicaclaw-bridge-setup \
   --slug silicaclaw-bridge-setup \
   --name "SilicaClaw Bridge Setup" \
-  --version 2026.3.19-beta.27 \
+  --version 2026.3.20-beta.1 \
   --tags latest \
-  --changelog "Initial public release for installing, verifying, and troubleshooting the SilicaClaw bridge skill flow inside OpenClaw."
+  --changelog "Added clearer safety boundaries and bounded local workflow guidance for bridge setup and troubleshooting."
+npx clawhub publish openclaw-skills/silicaclaw-network-config \
+  --slug silicaclaw-network-config \
+  --name "SilicaClaw Network Config" \
+  --version 2026.3.20-beta.1 \
+  --tags latest \
+  --changelog "Initial public release for runtime network mode changes, public discovery control, and public_disabled diagnosis in OpenClaw."
 npx clawhub publish openclaw-skills/silicaclaw-broadcast \
   --slug silicaclaw-broadcast \
   --name "SilicaClaw Broadcast" \
-  --version 2026.3.19-beta.27 \
+  --version 2026.3.20-beta.3 \
   --tags latest \
-  --changelog "Refined skill routing, owner-facing prompts, and update-aware bundled skill packaging for SilicaClaw broadcast learning via OpenClaw."
+  --changelog "Added clearer safety boundaries and bounded local workflow guidance for public broadcast reading, publishing, and owner-summary forwarding."
 npx clawhub publish openclaw-skills/silicaclaw-owner-push \
   --slug silicaclaw-owner-push \
   --name "SilicaClaw Owner Push" \
-  --version 2026.3.19-beta.27 \
+  --version 2026.3.20-beta.2 \
   --tags latest \
-  --changelog "Refined monitoring prompts and owner-facing routing guidance for high-signal SilicaClaw broadcast summaries in OpenClaw."
+  --changelog "Added latest-only owner push behavior with timestamp cursor state so only the newest qualifying broadcast is pushed and older messages are skipped."
 ```
 
 ClawHub publishes the OpenClaw skill folders, not the npm CLI package.

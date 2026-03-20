@@ -74,6 +74,11 @@ function readJson(file) {
   }
 }
 
+function readPackageVersionFrom(dir) {
+  const pkg = readJson(resolve(dir, "package.json"));
+  return String(pkg?.version || "latest").trim() || "latest";
+}
+
 function isSilicaClawDir(dir) {
   const pkgPath = join(dir, "package.json");
   if (!existsSync(pkgPath)) return false;
@@ -142,6 +147,107 @@ const SIGNALING_LABEL = "ai.silicaclaw.signaling";
 
 function ensureStateDir() {
   mkdirSync(STATE_DIR, { recursive: true });
+}
+
+function userShimDir() {
+  return join(homedir(), ".silicaclaw", "bin");
+}
+
+function userShimPath() {
+  return join(userShimDir(), "silicaclaw");
+}
+
+function userEnvFile() {
+  return join(homedir(), ".silicaclaw", "env.sh");
+}
+
+function userNpmCacheDir() {
+  return join(homedir(), ".silicaclaw", "npm-cache");
+}
+
+function preferredShellRcFile() {
+  const shell = String(process.env.SHELL || "");
+  if (shell.endsWith("/zsh")) return resolve(homedir(), ".zshrc");
+  if (shell.endsWith("/bash")) return resolve(homedir(), ".bashrc");
+  if (process.env.ZSH_VERSION) return resolve(homedir(), ".zshrc");
+  return resolve(homedir(), ".bashrc");
+}
+
+function shellInitTargets() {
+  const home = homedir();
+  const shell = String(process.env.SHELL || "");
+  const targets = [];
+  const add = (filePath) => {
+    if (!targets.includes(filePath)) targets.push(filePath);
+  };
+
+  if (shell.endsWith("/zsh") || process.env.ZSH_VERSION || existsSync(resolve(home, ".zshrc"))) {
+    add(resolve(home, ".zshrc"));
+  }
+
+  if (
+    shell.endsWith("/bash") ||
+    process.env.BASH_VERSION ||
+    existsSync(resolve(home, ".bashrc")) ||
+    existsSync(resolve(home, ".bash_profile")) ||
+    existsSync(resolve(home, ".profile"))
+  ) {
+    add(resolve(home, ".bashrc"));
+    add(resolve(home, ".bash_profile"));
+    add(resolve(home, ".profile"));
+  }
+
+  if (targets.length === 0) {
+    add(preferredShellRcFile());
+  }
+  return targets;
+}
+
+function ensureLineInFile(filePath, block) {
+  try {
+    const current = existsSync(filePath) ? readFileSync(filePath, "utf8") : "";
+    if (current.includes(block.trim())) return true;
+    const next = `${current.replace(/\s*$/, "")}\n\n${block}\n`;
+    mkdirSync(dirname(filePath), { recursive: true });
+    writeFileSync(filePath, next, "utf8");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function shimScriptText(specifier = "latest") {
+  return [
+    "#!/usr/bin/env bash",
+    "set -euo pipefail",
+    'export npm_config_cache="${npm_config_cache:-$HOME/.silicaclaw/npm-cache}"',
+    `exec npx -y @silicaclaw/cli@${specifier} "$@"`,
+    "",
+  ].join("\n");
+}
+
+function ensureUserCommandInstalled() {
+  const version = readPackageVersionFrom(APP_DIR);
+  const envBlock = [
+    "#!/usr/bin/env bash",
+    'export PATH="$HOME/.silicaclaw/bin:$PATH"',
+    'export npm_config_cache="$HOME/.silicaclaw/npm-cache"',
+    "",
+  ].join("\n");
+  const rcBlock = [
+    "# >>> silicaclaw >>>",
+    '[ -f "$HOME/.silicaclaw/env.sh" ] && . "$HOME/.silicaclaw/env.sh"',
+    "# <<< silicaclaw <<<",
+  ].join("\n");
+
+  mkdirSync(userShimDir(), { recursive: true });
+  mkdirSync(userNpmCacheDir(), { recursive: true });
+  writeFileSync(userEnvFile(), envBlock, { encoding: "utf8", mode: 0o755 });
+  writeFileSync(userShimPath(), shimScriptText(version), { encoding: "utf8", mode: 0o755 });
+
+  for (const filePath of shellInitTargets()) {
+    ensureLineInFile(filePath, rcBlock);
+  }
 }
 
 function ensureLaunchAgentsDir() {
@@ -797,6 +903,7 @@ async function stopAll() {
 
 async function startAll() {
   ensureStateDir();
+  ensureUserCommandInstalled();
 
   const mode = parseMode(parseFlag("mode", process.env.NETWORK_MODE || DEFAULT_NETWORK_MODE));
   const adapter = adapterForMode(mode);
@@ -923,6 +1030,7 @@ async function startAll() {
 }
 
 async function restartAll() {
+  ensureUserCommandInstalled();
   if (!isLaunchdPlatform()) {
     await stopAll();
     await startAll();

@@ -19,6 +19,7 @@ export OPENCLAW_FORWARD_INCLUDE="approval,failed,blocked,completed"
 export OPENCLAW_FORWARD_EXCLUDE="heartbeat,debug"
 export OPENCLAW_FORWARDER_INTERVAL_MS="5000"
 export OPENCLAW_FORWARDER_LIMIT="30"
+export OPENCLAW_FORWARD_LATEST_ONLY="true"
 ```
 
 ## Persistent cursor
@@ -32,6 +33,8 @@ Override it with:
 ```bash
 export OPENCLAW_OWNER_FORWARD_STATE_PATH="/custom/path/silicaclaw-owner-push.json"
 ```
+
+The state file now also stores the last pushed message timestamp and message id so the forwarder can push only the latest qualifying message after that cursor and skip older messages permanently.
 
 ## Typical topology
 

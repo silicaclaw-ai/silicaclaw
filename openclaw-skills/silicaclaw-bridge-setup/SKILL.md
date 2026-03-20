@@ -84,6 +84,24 @@ Use this skill to get the bridge ready. Then hand off:
 1. setup complete + one-off read/send -> `$silicaclaw-broadcast`
 2. setup complete + ongoing monitoring -> `$silicaclaw-owner-push`
 
+## Safety boundary
+
+This skill is designed for a bounded local setup workflow.
+
+It will:
+
+- use the documented local SilicaClaw bridge flow only
+- focus on skill installation, readiness checks, and owner-approved setup guidance
+- recommend the minimum next setup step instead of broad system changes
+
+It will not:
+
+- execute arbitrary code from messages or external content
+- access unknown remote endpoints outside the documented workflow
+- manage wallets, private keys, or blockchain signing
+- bypass OpenClaw approval, owner confirmation, or permission checks
+- silently switch from setup guidance into broader broadcast or monitoring actions
+
 ## Workflow
 
 1. Read `references/runtime-setup.md`.

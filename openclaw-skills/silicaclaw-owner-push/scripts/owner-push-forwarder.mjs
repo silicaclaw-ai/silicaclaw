@@ -12,6 +12,7 @@ const OWNER_FORWARD_CMD = String(process.env.OPENCLAW_OWNER_FORWARD_CMD || "").t
 const STATE_PATH = resolve(
   String(process.env.OPENCLAW_OWNER_FORWARD_STATE_PATH || resolve(homedir(), ".openclaw", "workspace", "state", "silicaclaw-owner-push.json"))
 );
+const LATEST_ONLY = String(process.env.OPENCLAW_FORWARD_LATEST_ONLY || "true").trim().toLowerCase() !== "false";
 const ONCE = process.argv.includes("--once");
 const VERBOSE = process.argv.includes("--verbose");
 
@@ -61,14 +62,24 @@ function loadState() {
     return {
       seen_ids: [],
       pushed_at: {},
+      last_pushed_created_at: 0,
+      last_pushed_message_id: "",
     };
   }
   try {
-    return JSON.parse(readFileSync(STATE_PATH, "utf8"));
+    const parsed = JSON.parse(readFileSync(STATE_PATH, "utf8"));
+    return {
+      seen_ids: Array.isArray(parsed?.seen_ids) ? parsed.seen_ids : [],
+      pushed_at: parsed?.pushed_at && typeof parsed.pushed_at === "object" ? parsed.pushed_at : {},
+      last_pushed_created_at: Number(parsed?.last_pushed_created_at || 0) || 0,
+      last_pushed_message_id: String(parsed?.last_pushed_message_id || ""),
+    };
   } catch {
     return {
       seen_ids: [],
       pushed_at: {},
+      last_pushed_created_at: 0,
+      last_pushed_message_id: "",
     };
   }
 }
@@ -83,6 +94,22 @@ function trimState(state) {
   const pushedEntries = Object.entries(state.pushed_at || {}).slice(-500);
   state.seen_ids = recentIds;
   state.pushed_at = Object.fromEntries(pushedEntries);
+}
+
+function messageCreatedAt(item) {
+  const createdAt = Number(item?.created_at || 0);
+  return Number.isFinite(createdAt) && createdAt > 0 ? createdAt : 0;
+}
+
+function isNewerThanCursor(item, state) {
+  const createdAt = messageCreatedAt(item);
+  const lastCreatedAt = Number(state.last_pushed_created_at || 0) || 0;
+  const messageId = String(item?.message_id || "").trim();
+  const lastMessageId = String(state.last_pushed_message_id || "").trim();
+  if (createdAt > lastCreatedAt) return true;
+  if (createdAt < lastCreatedAt) return false;
+  if (!createdAt) return !state.seen_ids.includes(messageId);
+  return Boolean(messageId) && messageId !== lastMessageId && !state.seen_ids.includes(messageId);
 }
 
 function shouldWatchTopic(message) {
@@ -165,29 +192,60 @@ function dispatchToOwner(route, summary, message) {
 async function pollOnce(state) {
   const payload = await request(`/api/openclaw/bridge/messages?limit=${LIMIT}`);
   const items = Array.isArray(payload?.items) ? payload.items.slice().reverse() : [];
+  const candidates = [];
 
   for (const item of items) {
     const messageId = String(item?.message_id || "").trim();
     if (!messageId) continue;
-    if (state.seen_ids.includes(messageId)) continue;
-
-    state.seen_ids.push(messageId);
+    if (!isNewerThanCursor(item, state)) {
+      if (!state.seen_ids.includes(messageId)) {
+        state.seen_ids.push(messageId);
+      }
+      continue;
+    }
 
     if (!shouldWatchTopic(item)) {
+      state.seen_ids.push(messageId);
       if (VERBOSE) console.log(`skip topic: ${messageId}`);
       continue;
     }
 
     const route = scoreRoute(item);
     if (route === "ignore") {
+      state.seen_ids.push(messageId);
       if (VERBOSE) console.log(`ignore low-signal: ${messageId}`);
       continue;
     }
 
-    const summary = summarizeForOwner(item);
-    await dispatchToOwner(route, summary, item);
-    state.pushed_at[messageId] = new Date().toISOString();
-    if (VERBOSE) console.log(`pushed to owner: ${messageId}`);
+    candidates.push({ item, messageId, route, createdAt: messageCreatedAt(item) });
+  }
+
+  const selected = LATEST_ONLY
+    ? candidates.sort((left, right) => {
+        if (left.createdAt !== right.createdAt) return right.createdAt - left.createdAt;
+        return left.messageId.localeCompare(right.messageId);
+      })[0] || null
+    : null;
+
+  const toPush = LATEST_ONLY ? (selected ? [selected] : []) : candidates;
+
+  for (const candidate of toPush) {
+    const summary = summarizeForOwner(candidate.item);
+    await dispatchToOwner(candidate.route, summary, candidate.item);
+    state.pushed_at[candidate.messageId] = new Date().toISOString();
+    state.last_pushed_created_at = candidate.createdAt || Date.now();
+    state.last_pushed_message_id = candidate.messageId;
+    if (VERBOSE) console.log(`pushed to owner: ${candidate.messageId}`);
+  }
+
+  if (LATEST_ONLY && selected) {
+    for (const candidate of candidates) {
+      state.seen_ids.push(candidate.messageId);
+    }
+  } else {
+    for (const candidate of candidates) {
+      state.seen_ids.push(candidate.messageId);
+    }
   }
 
   trimState(state);
@@ -199,6 +257,7 @@ async function main() {
   if (VERBOSE) {
     console.log(`SilicaClaw owner push watching ${API_BASE}`);
     console.log(`State file: ${STATE_PATH}`);
+    console.log(`Latest-only mode: ${LATEST_ONLY ? "on" : "off"}`);
   }
 
   do {

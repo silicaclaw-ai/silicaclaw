@@ -1,6 +1,6 @@
 import express, { NextFunction, Request, Response } from "express";
 import cors from "cors";
-import { execFile, spawnSync } from "child_process";
+import { execFile, spawn, spawnSync } from "child_process";
 import { resolve } from "path";
 import { accessSync, constants, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync } from "fs";
 import { createHash } from "crypto";
@@ -90,6 +90,7 @@ const DEFAULT_BRIDGE_API_BASE = defaults.bridge.api_base;
 const OPENCLAW_GATEWAY_PORT = defaults.ports.openclaw_gateway;
 const OPENCLAW_GATEWAY_URL = `http://${OPENCLAW_GATEWAY_HOST}:${OPENCLAW_GATEWAY_PORT}/`;
 const NETWORK_PEER_REMOVE_AFTER_MS = Number(process.env.NETWORK_PEER_REMOVE_AFTER_MS || 180_000);
+const DIRECTORY_REMOTE_PROFILE_SOFT_LIMIT = Number(process.env.DIRECTORY_REMOTE_PROFILE_SOFT_LIMIT || 1000);
 const NETWORK_UDP_BIND_ADDRESS = process.env.NETWORK_UDP_BIND_ADDRESS || "0.0.0.0";
 const NETWORK_UDP_BROADCAST_ADDRESS = process.env.NETWORK_UDP_BROADCAST_ADDRESS || "255.255.255.255";
 const NETWORK_PEER_ID = process.env.NETWORK_PEER_ID;
@@ -157,6 +158,10 @@ function normalizeVersionText(value: unknown): string {
   return text.startsWith("v") ? text.slice(1) : text;
 }
 
+function formatBytesToMiB(value: number): number {
+  return Math.round((value / (1024 * 1024)) * 10) / 10;
+}
+
 function tokenizeVersion(value: unknown): Array<number | string> {
   return normalizeVersionText(value)
     .split(/[^0-9A-Za-z]+/)
@@ -184,6 +189,10 @@ function compareVersionTokens(left: unknown, right: unknown): number {
     if (leftText !== rightText) return leftText.localeCompare(rightText);
   }
   return 0;
+}
+
+function userNpmCacheDir(): string {
+  return resolve(homedir(), ".silicaclaw", "npm-cache");
 }
 
 function resolveWorkspaceRoot(cwd = process.cwd()): string {
@@ -1201,6 +1210,7 @@ export class LocalNodeService {
     const relayCapable = this.adapterMode === "webrtc-preview" || this.adapterMode === "relay-preview";
     const peers: Array<{ status?: string }> = diagnostics?.peers?.items ?? [];
     const online = peers.filter((peer: { status?: string }) => peer.status === "online").length;
+    const memory = process.memoryUsage();
 
     return {
       adapter: this.adapterMode,
@@ -1225,6 +1235,23 @@ export class LocalNodeService {
       adapter_stats: diagnostics?.stats ?? null,
       adapter_transport_stats: diagnostics?.transport_stats ?? null,
       adapter_discovery_stats: diagnostics?.discovery_stats ?? null,
+      runtime_diagnostics: {
+        memory_mib: {
+          rss: formatBytesToMiB(memory.rss),
+          heap_used: formatBytesToMiB(memory.heapUsed),
+          heap_total: formatBytesToMiB(memory.heapTotal),
+          external: formatBytesToMiB(memory.external),
+        },
+        directory: {
+          profile_count: Object.keys(this.directory.profiles).length,
+          presence_count: Object.keys(this.directory.presence).length,
+          index_key_count: Object.keys(this.directory.index).length,
+        },
+        social: {
+          message_count: this.socialMessages.length,
+          observation_count: this.socialMessageObservations.length,
+        },
+      },
       adapter_diagnostics_summary: relayCapable || diagnostics
         ? {
             started: this.networkStarted,
@@ -1338,6 +1365,88 @@ export class LocalNodeService {
       local_console_public_dir: resolve(this.workspaceRoot, "apps", "local-console", "public"),
       social_lookup_paths: getSocialConfigSearchPaths(this.projectRoot),
       social_source_path: this.socialSourcePath,
+    };
+  }
+
+  getAppUpdateStatus() {
+    const currentVersion = normalizeVersionText(this.appVersion) || "unknown";
+    const fallback = {
+      current_version: currentVersion,
+      latest_version: currentVersion,
+      update_available: false,
+      channel: "latest",
+      platform: process.platform,
+      checked_at: Date.now(),
+      can_update: true,
+      check_error: null as string | null,
+    };
+    try {
+      const result = spawnSync("npm", ["view", "@silicaclaw/cli", "dist-tags", "--json"], {
+        cwd: this.projectRoot,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          SILICACLAW_WORKSPACE_DIR: this.projectRoot,
+          SILICACLAW_APP_DIR: this.workspaceRoot,
+          npm_config_cache: process.env.npm_config_cache || userNpmCacheDir(),
+        },
+      });
+      if ((result.status ?? 1) !== 0) {
+        return {
+          ...fallback,
+          check_error: String(result.stderr || result.stdout || "npm view failed").trim() || "npm view failed",
+        };
+      }
+      const tags = JSON.parse(String(result.stdout || "{}").trim() || "{}") as { latest?: string };
+      const latestVersion = normalizeVersionText(tags.latest || currentVersion) || currentVersion;
+      return {
+        ...fallback,
+        latest_version: latestVersion,
+        update_available: compareVersionTokens(latestVersion, currentVersion) > 0,
+      };
+    } catch (error) {
+      return {
+        ...fallback,
+        check_error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  startAppUpdate(): { started: boolean; target_version: string; platform: string; reason?: string } {
+    const status = this.getAppUpdateStatus();
+    if (!status.update_available || !status.latest_version) {
+      return {
+        started: false,
+        target_version: status.latest_version || status.current_version,
+        platform: process.platform,
+        reason: status.check_error || "already_current",
+      };
+    }
+    const scriptPath = resolve(this.workspaceRoot, "scripts", "silicaclaw-cli.mjs");
+    if (!existsSync(scriptPath)) {
+      return {
+        started: false,
+        target_version: status.latest_version,
+        platform: process.platform,
+        reason: "missing_cli_script",
+      };
+    }
+    const child = spawn(process.execPath, [scriptPath, "update"], {
+      cwd: this.projectRoot,
+      detached: true,
+      stdio: "ignore",
+      env: {
+        ...process.env,
+        SILICACLAW_WORKSPACE_DIR: this.projectRoot,
+        SILICACLAW_APP_DIR: this.workspaceRoot,
+        npm_config_cache: process.env.npm_config_cache || userNpmCacheDir(),
+      },
+    });
+    child.unref();
+    return {
+      started: true,
+      target_version: status.latest_version,
+      platform: process.platform,
     };
   }
 
@@ -2670,9 +2779,66 @@ export class LocalNodeService {
     this.networkReconnectDelayMs = Math.min(30_000, Math.max(5_000, Math.floor(delayMs * 1.5)));
   }
 
+  private pruneRemoteProfilesInMemory(now = Date.now()): number {
+    if (!Number.isFinite(DIRECTORY_REMOTE_PROFILE_SOFT_LIMIT) || DIRECTORY_REMOTE_PROFILE_SOFT_LIMIT <= 0) {
+      return 0;
+    }
+    const selfAgentId = this.profile?.agent_id || this.identity?.agent_id || "";
+    const remoteProfiles = Object.values(this.directory.profiles).filter((profile) => profile.agent_id !== selfAgentId);
+    if (remoteProfiles.length <= DIRECTORY_REMOTE_PROFILE_SOFT_LIMIT) {
+      return 0;
+    }
+
+    const onlineRemoteProfiles = remoteProfiles.filter((profile) =>
+      isAgentOnline(this.directory.presence[profile.agent_id], now, PRESENCE_TTL_MS)
+    );
+    const offlineRemoteProfiles = remoteProfiles
+      .filter((profile) => !isAgentOnline(this.directory.presence[profile.agent_id], now, PRESENCE_TTL_MS))
+      .sort((a, b) => (b.updated_at || 0) - (a.updated_at || 0));
+
+    const keepOfflineCount = Math.max(0, DIRECTORY_REMOTE_PROFILE_SOFT_LIMIT - onlineRemoteProfiles.length);
+    const keptRemoteProfiles = [
+      ...onlineRemoteProfiles,
+      ...offlineRemoteProfiles.slice(0, keepOfflineCount),
+    ];
+    const keptRemoteIds = new Set(keptRemoteProfiles.map((profile) => profile.agent_id));
+    const removedIds = remoteProfiles
+      .map((profile) => profile.agent_id)
+      .filter((agentId) => !keptRemoteIds.has(agentId));
+    if (removedIds.length === 0) {
+      return 0;
+    }
+
+    const next = createEmptyDirectoryState();
+    const selfProfile = selfAgentId ? this.directory.profiles[selfAgentId] : null;
+    if (selfProfile) {
+      next.profiles[selfAgentId] = selfProfile;
+      const selfPresence = this.directory.presence[selfAgentId];
+      if (typeof selfPresence === "number" && Number.isFinite(selfPresence)) {
+        next.presence[selfAgentId] = selfPresence;
+      }
+      const rebuilt = rebuildIndexForProfile(next, selfProfile);
+      next.index = rebuilt.index;
+    }
+
+    for (const profile of keptRemoteProfiles) {
+      next.profiles[profile.agent_id] = profile;
+      const seenAt = this.directory.presence[profile.agent_id];
+      if (typeof seenAt === "number" && Number.isFinite(seenAt)) {
+        next.presence[profile.agent_id] = seenAt;
+      }
+      const rebuilt = rebuildIndexForProfile(next, profile);
+      next.index = rebuilt.index;
+    }
+
+    this.directory = dedupeIndex(next);
+    return removedIds.length;
+  }
+
   private compactCacheInMemory(): number {
     const cleaned = cleanupExpiredPresence(this.directory, Date.now(), PRESENCE_TTL_MS);
     this.directory = dedupeIndex(cleaned.state);
+    this.pruneRemoteProfilesInMemory();
     return cleaned.removed;
   }
 
@@ -3410,6 +3576,48 @@ export async function main() {
   app.get("/api/runtime/paths", (_req, res) => {
     sendOk(res, node.getRuntimePaths());
   });
+
+  app.get("/api/app/update-status", (_req, res) => {
+    sendOk(res, node.getAppUpdateStatus());
+  });
+
+  app.post(
+    "/api/app/update",
+    asyncRoute(async (_req, res) => {
+      const status = node.getAppUpdateStatus();
+      if (!status.update_available || !status.latest_version) {
+        sendOk(
+          res,
+          {
+            started: false,
+            current_version: status.current_version,
+            latest_version: status.latest_version,
+            platform: status.platform,
+            reason: status.check_error || "already_current",
+          },
+          { message: "Already on the latest version" }
+        );
+        return;
+      }
+      sendOk(
+        res,
+        {
+          started: true,
+          current_version: status.current_version,
+          target_version: status.latest_version,
+          platform: status.platform,
+        },
+        { message: `Updating to ${status.latest_version}` }
+      );
+      setTimeout(() => {
+        try {
+          node.startAppUpdate();
+        } catch {
+          // best effort after response has been sent
+        }
+      }, 150);
+    })
+  );
 
   app.put(
     "/api/profile",

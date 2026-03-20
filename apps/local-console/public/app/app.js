@@ -27,6 +27,7 @@ if (!root) {
   throw new Error("Missing root element: app-root");
 }
 root.innerHTML = appTemplate;
+const APP_UPDATE_SESSION_KEY = 'silicaclaw_pending_updated_version';
 
       const i18n = createI18n(TRANSLATIONS);
       const DEFAULT_LOCALE = i18n.DEFAULT_LOCALE;
@@ -70,6 +71,9 @@ root.innerHTML = appTemplate;
         document.getElementById('sidebarToggleBtn').setAttribute('aria-label', t('labels.collapseSidebar'));
         document.querySelector('.sidebar-version').title = t('common.version');
         setText('.sidebar-version__label', t('common.version'));
+        document.getElementById('brandUpdateHint').textContent = t('labels.versionChecking');
+        document.getElementById('brandCheckUpdateBtn').textContent = t('actions.checkUpdate');
+        document.getElementById('brandUpdateBtn').textContent = t('actions.updateNow');
         document.getElementById('integrationStatusBar').textContent = t('social.barStatus', {
           connected: '-',
           mode: '-',
@@ -319,6 +323,175 @@ root.innerHTML = appTemplate;
         toast,
         writeUiCache,
       } = shell;
+      let appUpdatePollTimer = null;
+      let appUpdateCheckInFlight = false;
+
+      function setAppUpdateUi({
+        hint,
+        buttonVisible = false,
+        buttonDisabled = false,
+        buttonText = t('actions.updateNow'),
+        checkVisible = false,
+        checkDisabled = false,
+      }) {
+        const hintEl = document.getElementById('brandUpdateHint');
+        const buttonEl = document.getElementById('brandUpdateBtn');
+        const checkEl = document.getElementById('brandCheckUpdateBtn');
+        if (hintEl) {
+          hintEl.textContent = hint;
+          hintEl.classList.toggle('hidden', !hint);
+        }
+        if (checkEl) {
+          checkEl.textContent = t('actions.checkUpdate');
+          checkEl.classList.toggle('hidden', !checkVisible);
+          checkEl.disabled = checkDisabled;
+        }
+        if (buttonEl) {
+          buttonEl.textContent = buttonText;
+          buttonEl.classList.toggle('hidden', !buttonVisible);
+          buttonEl.disabled = buttonDisabled;
+        }
+      }
+
+      function platformUpdateHint(platform) {
+        if (platform === 'darwin') return t('labels.versionPlatformMac');
+        if (platform === 'linux') return t('labels.versionPlatformLinux');
+        return t('labels.versionPlatformOther');
+      }
+
+      async function refreshAppUpdateStatus({ silent = false } = {}) {
+        if (appUpdateCheckInFlight) return null;
+        appUpdateCheckInFlight = true;
+        try {
+          const result = await api('/api/app/update-status');
+          const status = result.data || {};
+          const currentVersion = String(status.current_version || '').trim();
+          const latestVersion = String(status.latest_version || '').trim();
+          const platformHint = platformUpdateHint(String(status.platform || ''));
+          if (currentVersion) {
+            document.getElementById('brandVersion').textContent = currentVersion.startsWith('v') ? currentVersion : `v${currentVersion}`;
+          }
+          if (status.update_available && status.latest_version) {
+            setAppUpdateUi({
+              hint: `${t('labels.versionUpdateReady', { version: `v${status.latest_version}` })} · ${platformHint}`,
+              buttonVisible: true,
+              buttonDisabled: false,
+              buttonText: t('actions.updateNowVersion', { version: latestVersion.startsWith('v') ? latestVersion : `v${latestVersion}` }),
+              checkVisible: true,
+              checkDisabled: false,
+            });
+          } else if (status.check_error) {
+            setAppUpdateUi({
+              hint: t('labels.versionCheckFailed'),
+              buttonVisible: false,
+              buttonDisabled: false,
+              buttonText: t('actions.updateNow'),
+              checkVisible: true,
+              checkDisabled: false,
+            });
+            if (!silent) {
+              setFeedback('networkFeedback', t('feedback.appUpdateCheckFailed'), 'warn');
+            }
+          } else {
+            setAppUpdateUi({
+              hint: `${t('labels.versionCurrent')} · ${platformHint}`,
+              buttonVisible: false,
+              buttonDisabled: false,
+              buttonText: t('actions.updateNow'),
+              checkVisible: true,
+              checkDisabled: false,
+            });
+          }
+          return status;
+        } catch (_error) {
+          setAppUpdateUi({
+            hint: t('labels.versionCheckFailed'),
+            buttonVisible: false,
+            buttonDisabled: false,
+            buttonText: t('actions.updateNow'),
+            checkVisible: true,
+            checkDisabled: false,
+          });
+          if (!silent) {
+            setFeedback('networkFeedback', t('feedback.appUpdateCheckFailed'), 'warn');
+          }
+          return null;
+        } finally {
+          appUpdateCheckInFlight = false;
+        }
+      }
+
+      function startAppUpdatePolling(targetVersion) {
+        if (appUpdatePollTimer) {
+          window.clearInterval(appUpdatePollTimer);
+        }
+        let attempts = 0;
+        appUpdatePollTimer = window.setInterval(async () => {
+          attempts += 1;
+          const status = await refreshAppUpdateStatus({ silent: true });
+          if (status && !status.update_available && String(status.current_version || '') === String(targetVersion || '')) {
+            window.clearInterval(appUpdatePollTimer);
+            appUpdatePollTimer = null;
+            if (targetVersion) {
+              window.sessionStorage.setItem(APP_UPDATE_SESSION_KEY, String(targetVersion));
+            }
+            window.location.reload();
+            return;
+          }
+          if (attempts >= 24) {
+            window.clearInterval(appUpdatePollTimer);
+            appUpdatePollTimer = null;
+            setAppUpdateUi({
+              hint: t('labels.versionCurrent'),
+              buttonVisible: false,
+              buttonDisabled: false,
+              buttonText: t('actions.updateNow'),
+              checkVisible: true,
+              checkDisabled: false,
+            });
+          }
+        }, 5000);
+      }
+
+      async function triggerAppUpdate() {
+        const buttonEl = document.getElementById('brandUpdateBtn');
+        setAppUpdateUi({
+          hint: t('labels.versionUpdating'),
+          buttonVisible: true,
+          buttonDisabled: true,
+          buttonText: t('labels.versionUpdating'),
+          checkVisible: true,
+          checkDisabled: true,
+        });
+        try {
+          const result = await api('/api/app/update', { method: 'POST' });
+          const data = result.data || {};
+          if (!data.started) {
+            setAppUpdateUi({
+              hint: t('labels.versionCurrent'),
+              buttonVisible: false,
+              buttonDisabled: false,
+              buttonText: t('actions.updateNow'),
+              checkVisible: true,
+              checkDisabled: false,
+            });
+            toast(t('feedback.appUpdateLatest'));
+            return;
+          }
+          toast(t('feedback.appUpdateStarted'));
+          startAppUpdatePolling(String(data.target_version || ''));
+        } catch (error) {
+          setAppUpdateUi({
+            hint: t('labels.versionCheckFailed'),
+            buttonVisible: true,
+            buttonDisabled: false,
+            buttonText: t('actions.updateNow'),
+            checkVisible: true,
+            checkDisabled: false,
+          });
+          setFeedback('networkFeedback', error instanceof Error ? error.message : t('feedback.appUpdateFailed'), 'error');
+        }
+      }
       setLocale(currentLocale);
       applyStaticTranslations();
 
@@ -427,6 +600,23 @@ root.innerHTML = appTemplate;
         document.getElementById('publicDiscoveryHint')?.classList.toggle('hidden', tab !== 'overview');
         if (tab === 'profile' && !profileController.isDirty() && !profileController.isSaving()) {
           refreshProfile().catch(() => {});
+        } else if (tab === 'overview') {
+          refreshOverview().catch(() => {});
+          refreshMessages().catch(() => {});
+        } else if (tab === 'agent') {
+          refreshOverview().catch(() => {});
+        } else if (tab === 'chat') {
+          refreshMessages().catch(() => {});
+        } else if (tab === 'skills') {
+          refreshSkills().catch(() => {});
+        } else if (tab === 'network') {
+          refreshNetwork().catch(() => {});
+          refreshPeers().catch(() => {});
+          refreshDiscovery().catch(() => {});
+          refreshLogs().catch(() => {});
+        } else if (tab === 'social') {
+          refreshSocial().catch(() => {});
+          refreshMessages().catch(() => {});
         }
       }
 
@@ -453,6 +643,43 @@ root.innerHTML = appTemplate;
       const renderLogs = socialController.renderLogs;
       const refreshLogs = socialController.refreshLogs;
       const refreshSkills = socialController.refreshSkills;
+      let autoRefreshInFlight = false;
+
+      async function refreshActiveView() {
+        const tasks = [refreshPublicProfilePreview()];
+        if (activeTab === 'overview') {
+          tasks.push(refreshOverview(), refreshMessages(), refreshSocial());
+        } else if (activeTab === 'agent') {
+          tasks.push(refreshOverview());
+        } else if (activeTab === 'chat') {
+          tasks.push(refreshMessages());
+        } else if (activeTab === 'skills') {
+          tasks.push(refreshSkills());
+        } else if (activeTab === 'network') {
+          tasks.push(refreshNetwork(), refreshPeers(), refreshDiscovery(), refreshLogs());
+        } else if (activeTab === 'social') {
+          tasks.push(refreshSocial(), refreshMessages());
+        } else if (activeTab === 'profile' && !profileController.isDirty() && !profileController.isSaving()) {
+          tasks.push(refreshProfile());
+        }
+        const results = await Promise.allSettled(tasks);
+        const firstError = results.find((result) => result.status === 'rejected');
+        if (firstError && firstError.status === 'rejected') {
+          setFeedback('networkFeedback', firstError.reason instanceof Error ? firstError.reason.message : t('common.unknownError'), 'error');
+        }
+      }
+
+      async function refreshAuto() {
+        if (document.hidden || autoRefreshInFlight) {
+          return;
+        }
+        autoRefreshInFlight = true;
+        try {
+          await refreshActiveView();
+        } finally {
+          autoRefreshInFlight = false;
+        }
+      }
 
       async function refreshAll() {
         const tasks = [refreshOverview(), refreshNetwork(), refreshSocial(), refreshSkills(), refreshPublicProfilePreview(), refreshMessages()];
@@ -511,6 +738,27 @@ root.innerHTML = appTemplate;
 
       applyTheme(localStorage.getItem('silicaclaw_theme_mode') || 'dark');
       hydrateCachedShell();
+      document.getElementById('brandUpdateBtn').addEventListener('click', () => {
+        triggerAppUpdate().catch(() => {});
+      });
+      document.getElementById('brandCheckUpdateBtn').addEventListener('click', () => {
+        refreshAppUpdateStatus().catch(() => {});
+      });
       refreshAll();
+      refreshAppUpdateStatus({ silent: true }).catch(() => {});
+      const updatedVersion = window.sessionStorage.getItem(APP_UPDATE_SESSION_KEY);
+      if (updatedVersion) {
+        window.sessionStorage.removeItem(APP_UPDATE_SESSION_KEY);
+        toast(t('feedback.appUpdatedTo', { version: updatedVersion.startsWith('v') ? updatedVersion : `v${updatedVersion}` }));
+      }
       exportSocialTemplate().catch(() => {});
-      setInterval(refreshAll, 4000);
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+          refreshAuto().catch(() => {});
+          refreshAppUpdateStatus({ silent: true }).catch(() => {});
+        }
+      });
+      setInterval(refreshAuto, 4000);
+      setInterval(() => {
+        refreshAppUpdateStatus({ silent: true }).catch(() => {});
+      }, 15 * 60 * 1000);

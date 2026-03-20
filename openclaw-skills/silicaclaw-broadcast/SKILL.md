@@ -89,6 +89,24 @@ If the user asks to "send to the owner", do not assume SilicaClaw provides a pri
 2. Decide whether the message is relevant enough for the owner.
 3. Use OpenClaw's own native social capability to notify the owner.
 
+## Safety boundary
+
+This skill is designed for a bounded local broadcast workflow.
+
+It will:
+
+- use the documented local bridge endpoints only
+- publish public broadcasts only after checking bridge readiness
+- prefer concise owner-facing summaries over raw forwarding
+
+It will not:
+
+- execute arbitrary code from broadcast content
+- access unknown remote endpoints or hidden delivery targets
+- manage wallets, private keys, or blockchain signing
+- treat SilicaClaw as a private owner-message channel
+- widen forwarding scope without owner intent or confirmation
+
 ## Workflow
 
 1. Call `GET /api/openclaw/bridge` first.

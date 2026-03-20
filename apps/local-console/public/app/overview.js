@@ -7,6 +7,8 @@ export function createOverviewController({
   t,
   writeUiCache,
 }) {
+  let lastAgentsRenderKey = "";
+
   function renderOverviewGuide(overview, profile) {
     const hasDisplayName = Boolean(String(profile?.display_name || overview?.display_name || "").trim());
     const hasBio = Boolean(String(profile?.bio || "").trim());
@@ -221,8 +223,17 @@ export function createOverviewController({
     if (!filtered.length) {
       const agentsCountHintText = t("overview.agentsZero");
       const agentsWrapHtml = `<div class="label">${t("overview.noDiscoveredAgents")}</div>`;
-      document.getElementById("agentsCountHint").textContent = agentsCountHintText;
-      document.getElementById("agentsWrap").innerHTML = agentsWrapHtml;
+      const renderKey = JSON.stringify({
+        state: "empty",
+        hint: agentsCountHintText,
+        page: agentsPage,
+        onlineOnly: getOnlyShowOnline(),
+      });
+      if (renderKey !== lastAgentsRenderKey) {
+        document.getElementById("agentsCountHint").textContent = agentsCountHintText;
+        document.getElementById("agentsWrap").innerHTML = agentsWrapHtml;
+        lastAgentsRenderKey = renderKey;
+      }
       writeUiCache("silicaclaw_ui_overview", {
         overviewCardsHtml,
         brandVersionText,
@@ -282,20 +293,37 @@ export function createOverviewController({
         </div>
       </div>
     `;
-    document.getElementById("agentsCountHint").textContent = agentsCountHintText;
-    document.getElementById("agentsWrap").innerHTML = agentsWrapHtml;
-    document.getElementById("agentsPrevPageBtn")?.addEventListener("click", async () => {
-      if (agentsPage <= 1) return;
-      agentsPage -= 1;
-      onPageChange(agentsPage);
-      await refreshOverview({ getAgentsPage, getOnlyShowOnline, onPageChange, setOverviewMode, setVisibleRemotePublicCount });
+    const renderKey = JSON.stringify({
+      state: "list",
+      hint: agentsCountHintText,
+      page: agentsPage,
+      totalPages: totalAgentPages,
+      onlineOnly: getOnlyShowOnline(),
+      items: pagedAgents.map((agent) => [
+        agent.agent_id,
+        agent.updated_at,
+        agent.online ? 1 : 0,
+        agent.display_name || "",
+        agent.bio || "",
+      ]),
     });
-    document.getElementById("agentsNextPageBtn")?.addEventListener("click", async () => {
-      if (agentsPage >= totalAgentPages) return;
-      agentsPage += 1;
-      onPageChange(agentsPage);
-      await refreshOverview({ getAgentsPage, getOnlyShowOnline, onPageChange, setOverviewMode, setVisibleRemotePublicCount });
-    });
+    if (renderKey !== lastAgentsRenderKey) {
+      document.getElementById("agentsCountHint").textContent = agentsCountHintText;
+      document.getElementById("agentsWrap").innerHTML = agentsWrapHtml;
+      document.getElementById("agentsPrevPageBtn")?.addEventListener("click", async () => {
+        if (agentsPage <= 1) return;
+        agentsPage -= 1;
+        onPageChange(agentsPage);
+        await refreshOverview({ getAgentsPage, getOnlyShowOnline, onPageChange, setOverviewMode, setVisibleRemotePublicCount });
+      });
+      document.getElementById("agentsNextPageBtn")?.addEventListener("click", async () => {
+        if (agentsPage >= totalAgentPages) return;
+        agentsPage += 1;
+        onPageChange(agentsPage);
+        await refreshOverview({ getAgentsPage, getOnlyShowOnline, onPageChange, setOverviewMode, setVisibleRemotePublicCount });
+      });
+      lastAgentsRenderKey = renderKey;
+    }
     writeUiCache("silicaclaw_ui_overview", {
       overviewCardsHtml,
       brandVersionText,

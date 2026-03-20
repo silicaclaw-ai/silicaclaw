@@ -100,6 +100,25 @@ function main() {
         assert(dialogueCheatsheetZh.includes("主人对话速查表"), "owner dialogue cheatsheet zh content mismatch");
       },
     },
+    "silicaclaw-network-config": {
+      requiredFiles: [
+        resolve(skillDir, "references", "network-modes.md"),
+        resolve(skillDir, "references", "public-discovery.md"),
+        resolve(skillDir, "references", "owner-dialogue-cheatsheet-zh.md"),
+      ],
+      uiDisplayName: 'display_name: "SilicaClaw Network Config"',
+      checks(manifest, files) {
+        const networkModes = readFileSync(files[0], "utf8");
+        const publicDiscovery = readFileSync(files[1], "utf8");
+        const dialogueCheatsheetZh = readFileSync(files[2], "utf8");
+        assert(String(manifest.references?.network_modes || "") === "references/network-modes.md", "manifest network modes reference mismatch");
+        assert(String(manifest.references?.public_discovery || "") === "references/public-discovery.md", "manifest public discovery reference mismatch");
+        assert(String(manifest.references?.owner_dialogue_cheatsheet_zh || "") === "references/owner-dialogue-cheatsheet-zh.md", "manifest owner dialogue cheatsheet zh reference mismatch");
+        assert(networkModes.includes("## Modes"), "network modes content mismatch");
+        assert(publicDiscovery.includes("public_enabled"), "public discovery content mismatch");
+        assert(dialogueCheatsheetZh.includes("主人对话速查表"), "owner dialogue cheatsheet zh content mismatch");
+      },
+    },
   }[skillName];
 
   assert(profile, `Unsupported skill for validation: ${skillName}`);

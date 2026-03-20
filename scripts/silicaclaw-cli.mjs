@@ -224,10 +224,12 @@ function shellInitTargets() {
     shell.endsWith("/bash") ||
     process.env.BASH_VERSION ||
     existsSync(resolve(home, ".bashrc")) ||
-    existsSync(resolve(home, ".bash_profile"))
+    existsSync(resolve(home, ".bash_profile")) ||
+    existsSync(resolve(home, ".profile"))
   ) {
     add(resolve(home, ".bashrc"));
     add(resolve(home, ".bash_profile"));
+    add(resolve(home, ".profile"));
   }
 
   if (targets.length === 0) {
@@ -280,6 +282,7 @@ function installPersistentCommand(specifier = readPackageVersion()) {
   kv("Command", "silicaclaw");
   console.log("");
   kv("Activate", `source "${envFile}"`);
+  kv("Current shell", "run Activate now if `silicaclaw` is not found yet");
   if (configuredFiles.length > 0) {
     kv("Startup", "configured");
   } else {

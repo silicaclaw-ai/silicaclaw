@@ -100,8 +100,13 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
               <div class="sidebar-version__copy">
                 <span class="sidebar-version__label">Version</span>
                 <span class="sidebar-version__text" id="brandVersion">-</span>
+                <span class="sidebar-version__hint" id="brandUpdateHint">Checking for updates...</span>
               </div>
-              <span class="sidebar-version__status" id="brandStatusDot" aria-hidden="true"></span>
+              <div class="sidebar-version__actions">
+                <button class="sidebar-version__btn sidebar-version__btn--ghost hidden" id="brandCheckUpdateBtn" type="button">Check</button>
+                <button class="sidebar-version__btn hidden" id="brandUpdateBtn" type="button">Update</button>
+                <span class="sidebar-version__status" id="brandStatusDot" aria-hidden="true"></span>
+              </div>
             </div>
           </div>
         </div>
