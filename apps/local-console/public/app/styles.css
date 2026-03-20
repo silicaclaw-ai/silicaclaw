@@ -2092,6 +2092,34 @@
         grid-template-columns: minmax(0, 1.04fr) minmax(320px, 0.96fr);
         align-items: start;
       }
+      .skills-toolbar {
+        display: grid;
+        gap: 12px;
+        margin-bottom: 10px;
+      }
+      .skills-toolbar__search {
+        display: grid;
+        gap: 6px;
+      }
+      .skills-toolbar__label {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--text-strong);
+      }
+      .skills-toolbar__filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .skills-filter-chip.active {
+        border-color: color-mix(in srgb, var(--accent) 28%, transparent);
+        background: color-mix(in srgb, var(--accent-subtle) 82%, transparent);
+        color: var(--text-strong);
+      }
+      .skills-toolbar__meta {
+        color: var(--muted);
+        font-size: 12px;
+      }
       .skills-grid {
         display: grid;
         gap: 10px;
@@ -2109,6 +2137,13 @@
         color: var(--text-strong);
         font-size: 12px;
         text-align: center;
+      }
+      .skills-section__footer {
+        display: flex;
+        justify-content: flex-start;
+      }
+      .skills-section__toggle {
+        min-width: 0;
       }
       #skillsSummaryCards {
         grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));

@@ -21,6 +21,7 @@ const SIGNAL_DEDUPE_WINDOW_MS = 60_000;
 const TOUCH_WRITE_INTERVAL_MS = 30_000;
 const RELAY_MESSAGE_BACKLOG_MAX_AGE_MS = 10 * 60_000;
 const RELAY_MESSAGE_BACKLOG_MAX_ITEMS = 200;
+const RELAY_QUEUE_MAX_ITEMS_PER_PEER = 500;
 
 function now(): number {
   return Date.now();
@@ -235,6 +236,9 @@ export class RoomRelay {
         if (targetPeerId === peerId) continue;
         if (!state.relay_queues[targetPeerId]) state.relay_queues[targetPeerId] = [];
         state.relay_queues[targetPeerId].push(relayMessage);
+        if (state.relay_queues[targetPeerId].length > RELAY_QUEUE_MAX_ITEMS_PER_PEER) {
+          state.relay_queues[targetPeerId] = state.relay_queues[targetPeerId].slice(-RELAY_QUEUE_MAX_ITEMS_PER_PEER);
+        }
         delivered += 1;
       }
       state.recent_relay_messages.push(relayMessage);
@@ -277,12 +281,18 @@ export class RoomRelay {
 
   private cleanup(state: RoomState): void {
     const peerThreshold = now() - PEER_STALE_MS;
+    const relayQueueCutoff = now() - RELAY_MESSAGE_BACKLOG_MAX_AGE_MS;
     for (const [peerId, peer] of Object.entries(state.peers)) {
       if (peer.last_seen_at < peerThreshold) {
         delete state.peers[peerId];
         delete state.queues[peerId];
         delete state.relay_queues[peerId];
+        continue;
       }
+      const relayQueue = Array.isArray(state.relay_queues[peerId]) ? state.relay_queues[peerId] : [];
+      state.relay_queues[peerId] = relayQueue
+        .filter((message) => Number(message?.at || 0) >= relayQueueCutoff)
+        .slice(-RELAY_QUEUE_MAX_ITEMS_PER_PEER);
     }
     const dedupeThreshold = now() - SIGNAL_DEDUPE_WINDOW_MS;
     for (const [key, ts] of Object.entries(state.signal_fingerprints)) {

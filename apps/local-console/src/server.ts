@@ -766,6 +766,7 @@ type IntegrationStatusSummary = {
 };
 
 type SocialMessageView = SocialMessageRecord & {
+  avatar_url?: string;
   is_self: boolean;
   online: boolean;
   last_seen_at: number | null;
@@ -915,6 +916,9 @@ export class LocalNodeService {
   private lastBroadcastErrorAt = 0;
   private lastBroadcastError: string | null = null;
   private broadcastFailureCount = 0;
+  private consecutiveBroadcastFailures = 0;
+  private lastBroadcastRecoveryAttemptAt = 0;
+  private broadcastRecoveryInFlight = false;
   private broadcaster: NodeJS.Timeout | null = null;
   private subscriptionsBound = false;
   private broadcastEnabled = true;
@@ -1635,6 +1639,7 @@ export class LocalNodeService {
         return {
           ...message,
           display_name: profile?.display_name || message.display_name || "Unnamed",
+          avatar_url: profile?.avatar_url || "",
           is_self: message.agent_id === this.identity?.agent_id,
           online: isAgentOnline(lastSeenAt, Date.now(), PRESENCE_TTL_MS),
           last_seen_at: lastSeenAt || null,
@@ -2183,7 +2188,9 @@ export class LocalNodeService {
       this.lastBroadcastErrorAt = Date.now();
       this.lastBroadcastError = message;
       this.broadcastFailureCount += 1;
+      this.consecutiveBroadcastFailures += 1;
       await this.log("error", `Broadcast failed (reason=${reason}): ${message}`);
+      await this.maybeRecoverFromBroadcastFailure(reason, message);
       return { sent: false, reason: "publish_failed", error: message };
     }
 
@@ -2191,6 +2198,7 @@ export class LocalNodeService {
     this.broadcastCount += 1;
     this.lastBroadcastError = null;
     this.lastBroadcastErrorAt = 0;
+    this.consecutiveBroadcastFailures = 0;
 
     this.directory = ingestProfileRecord(this.directory, profileRecord);
     this.directory = ingestPresenceRecord(this.directory, presenceRecord);
@@ -2205,6 +2213,40 @@ export class LocalNodeService {
       `Broadcast sent (${indexRecords.length} index refs, replayed_messages=${replayMessages.length}, reason=${reason})`
     );
     return { sent: true, reason };
+  }
+
+  private async maybeRecoverFromBroadcastFailure(reason: string, errorMessage: string): Promise<void> {
+    const recoveryThreshold = 3;
+    const recoveryCooldownMs = 60_000;
+    if (this.broadcastRecoveryInFlight) {
+      return;
+    }
+    if (this.consecutiveBroadcastFailures < recoveryThreshold) {
+      return;
+    }
+    if (Date.now() - this.lastBroadcastRecoveryAttemptAt < recoveryCooldownMs) {
+      return;
+    }
+    if (this.adapterMode !== "relay-preview" && this.adapterMode !== "webrtc-preview" && this.adapterMode !== "real-preview") {
+      return;
+    }
+
+    this.broadcastRecoveryInFlight = true;
+    this.lastBroadcastRecoveryAttemptAt = Date.now();
+    try {
+      await this.log(
+        "warn",
+        `Broadcast recovery triggered after ${this.consecutiveBroadcastFailures} consecutive failures (${reason}): ${errorMessage}`
+      );
+      await this.restartNetworkAdapter("broadcast_failure_recovery");
+    } catch (recoveryError) {
+      await this.log(
+        "error",
+        `Broadcast recovery failed: ${recoveryError instanceof Error ? recoveryError.message : String(recoveryError)}`
+      );
+    } finally {
+      this.broadcastRecoveryInFlight = false;
+    }
   }
 
   private async hydrateFromDisk(): Promise<void> {

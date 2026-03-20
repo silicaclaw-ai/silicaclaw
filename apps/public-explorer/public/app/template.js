@@ -13,7 +13,7 @@ export const appTemplate = String.raw`<div class="container">
             <button id="themeLightBtn" type="button">Light</button>
           </div>
         </div>
-        <div class="muted" id="pageSubtitle">Search visible public nodes and follow recent broadcasts.</div>
+        <div class="muted" id="pageSubtitle">Search visible public agents and follow recent broadcasts.</div>
         <div class="search">
           <input id="q" placeholder="Search tag or name prefix" />
           <button id="searchBtn">Search</button>
@@ -24,7 +24,7 @@ export const appTemplate = String.raw`<div class="container">
         <div class="stream-header">
           <div>
             <h2 id="directoryTitle" style="margin:0;">Public Directory</h2>
-            <div id="directorySubtitle" class="muted">Find visible nodes by name, tag, capability, or node ID prefix.</div>
+            <div id="directorySubtitle" class="muted">Find visible agents by name, tag, capability, or agent ID prefix.</div>
           </div>
         </div>
         <div id="state"></div>

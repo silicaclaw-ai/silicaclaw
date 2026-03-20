@@ -108,15 +108,15 @@ export function createOverviewController({
     const snapshotHtml = `
       <div class="snapshot-card">
         <div class="snapshot-card__identity">
-          <div class="snapshot-card__label">Current Node</div>
+          <div class="snapshot-card__label">${t("overview.snapshotCurrentNode")}</div>
           <div class="snapshot-card__title">${escapeHtml(o.display_name || t("overview.unnamed"))}</div>
           <div class="snapshot-card__subtle mono">${escapeHtml(o.agent_id || "-")}</div>
         </div>
         <div class="snapshot-card__grid">
-          <div class="snapshot-card__item"><div class="label">Version</div><span class="value-inline">${escapeHtml(o.app_version || "-")}</span></div>
-          <div class="snapshot-card__item"><div class="label">Public</div><span class="value-inline">${o.public_enabled ? t("common.on") : t("common.off")}</span></div>
-          <div class="snapshot-card__item"><div class="label">Broadcast</div><span class="value-inline">${o.broadcast_enabled ? t("common.on") : t("common.off")}</span></div>
-          <div class="snapshot-card__item"><div class="label">Last Broadcast</div><span class="value-inline">${escapeHtml(ago(o.last_broadcast_at))}</span></div>
+          <div class="snapshot-card__item"><div class="label">${t("overview.snapshotVersion")}</div><span class="value-inline">${escapeHtml(o.app_version || "-")}</span></div>
+          <div class="snapshot-card__item"><div class="label">${t("overview.snapshotPublic")}</div><span class="value-inline">${o.public_enabled ? t("common.on") : t("common.off")}</span></div>
+          <div class="snapshot-card__item"><div class="label">${t("overview.snapshotBroadcast")}</div><span class="value-inline">${o.broadcast_enabled ? t("common.on") : t("common.off")}</span></div>
+          <div class="snapshot-card__item"><div class="label">${t("overview.snapshotLastBroadcast")}</div><span class="value-inline">${escapeHtml(ago(o.last_broadcast_at))}</span></div>
         </div>
       </div>
     `;
@@ -175,7 +175,7 @@ export function createOverviewController({
     document.getElementById("homePriorityGrid").innerHTML = [
       [t("overview.homeOpenClaw"), openclawRunning ? t("overview.homeRunning") : openclawDetected ? t("overview.homeInstalledOnly") : t("overview.homeStopped"), openclawRunning ? t("overview.homeMetaRunning") : t("overview.homeMetaNotRunning")],
       [t("overview.homeGlobalMode"), globalMode ? t("overview.homeGlobalReady") : t("overview.homeNotGlobal"), globalMode ? t("overview.homeMetaGlobal") : t("overview.homeMetaNotGlobal")],
-      [t("overview.homeBroadcastHealth"), broadcastHealthy ? t("overview.homeHealthy") : t("overview.homeDegraded"), lastNetworkError || `Last broadcast ${ago(o.last_broadcast_at)}`],
+      [t("overview.homeBroadcastHealth"), broadcastHealthy ? t("overview.homeHealthy") : t("overview.homeDegraded"), lastNetworkError || t("overview.lastBroadcastAgo", { value: ago(o.last_broadcast_at) })],
       [t("overview.homePeers"), String(all.filter((agent) => !agent.is_self && agent.online).length), t("overview.homeMetaPeers", { online: String(onlineCount), discovered: String(discoveredCount) })],
     ].map(([label, value, meta]) => `
       <div class="priority-card">

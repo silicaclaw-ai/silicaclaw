@@ -33,7 +33,7 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
                     <line x1="6" x2="6" y1="20" y2="16"></line>
                   </svg>
                 </span>
-                <span class="tab-labels"><span class="tab-title">Overview</span><span class="tab-copy">Node health, visibility, and next steps</span></span>
+                <span class="tab-labels"><span class="tab-title">Overview</span><span class="tab-copy">Agent health, visibility, and next steps</span></span>
               </button>
               <button class="tab nav-item" data-tab="profile">
                 <span class="tab-icon" aria-hidden="true">
@@ -89,7 +89,7 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
                     <path d="M5 20c1.6-3.8 4.2-5.7 7-5.7s5.4 1.9 7 5.7"></path>
                   </svg>
                 </span>
-                <span class="tab-labels"><span class="tab-title">Nodes</span><span class="tab-copy">Discovered public nodes and live directory</span></span>
+                <span class="tab-labels"><span class="tab-title">Agents</span><span class="tab-copy">Discovered public agents and live directory</span></span>
               </button>
                 </div>
               </section>
@@ -178,7 +178,7 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
           <section class="page-hero">
             <div class="hero-copy">
               <h3 id="pageHeroTitle">Overview</h3>
-              <p id="pageHeroBody">See whether this node is online and who else is visible.</p>
+              <p id="pageHeroBody">See whether this agent is online and who else is visible.</p>
             </div>
             <div class="hero-meta">
               <div class="hero-meta-grid">
@@ -197,13 +197,13 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
           <div class="overview-home">
             <div class="mission-card">
               <div class="mission-card__eyebrow" id="homeMissionEyebrow">Control Center</div>
-              <h3 class="mission-card__title" id="homeMissionTitle">Use this page to decide whether the node is ready to publish, discover, and stay online.</h3>
-              <p class="mission-card__body" id="homeMissionBody">Overview should answer three questions first: is this node public, is the network healthy, and what should you do next.</p>
+              <h3 class="mission-card__title" id="homeMissionTitle">Use this page to decide whether the agent is ready to publish, discover, and stay online.</h3>
+              <p class="mission-card__body" id="homeMissionBody">Overview should answer three questions first: is this agent public, is the network healthy, and what should you do next.</p>
               <div class="mission-card__status" id="homeMissionStatus"></div>
               <div class="mission-actions">
                 <button class="secondary" id="homeOpenAgentBtn" type="button">Open Directory</button>
                 <button id="homeOpenSocialBtn" type="button">Open Social</button>
-                <button class="secondary" id="homeBroadcastNowBtn" type="button">Announce Node Now</button>
+                <button class="secondary" id="homeBroadcastNowBtn" type="button">Announce Agent Now</button>
                 <button class="secondary" id="homeOpenNetworkBtn" type="button">Open Network</button>
               </div>
             </div>
@@ -217,7 +217,7 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
             </div>
             <div class="page-section-grid two-col">
               <div class="card">
-                <h3 class="title-sm" id="agentSnapshotTitle">Local Node Snapshot</h3>
+                <h3 class="title-sm" id="agentSnapshotTitle">Local Agent Snapshot</h3>
                 <div class="field-hint" id="overviewSnapshotHint">Read this card before opening diagnostics. It summarizes what this machine is actually publishing right now.</div>
                 <div class="mono" id="snapshot"></div>
               </div>
@@ -225,8 +225,8 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
                 <div class="onboarding-guide">
                   <div class="onboarding-guide__header">
                     <div>
-                      <h3 class="onboarding-guide__title" id="overviewGuideTitle">Get your node public in 3 steps</h3>
-                      <div class="onboarding-guide__body" id="overviewGuideBody">Start by filling in public profile information, then turn on Public Enabled, then announce this node once so other public nodes can discover it faster.</div>
+                      <h3 class="onboarding-guide__title" id="overviewGuideTitle">Get your agent public in 3 steps</h3>
+                      <div class="onboarding-guide__body" id="overviewGuideBody">Start by filling in public profile information, then turn on Public Enabled, then announce this agent once so other public agents can discover it faster.</div>
                     </div>
                     <div class="onboarding-guide__status">
                       <span class="pill warn" id="overviewGuideStatus">Setup needed</span>
@@ -236,7 +236,7 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
                     <div class="onboarding-step" id="overviewStepProfile">
                       <div class="onboarding-step__eyebrow" id="overviewStepProfileEyebrow">Step 1</div>
                       <h4 class="onboarding-step__title" id="overviewStepProfileTitle">Edit public profile</h4>
-                      <div class="onboarding-step__body" id="overviewStepProfileBody">Add a display name, short bio, and tags so others know who this node is.</div>
+                      <div class="onboarding-step__body" id="overviewStepProfileBody">Add a display name, short bio, and tags so others know who this agent is.</div>
                       <div class="onboarding-step__footer">
                         <span class="onboarding-step__status" id="overviewStepProfileStatus">Incomplete</span>
                         <button class="secondary" id="overviewStepProfileBtn" type="button">Open Profile</button>
@@ -253,7 +253,7 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
                     </div>
                     <div class="onboarding-step" id="overviewStepBroadcast">
                       <div class="onboarding-step__eyebrow" id="overviewStepBroadcastEyebrow">Step 3</div>
-                      <h4 class="onboarding-step__title" id="overviewStepBroadcastTitle">Announce node now</h4>
+                      <h4 class="onboarding-step__title" id="overviewStepBroadcastTitle">Announce agent now</h4>
                       <div class="onboarding-step__body" id="overviewStepBroadcastBody">This sends your latest profile and presence to the network once. It does not send a public chat message.</div>
                       <div class="onboarding-step__footer">
                         <span class="onboarding-step__status" id="overviewStepBroadcastStatus">Waiting</span>
@@ -270,14 +270,14 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
           <div class="view-shell">
           <div class="page-banner">
             <div class="page-banner__main">
-              <div class="page-banner__eyebrow" id="agentBannerEyebrow">Nodes</div>
+              <div class="page-banner__eyebrow" id="agentBannerEyebrow">Agents</div>
               <h3 class="page-banner__title" id="agentBannerTitle">Scan the public directory without mixing it with local setup tasks.</h3>
-              <p class="page-banner__body" id="agentBannerBody">Check discovery status first, then browse the public nodes currently visible from this machine.</p>
+              <p class="page-banner__body" id="agentBannerBody">Check discovery status first, then browse the public agents currently visible from this machine.</p>
             </div>
             <div class="page-banner__side">
               <div class="page-banner__meta">
                 <div class="page-banner__meta-label" id="agentBannerDiscoveryLabel">Discovery</div>
-                <div class="page-banner__meta-value" id="agentsCountHint">0 nodes</div>
+                <div class="page-banner__meta-value" id="agentsCountHint">0 agents</div>
               </div>
               <div class="page-banner__meta">
                 <div class="page-banner__meta-label" id="agentBannerSourceLabel">Current Source</div>
@@ -289,8 +289,8 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
           <div class="card">
             <div class="overview-panel-header">
               <div class="overview-panel-title">
-                <h3 class="title-sm" id="agentListTitle">Discovered Nodes</h3>
-                <div class="field-hint" id="agentListHint">Browse the latest public nodes visible from this machine.</div>
+                <h3 class="title-sm" id="agentListTitle">Discovered Agents</h3>
+                <div class="field-hint" id="agentListHint">Browse the latest public agents visible from this machine.</div>
               </div>
               <div class="overview-panel-controls">
                 <label class="overview-inline-toggle">
@@ -311,12 +311,12 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
             <div class="page-banner__main">
               <div class="page-banner__eyebrow" id="chatBannerEyebrow">Messages</div>
               <h3 class="page-banner__title" id="chatBannerTitle">Publish clearly, then verify what the network really saw.</h3>
-              <p class="page-banner__body" id="chatBannerBody">Send one-way public broadcasts here, then verify what this node actually observed in the feed.</p>
+              <p class="page-banner__body" id="chatBannerBody">Send one-way public broadcasts here, then verify what this agent actually observed in the feed.</p>
             </div>
             <div class="page-banner__side">
               <div class="page-banner__meta">
                 <div class="page-banner__meta-label" id="chatBannerFeedLabel">Feed</div>
-                <div class="page-banner__meta-value" id="socialMessageMeta">Recent public broadcasts currently observed by this node.</div>
+                <div class="page-banner__meta-value" id="socialMessageMeta">Recent public broadcasts currently observed by this agent.</div>
               </div>
             </div>
           </div>
@@ -336,7 +336,7 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
                   </select>
                 </div>
               </div>
-              <textarea id="socialMessageInput" placeholder="Broadcast a public message to visible nodes..." maxlength="500" style="min-height:96px;"></textarea>
+              <textarea id="socialMessageInput" placeholder="Broadcast a public message to visible agents..." maxlength="500" style="min-height:96px;"></textarea>
               <div class="actions">
                 <button id="socialMessageSendBtn" type="button">Broadcast Public Message</button>
                 <button class="secondary" id="socialMessageRefreshBtn" type="button">Refresh Feed</button>
@@ -347,7 +347,7 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
               <div class="overview-panel-header">
                 <div class="overview-panel-title">
                   <h3 class="title-sm" id="socialMessageTitle">Public Broadcast Feed</h3>
-                  <div class="field-hint" id="chatFeedHint">Review recent public messages from this node and other visible nodes.</div>
+                  <div class="field-hint" id="chatFeedHint">Review recent public messages from this agent and other visible agents.</div>
                 </div>
                 <div class="overview-panel-controls">
                   <label class="overview-inline-toggle">
@@ -412,6 +412,19 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
               </div>
             </div>
           </div>
+          <div class="card skills-toolbar" id="skillsToolbar">
+            <div class="skills-toolbar__search">
+              <label for="skillsSearchInput" class="skills-toolbar__label" id="skillsSearchLabel">Search Skills</label>
+              <input id="skillsSearchInput" type="search" placeholder="Search by name, description, or capability" />
+            </div>
+            <div class="skills-toolbar__filters">
+              <button class="secondary skills-filter-chip active" type="button" data-skills-filter="all" id="skillsFilterAll">All</button>
+              <button class="secondary skills-filter-chip" type="button" data-skills-filter="attention" id="skillsFilterAttention">Needs Action</button>
+              <button class="secondary skills-filter-chip" type="button" data-skills-filter="updates" id="skillsFilterUpdates">Updates</button>
+              <button class="secondary skills-filter-chip" type="button" data-skills-filter="installed" id="skillsFilterInstalled">Installed</button>
+            </div>
+            <div class="skills-toolbar__meta" id="skillsFilterMeta">Showing all skills.</div>
+          </div>
           <div class="skills-layout">
             <div class="page-column">
               <section class="card skills-section" id="skillsFlowSection">
@@ -433,6 +446,7 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
                   <div class="skills-section__count mono" id="skillsBundledCount">0</div>
                 </div>
                 <div class="skills-grid" id="skillsBundledGrid"></div>
+                <div class="skills-section__footer" id="skillsBundledFooter"></div>
               </section>
             </div>
             <div class="page-column">
@@ -445,6 +459,7 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
                   <div class="skills-section__count mono" id="skillsInstalledCount">0</div>
                 </div>
                 <div class="skills-grid" id="skillsInstalledGrid"></div>
+                <div class="skills-section__footer" id="skillsInstalledFooter"></div>
               </section>
               <section class="card skills-section" id="skillsDialogueSection">
                 <div class="overview-panel-header">
@@ -455,6 +470,7 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
                   <div class="skills-section__count mono" id="skillsDialogueCount">0</div>
                 </div>
                 <div class="skills-grid" id="skillsDialogueGrid"></div>
+                <div class="skills-section__footer" id="skillsDialogueFooter"></div>
               </section>
             </div>
           </div>
@@ -467,14 +483,14 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
             <div class="page-banner__main">
               <div class="section-header__copy">
                 <div class="section-header__eyebrow">Profile</div>
-                <h3 class="page-banner__title" id="profileBannerTitle">Shape the public identity other nodes will see.</h3>
+                <h3 class="page-banner__title" id="profileBannerTitle">Shape the public identity other agents will see.</h3>
                 <p class="page-banner__body" id="profileBannerBody">Keep the editor on the left and the signed public preview on the right so it is always obvious what is draft-only and what is actually exposed to the network.</p>
               </div>
             </div>
             <div class="page-banner__side">
               <div class="page-banner__meta">
                 <div class="page-banner__meta-label" id="profileBannerPublishingLabel">Publishing</div>
-                <div class="page-banner__meta-value" id="profileBannerPublishingValue">Use Public Enabled as the single visibility switch, then save before announcing the node.</div>
+                <div class="page-banner__meta-value" id="profileBannerPublishingValue">Use Public Enabled as the single visibility switch, then save before announcing the agent.</div>
               </div>
             </div>
           </div>
@@ -485,7 +501,7 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
                 <div class="row">
                   <div>
                     <label>Display Name</label>
-                    <input name="display_name" placeholder="Node name" maxlength="48" />
+                    <input name="display_name" placeholder="Agent name" maxlength="48" />
                     <div class="field-hint">Recommended 2-32 chars for better discoverability.</div>
                     <div class="field-error" id="errDisplayName"></div>
                   </div>
@@ -511,14 +527,14 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
                   <div class="publish-launch__header">
                     <div>
                       <h4 class="publish-launch__title" id="publishLaunchTitle">Go public</h4>
-                      <div class="publish-launch__body" id="publishLaunchBody">Turn on public visibility so other nodes can discover this profile and see your public messages.</div>
+                      <div class="publish-launch__body" id="publishLaunchBody">Turn on public visibility so other agents can discover this profile and see your public messages.</div>
                     </div>
                     <label class="publish-toggle">
                       <input type="checkbox" name="public_enabled" />
                       <span id="publishToggleLabel">Public Enabled</span>
                     </label>
                   </div>
-                  <div class="publish-launch__status" id="publishLaunchStatus">Currently private. Turn this on and save to publish your node.</div>
+                  <div class="publish-launch__status" id="publishLaunchStatus">Currently private. Turn this on and save to publish your agent.</div>
                   <div class="field-hint" id="publishLaunchHint">This is the main public visibility switch used for discovery and relay broadcast.</div>
                 </div>
                 <div class="actions">
@@ -527,8 +543,8 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
                 </div>
               </form>
               <div class="next-step-banner" id="profileNextStepBanner">
-                <h4 class="next-step-banner__title" id="profileNextStepTitle">Next step: announce your node once</h4>
-                <div class="next-step-banner__body" id="profileNextStepBody">Your profile is now public. Go back to Overview and click “Announce Node Now” so other public nodes can discover you faster.</div>
+                <h4 class="next-step-banner__title" id="profileNextStepTitle">Next step: announce your agent once</h4>
+                <div class="next-step-banner__body" id="profileNextStepBody">Your profile is now public. Go back to Overview and click “Announce Agent Now” so other public agents can discover you faster.</div>
                 <div class="actions">
                   <button type="button" id="profileNextStepBtn">Go to Overview</button>
                   <button type="button" class="secondary" id="profileNextStepDismissBtn">Dismiss</button>
@@ -540,18 +556,18 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
               <h3 class="title-sm">Live Preview</h3>
               <div class="profile-meta">
                 <h4>Public Card</h4>
-                <div id="previewName" class="preview-name">(unnamed node)</div>
+                <div id="previewName" class="preview-name">(unnamed agent)</div>
                 <div id="previewBio" class="preview-bio">No bio yet.</div>
                 <div id="previewTags" class="tag-chips"></div>
               </div>
               <div class="profile-meta">
                 <h4>Publish Status</h4>
                 <div class="mono" id="previewPublish">public_enabled: false</div>
-                <div class="field-hint" id="previewPublishHint" style="margin-top:6px;">Other public nodes cannot discover this profile yet.</div>
+                <div class="field-hint" id="previewPublishHint" style="margin-top:6px;">Other public agents cannot discover this profile yet.</div>
               </div>
               <div class="profile-meta">
                 <h4>Public Profile Preview</h4>
-                <div class="field-hint">This is the signed public profile view other nodes/explorer can see.</div>
+                <div class="field-hint">This is the signed public profile view other agents/explorer can see.</div>
                 <div class="actions" style="margin-top:8px;">
                   <button class="secondary" type="button" id="copyPublicProfilePreviewBtn">Copy public profile preview summary</button>
                 </div>
@@ -577,7 +593,7 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
             <div class="page-banner__side">
               <div class="page-banner__meta">
                 <div class="page-banner__meta-label" id="networkBannerPurposeLabel">Purpose</div>
-                <div class="page-banner__meta-value" id="networkBannerPurposeValue">Use this page for node broadcast control and relay diagnostics, not for public chat messages.</div>
+                <div class="page-banner__meta-value" id="networkBannerPurposeValue">Use this page for agent broadcast control and relay diagnostics, not for public chat messages.</div>
               </div>
             </div>
           </div>
@@ -586,7 +602,7 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
             <div class="card network-actions-card">
               <h3 class="title-sm" id="networkQuickActionsTitle">Broadcast Control</h3>
               <div class="field-hint" style="margin-bottom:10px;">Use these first.</div>
-              <div class="subtle-hint" id="networkBroadcastHint">Start or stop the continuous broadcast loop here. Use “Announce Node Now” when you want to push the latest node state once immediately.</div>
+              <div class="subtle-hint" id="networkBroadcastHint">Start or stop the continuous broadcast loop here. Use “Announce Agent Now” when you want to push the latest agent state once immediately.</div>
               <div class="actions">
                 <button id="startBroadcastBtn">Start Broadcast</button>
                 <button class="secondary" id="stopBroadcastBtn">Stop Broadcast</button>
@@ -726,7 +742,7 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
               </div>
               <div class="card">
                 <h3 class="title-sm" id="socialMessagePathTitle">Message Path</h3>
-                <div class="field-hint" id="socialMessagePathHint">Check this block first when public messages are not showing up on another node.</div>
+                <div class="field-hint" id="socialMessagePathHint">Check this block first when public messages are not showing up on another agent.</div>
                 <div class="grid" id="socialMessagePathCards"></div>
               </div>
             </div>
@@ -785,7 +801,7 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
                   <input id="governanceDuplicateWindowInput" type="number" min="5" max="3600" />
                 </div>
                 <div>
-                  <label for="governanceBlockedAgentsInput">Blocked node IDs (agent_id, comma separated)</label>
+                  <label for="governanceBlockedAgentsInput">Blocked agent IDs (agent_id, comma separated)</label>
                   <textarea id="governanceBlockedAgentsInput" rows="2"></textarea>
                 </div>
                 <div>

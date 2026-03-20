@@ -24,6 +24,114 @@ export function createSocialController({
   toPrettyJson,
   writeUiCache,
 }) {
+  const SKILLS_SECTION_LIMIT = 4;
+  const SKILLS_DIALOGUE_LIMIT = 1;
+  let skillsQuery = "";
+  let skillsFilter = "all";
+  const skillsExpanded = {
+    bundled: false,
+    installed: false,
+    dialogue: false,
+  };
+
+  function skillModeLabel(mode) {
+    if (mode === "workspace") return t("labels.skillsModeWorkspace");
+    if (mode === "legacy") return t("labels.skillsModeLegacy");
+    if (mode === "bundled") return t("labels.skillsModeBundled");
+    if (mode === "installed") return t("labels.skillsModeInstalled");
+    return mode ? String(mode) : t("labels.skillsModeGeneric");
+  }
+
+  function normalizeSkillSearchText(value) {
+    return String(value || "").trim().toLowerCase();
+  }
+
+  function setSkillsQuery(value) {
+    skillsQuery = normalizeSkillSearchText(value);
+  }
+
+  function setSkillsFilter(value) {
+    const next = String(value || "").trim();
+    skillsFilter = ["all", "attention", "updates", "installed"].includes(next) ? next : "all";
+  }
+
+  function toggleSkillsExpanded(section) {
+    if (!(section in skillsExpanded)) return;
+    skillsExpanded[section] = !skillsExpanded[section];
+  }
+
+  function skillMatchesSearch(skill) {
+    if (!skillsQuery) return true;
+    const haystack = [
+      skill.display_name,
+      skill.name,
+      skill.description,
+      skill.version,
+      ...(Array.isArray(skill.capabilities) ? skill.capabilities : []),
+      ...(Array.isArray(skill.owner_dialogue_examples_zh) ? skill.owner_dialogue_examples_zh : []),
+    ].map((item) => normalizeSkillSearchText(item)).join(" ");
+    return haystack.includes(skillsQuery);
+  }
+
+  function skillMatchesFilter(skill, section) {
+    if (skillsFilter === "all") return true;
+    if (skillsFilter === "updates") return Boolean(skill.update_available);
+    if (skillsFilter === "installed") {
+      return section === "installed" ? true : Boolean(skill.installed_in_openclaw);
+    }
+    if (skillsFilter === "attention") {
+      return section === "installed"
+        ? Boolean(skill.update_available)
+        : Boolean(skill.update_available || !skill.installed_in_openclaw);
+    }
+    return true;
+  }
+
+  function renderSkillsSectionFooter({ footerId, section, totalCount, visibleCount, limit }) {
+    const footer = document.getElementById(footerId);
+    if (!footer) return;
+    if (totalCount <= limit) {
+      footer.innerHTML = "";
+      return;
+    }
+    const expanded = skillsExpanded[section];
+    const hiddenCount = Math.max(totalCount - visibleCount, 0);
+    footer.innerHTML = `
+      <button class="secondary skills-section__toggle" type="button" data-skills-toggle="${section}">
+        ${expanded ? t("actions.showLess") : t("actions.showMoreCount", { count: String(hiddenCount) })}
+      </button>
+    `;
+  }
+
+  function renderFilteredSkillCards({ skills, section, gridId, footerId, renderer, limit }) {
+    const filtered = skills.filter((skill) => skillMatchesSearch(skill) && skillMatchesFilter(skill, section));
+    const expanded = skillsExpanded[section];
+    const visible = expanded ? filtered : filtered.slice(0, limit);
+    document.getElementById(gridId).innerHTML = visible.length
+      ? visible.map((skill) => renderer(skill)).join("")
+      : `<div class="skills-empty">${t("hints.skillsNoFilterMatch")}</div>`;
+    renderSkillsSectionFooter({
+      footerId,
+      section,
+      totalCount: filtered.length,
+      visibleCount: visible.length,
+      limit,
+    });
+    return filtered.length;
+  }
+
+  function renderSkillsFilterMeta({ bundledCount, installedCount, dialogueCount }) {
+    const matchedTotal = bundledCount + installedCount + dialogueCount;
+    const filterLabel = t(`labels.skillsFilter${skillsFilter.charAt(0).toUpperCase()}${skillsFilter.slice(1)}`);
+    document.getElementById("skillsFilterMeta").textContent = t("hints.skillsFilterMeta", {
+      count: String(matchedTotal),
+      filter: filterLabel,
+    });
+    document.querySelectorAll("[data-skills-filter]").forEach((btn) => {
+      btn.classList.toggle("active", btn.getAttribute("data-skills-filter") === skillsFilter);
+    });
+  }
+
   function renderSocialMessages() {
     const listEl = document.getElementById("socialMessageList");
     const metaEl = document.getElementById("socialMessageMeta");
@@ -69,6 +177,11 @@ export function createSocialController({
     listEl.innerHTML = filteredMessages
       .map((item) => {
         const visibleRemoteCount = getVisibleRemotePublicCount();
+        const avatarUrl = String(item.avatar_url || "").trim();
+        const displayName = String(item.display_name || t("overview.unnamed")).trim() || t("overview.unnamed");
+        const avatar = avatarUrl
+          ? `<img class="agent-card__avatar" src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(displayName)}" loading="lazy" />`
+          : `<div class="agent-card__avatar-fallback">${escapeHtml((displayName[0] || "?").toUpperCase())}</div>`;
         const selfStatusChips = item.is_self
           ? `
               <span class="tag-chip" style="margin-left:8px;">${t("overview.selfMessagePublished")}</span>
@@ -101,14 +214,17 @@ export function createSocialController({
         return `
           <div class="log-item">
             <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-              <div>
-                <strong>${escapeHtml(item.display_name || t("overview.unnamed"))}</strong>
-                <span class="mono" style="color:#90a2c3; margin-left:8px;">${escapeHtml(shortId(item.agent_id || ""))}</span>
-                <span class="tag-chip" style="margin-left:8px;">${escapeHtml(item.topic || t("labels.globalTopic"))}</span>
-                ${item.is_self ? `<span class="tag-chip" style="margin-left:8px;">${t("overview.messageFilterSelf")}</span>` : ""}
-                <span class="tag-chip" style="margin-left:8px;">${item.online ? t("overview.online") : t("overview.offline")}</span>
-                ${observationChip}
-                ${selfStatusChips}
+              <div style="display:flex; align-items:flex-start; gap:10px; min-width:0;">
+                ${avatar}
+                <div style="min-width:0;">
+                  <strong>${escapeHtml(displayName)}</strong>
+                  <span class="mono" style="color:#90a2c3; margin-left:8px;">${escapeHtml(shortId(item.agent_id || ""))}</span>
+                  <span class="tag-chip" style="margin-left:8px;">${escapeHtml(item.topic || t("labels.globalTopic"))}</span>
+                  ${item.is_self ? `<span class="tag-chip" style="margin-left:8px;">${t("overview.messageFilterSelf")}</span>` : ""}
+                  <span class="tag-chip" style="margin-left:8px;">${item.online ? t("overview.online") : t("overview.offline")}</span>
+                  ${observationChip}
+                  ${selfStatusChips}
+                </div>
               </div>
               <div class="mono" style="color:#90a2c3;">${new Date(item.created_at).toLocaleString()}</div>
             </div>
@@ -425,8 +541,8 @@ export function createSocialController({
       <div class="skill-card">
         <div class="skill-card__top">
           <div>
-            <div class="skill-card__eyebrow">${escapeHtml(options.eyebrow || skill.install_mode || "skill")}</div>
-            <div class="skill-card__title">${escapeHtml(skill.display_name || skill.name || "Skill")}</div>
+            <div class="skill-card__eyebrow">${escapeHtml(skillModeLabel(options.eyebrow || skill.install_mode || "skill"))}</div>
+            <div class="skill-card__title">${escapeHtml(skill.display_name || skill.name || t("labels.skillsModeGeneric"))}</div>
           </div>
           <div class="skill-card__version mono">${escapeHtml(versionText)}</div>
         </div>
@@ -476,7 +592,7 @@ export function createSocialController({
       <div class="skill-card">
         <div class="skill-card__top">
           <div>
-            <div class="skill-card__eyebrow">${escapeHtml(skill.display_name || skill.name || "Skill")}</div>
+            <div class="skill-card__eyebrow">${escapeHtml(skill.display_name || skill.name || t("labels.skillsModeGeneric"))}</div>
             <div class="skill-card__title">${escapeHtml(t("labels.skillsDialogueExamples"))}</div>
           </div>
           <div class="skill-card__version mono">${escapeHtml(skill.version || "-")}</div>
@@ -604,36 +720,57 @@ export function createSocialController({
       `).join("")
       : `<div class="skills-empty">${t("hints.skillsNoBundled")}</div>`;
 
-    document.getElementById("skillsBundledGrid").innerHTML = bundledSorted.length
-      ? bundledSorted.map((skill) => renderSkillCard(skill, {
-          eyebrow: skill.install_mode === "workspace" || skill.install_mode === "legacy" ? skill.install_mode : "bundled",
-          statusText: skill.update_available
-            ? t("labels.skillsUpdateAvailable")
-            : skill.installed_in_openclaw
-              ? `${t("labels.skillsStatus")}: ${t("common.yes")}`
-              : t("hints.skillsNotInstalled"),
-          installable: true,
-          updateAvailable: skill.update_available,
-          installedVersion: skill.installed_version,
-          bundledVersion: skill.version,
-        })).join("")
-      : `<div class="skills-empty">${t("hints.skillsNoBundled")}</div>`;
+    const bundledMatchCount = renderFilteredSkillCards({
+      skills: bundledSorted,
+      section: "bundled",
+      gridId: "skillsBundledGrid",
+      footerId: "skillsBundledFooter",
+      limit: SKILLS_SECTION_LIMIT,
+      renderer: (skill) => renderSkillCard(skill, {
+        eyebrow: skill.install_mode === "workspace" || skill.install_mode === "legacy" ? skill.install_mode : "bundled",
+        statusText: skill.update_available
+          ? t("labels.skillsUpdateAvailable")
+          : skill.installed_in_openclaw
+            ? `${t("labels.skillsStatus")}: ${t("common.yes")}`
+            : t("hints.skillsNotInstalled"),
+        installable: true,
+        updateAvailable: skill.update_available,
+        installedVersion: skill.installed_version,
+        bundledVersion: skill.version,
+      }),
+    });
 
-    document.getElementById("skillsInstalledGrid").innerHTML = installedSorted.length
-      ? installedSorted.map((skill) => renderSkillCard(skill, {
-          eyebrow: skill.install_mode || "installed",
-          statusText: skill.update_available
-            ? t("labels.skillsUpdateAvailable")
-            : `${t("labels.skillsStatus")}: ${escapeHtml(String(skill.install_mode || "-"))}`,
-          updateAvailable: skill.update_available,
-          installedVersion: skill.version,
-          bundledVersion: skill.bundled_version,
-        })).join("")
-      : `<div class="skills-empty">${t("hints.skillsNoInstalled")}</div>`;
+    const installedMatchCount = renderFilteredSkillCards({
+      skills: installedSorted,
+      section: "installed",
+      gridId: "skillsInstalledGrid",
+      footerId: "skillsInstalledFooter",
+      limit: SKILLS_SECTION_LIMIT,
+      renderer: (skill) => renderSkillCard(skill, {
+        eyebrow: skill.install_mode || "installed",
+        statusText: skill.update_available
+          ? t("labels.skillsUpdateAvailable")
+          : `${t("labels.skillsStatus")}: ${escapeHtml(skillModeLabel(skill.install_mode || "installed"))}`,
+        updateAvailable: skill.update_available,
+        installedVersion: skill.version,
+        bundledVersion: skill.bundled_version,
+      }),
+    });
 
-    document.getElementById("skillsDialogueGrid").innerHTML = featuredSkills.length
-      ? featuredSkills.map((skill) => renderDialogueCard(skill)).join("")
-      : `<div class="skills-empty">${t("hints.skillsNoDialogueExamples")}</div>`;
+    const dialogueMatchCount = renderFilteredSkillCards({
+      skills: featuredSkills,
+      section: "dialogue",
+      gridId: "skillsDialogueGrid",
+      footerId: "skillsDialogueFooter",
+      limit: SKILLS_DIALOGUE_LIMIT,
+      renderer: (skill) => renderDialogueCard(skill),
+    });
+
+    renderSkillsFilterMeta({
+      bundledCount: bundledMatchCount,
+      installedCount: installedMatchCount,
+      dialogueCount: dialogueMatchCount,
+    });
 
     const installBtn = document.getElementById("skillsInstallBtn");
     installBtn.textContent = !openclawDetected
@@ -659,6 +796,9 @@ export function createSocialController({
     refreshSocial,
     renderLogs,
     renderSocialMessages,
+    setSkillsFilter,
+    setSkillsQuery,
     setLogLevelFilter,
+    toggleSkillsExpanded,
   };
 }

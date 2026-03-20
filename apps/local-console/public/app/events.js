@@ -319,6 +319,27 @@ export function bindAppEvents({
     });
   });
 
+  document.getElementById("skillsSearchInput").addEventListener("input", async (event) => {
+    socialController.setSkillsQuery(String(event.target?.value || ""));
+    await refreshSkills();
+  });
+
+  document.querySelectorAll("[data-skills-filter]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      socialController.setSkillsFilter(String(btn.getAttribute("data-skills-filter") || "all"));
+      await refreshSkills();
+    });
+  });
+
+  document.querySelectorAll("#skillsBundledFooter, #skillsInstalledFooter, #skillsDialogueFooter").forEach((footer) => {
+    footer.addEventListener("click", async (event) => {
+      const btn = event.target instanceof Element ? event.target.closest("[data-skills-toggle]") : null;
+      if (!btn) return;
+      socialController.toggleSkillsExpanded(String(btn.getAttribute("data-skills-toggle") || ""));
+      await refreshSkills();
+    });
+  });
+
   document.getElementById("saveGovernanceBtn").addEventListener("click", async () => {
     setFeedback("socialGovernanceFeedback", t("common.saving"));
     try {

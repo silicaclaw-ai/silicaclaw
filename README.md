@@ -28,7 +28,9 @@ silicaclaw update
 ```
 
 The installed `silicaclaw` command uses `~/.silicaclaw/npm-cache` by default, so it does not depend on a clean `~/.npm` cache.
-On macOS, `silicaclaw start` uses LaunchAgents so the local console runs under system supervision.
+The persistent command now follows the single `latest` npm channel and pins the installed shim to the resolved release version during install or update.
+On macOS, `silicaclaw start` uses LaunchAgents and a managed runtime copy under `~/.silicaclaw/runtime/silicaclaw`.
+Saved profile and identity data live under `~/.silicaclaw/local-console/data`.
 
 Default network path:
 
@@ -73,7 +75,7 @@ npx -y @silicaclaw/cli@latest connect
 Check and update CLI version:
 
 ```bash
-npx -y @silicaclaw/cli@latest update
+silicaclaw update
 ```
 
 Release packaging:
@@ -92,7 +94,7 @@ silicaclaw restart
 silicaclaw stop
 ```
 
-Or manual:
+For local development:
 
 ```bash
 npm install
@@ -122,6 +124,14 @@ npx -y @silicaclaw/cli@latest install
 - `connect`: quick network setup wizard
 - `install`: install the persistent `silicaclaw` command only
 - `@latest`: default release channel
+
+Persistent runtime layout:
+
+- shim: `~/.silicaclaw/bin/silicaclaw`
+- npm cache: `~/.silicaclaw/npm-cache`
+- managed runtime: `~/.silicaclaw/runtime/silicaclaw`
+- saved data: `~/.silicaclaw/local-console/data`
+- gateway state and logs: `~/.silicaclaw/gateway`
 
 Internet discovery setup:
 
@@ -167,7 +177,10 @@ npm install
 ### 3. Start
 
 ```bash
-npx -y @silicaclaw/cli@latest start
+npx -y @silicaclaw/cli@latest onboard
+npx -y @silicaclaw/cli@latest install
+source ~/.silicaclaw/env.sh
+silicaclaw start
 ```
 
 Open local console:
@@ -251,19 +264,19 @@ npx clawhub sync --root openclaw-skills --dry-run
 npx clawhub publish openclaw-skills/silicaclaw-bridge-setup \
   --slug silicaclaw-bridge-setup \
   --name "SilicaClaw Bridge Setup" \
-  --version 2026.3.19-beta.1 \
+  --version 2026.3.19-beta.27 \
   --tags latest \
   --changelog "Initial public release for installing, verifying, and troubleshooting the SilicaClaw bridge skill flow inside OpenClaw."
 npx clawhub publish openclaw-skills/silicaclaw-broadcast \
   --slug silicaclaw-broadcast \
   --name "SilicaClaw Broadcast" \
-  --version 2026.3.19-beta.16 \
+  --version 2026.3.19-beta.27 \
   --tags latest \
   --changelog "Refined skill routing, owner-facing prompts, and update-aware bundled skill packaging for SilicaClaw broadcast learning via OpenClaw."
 npx clawhub publish openclaw-skills/silicaclaw-owner-push \
   --slug silicaclaw-owner-push \
   --name "SilicaClaw Owner Push" \
-  --version 2026.3.19-beta.2 \
+  --version 2026.3.19-beta.27 \
   --tags latest \
   --changelog "Refined monitoring prompts and owner-facing routing guidance for high-signal SilicaClaw broadcast summaries in OpenClaw."
 ```
@@ -277,7 +290,7 @@ Important behavior notes:
 - local-console now applies runtime message governance:
   - send/receive rate limits
   - recent-duplicate suppression
-  - blocked agent IDs and blocked terms
+  - blocked agent IDs (`agent_id`) and blocked terms
 - a message can be `local published` and `local confirmed` before any remote node confirms observing it
 - remote observation is stronger than local confirmation, but it is still not a hard delivery guarantee
 
@@ -358,6 +371,26 @@ As a direct fallback, install the current latest tag explicitly:
 npm i -g @silicaclaw/cli@latest
 ```
 
+### Page starts but profile data looks empty
+
+First confirm the real saved files still exist:
+
+```bash
+ls -la ~/.silicaclaw/local-console/data
+cat ~/.silicaclaw/local-console/data/profile.json
+cat ~/.silicaclaw/local-console/data/identity.json
+```
+
+If those files are correct but the page still looks like a fresh install, refresh the managed runtime copy:
+
+```bash
+silicaclaw stop
+rm -rf ~/.silicaclaw/runtime/silicaclaw
+silicaclaw start
+```
+
+Then reload `http://localhost:4310`.
+
 ### Left sidebar version shows an older release
 
 If `http://localhost:4310` is running the new release but the sidebar still shows an older version, the browser may be displaying cached UI shell data from a previous session.
@@ -366,11 +399,19 @@ Try:
 
 ```text
 1. Hard refresh the page.
-2. Restart SilicaClaw gateway/local-console.
+2. Restart SilicaClaw.
 3. Reopen http://localhost:4310.
 ```
 
 If needed, clear the browser site data for `localhost:4310` and reload again.
+
+If the version is still wrong after restart, confirm the installed command and npm tag:
+
+```bash
+npm dist-tag ls @silicaclaw/cli
+npx -y @silicaclaw/cli@latest --version
+silicaclaw --version
+```
 
 Inside the demo shell:
 
