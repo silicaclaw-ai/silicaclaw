@@ -394,8 +394,8 @@
       .nav-section {
         display: grid;
         align-content: start;
-        gap: 6px;
-        margin-bottom: 10px;
+        gap: 8px;
+        margin-bottom: 14px;
       }
       .nav-section:last-child {
         margin-bottom: 0;
@@ -418,6 +418,7 @@
         display: grid;
         align-content: start;
         gap: 4px;
+        padding: 2px 0 0;
       }
       .nav button {
         position: relative;

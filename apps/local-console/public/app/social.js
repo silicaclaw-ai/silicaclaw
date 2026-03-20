@@ -168,6 +168,18 @@ export function createSocialController({
           seconds: String(Math.floor((governance.send_limit?.window_ms || 60000) / 1000)),
         })}`
       : t("overview.messageHint");
+    const totalPages = Math.max(1, Math.ceil((socialMessagesTotal || 0) / SOCIAL_MESSAGE_PAGE_SIZE));
+    const currentPage = Math.min(socialMessagesPage, totalPages);
+    const updatePager = () => {
+      const pageMetaEl = document.getElementById("socialMessagePageMeta");
+      const prevBtn = document.getElementById("socialMessagePrevPageBtn");
+      const nextBtn = document.getElementById("socialMessageNextPageBtn");
+      if (pageMetaEl) {
+        pageMetaEl.textContent = t("overview.pageStatus", { page: String(currentPage), total: String(totalPages) });
+      }
+      if (prevBtn) prevBtn.disabled = currentPage <= 1;
+      if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
+    };
     if (!socialMessagesCache.length) {
       const nextMeta = t("overview.noMessagesMeta");
       const nextHtml = `<div class="empty-state">${t("overview.noMessagesEmpty")}</div>`;
@@ -176,6 +188,7 @@ export function createSocialController({
         hintEl.textContent = governanceHint;
         metaEl.textContent = nextMeta;
         listEl.innerHTML = nextHtml;
+        updatePager();
         lastMessagesRenderKey = renderKey;
       }
       return;
@@ -197,9 +210,6 @@ export function createSocialController({
         })}`
       : "";
     const nextMeta = `${baseMeta}${governanceMeta}`;
-    const totalPages = Math.max(1, Math.ceil((socialMessagesTotal || 0) / SOCIAL_MESSAGE_PAGE_SIZE));
-    const currentPage = Math.min(socialMessagesPage, totalPages);
-
     if (!filteredMessages.length) {
       const nextHtml = `<div class="empty-state">${t("overview.noMessagesEmpty")}</div>`;
       const renderKey = JSON.stringify({ hint: governanceHint, meta: nextMeta, html: nextHtml });
@@ -207,6 +217,7 @@ export function createSocialController({
         hintEl.textContent = governanceHint;
         metaEl.textContent = nextMeta;
         listEl.innerHTML = nextHtml;
+        updatePager();
         lastMessagesRenderKey = renderKey;
       }
       return;
@@ -290,18 +301,7 @@ export function createSocialController({
     hintEl.textContent = governanceHint;
     metaEl.textContent = nextMeta;
     listEl.innerHTML = nextHtml;
-    const pageMetaEl = document.getElementById("socialMessagePageMeta");
-    const prevBtn = document.getElementById("socialMessagePrevPageBtn");
-    const nextBtn = document.getElementById("socialMessageNextPageBtn");
-    if (pageMetaEl) {
-      pageMetaEl.textContent = t("overview.pageStatus", { page: String(currentPage), total: String(totalPages) });
-    }
-    if (prevBtn) {
-      prevBtn.disabled = currentPage <= 1;
-    }
-    if (nextBtn) {
-      nextBtn.disabled = currentPage >= totalPages;
-    }
+    updatePager();
     lastMessagesRenderKey = renderKey;
   }
 
@@ -898,6 +898,13 @@ export function createSocialController({
     refreshSocial,
     renderLogs,
     renderSocialMessages,
+    nextSocialMessagesPage: () => {
+      const totalPages = Math.max(1, Math.ceil((socialMessagesTotal || 0) / SOCIAL_MESSAGE_PAGE_SIZE));
+      socialMessagesPage = Math.min(totalPages, socialMessagesPage + 1);
+    },
+    prevSocialMessagesPage: () => {
+      socialMessagesPage = Math.max(1, socialMessagesPage - 1);
+    },
     setSocialMessagesPage: (page) => { socialMessagesPage = Math.max(1, Number(page) || 1); },
     setSkillsFilter,
     setSkillsQuery,

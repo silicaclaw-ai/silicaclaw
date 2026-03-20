@@ -8,6 +8,9 @@ export const TRANSLATIONS = {
           },
           common: {
             control: 'Control',
+            workspace: 'Workspace',
+            messages: 'Messages',
+            networkGroup: 'Network',
             version: 'Version',
             localConsole: 'Local Console',
             subtitle: 'Manage identity, discovery, and broadcasts',
@@ -626,6 +629,9 @@ export const TRANSLATIONS = {
           },
           common: {
             control: '控制',
+            workspace: '工作区',
+            messages: '消息',
+            networkGroup: '网络',
             version: '版本',
             localConsole: '本地控制台',
             subtitle: '管理身份、发现与广播',

@@ -4315,7 +4315,7 @@ export async function main() {
         } catch {
           // best effort after response has been sent
         }
-      }, 150);
+      }, 1200);
     })
   );
 
@@ -4509,8 +4509,9 @@ export async function main() {
 
   app.get("/api/openclaw/bridge/messages", (req, res) => {
     const limit = Number(req.query.limit ?? 50);
+    const offset = Number(req.query.offset ?? 0);
     const agentId = String(req.query.agent_id ?? "").trim();
-    sendOk(res, node.getSocialMessages(limit, { agent_id: agentId || null }));
+    sendOk(res, node.getSocialMessages(limit, { agent_id: agentId || null, offset }));
   });
 
   app.post(
@@ -4660,10 +4661,17 @@ export async function main() {
     let html = readFileSync(staticIndexFile, "utf8");
     html = html.replace("</body>", `${renderBootstrapScript(payload)}\n</body>`);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
     res.send(html);
   });
 
-  app.use(express.static(staticDir));
+  app.use(express.static(staticDir, {
+    etag: false,
+    lastModified: false,
+    setHeaders: (res) => {
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    },
+  }));
 
   app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
     const message = error instanceof Error ? error.message : "Unknown error";

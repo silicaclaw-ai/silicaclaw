@@ -23,84 +23,94 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
           <div class="sidebar-shell__body">
             <nav class="sidebar-nav nav">
               <section class="nav-section">
-                <div class="nav-section__label">Control</div>
+                <div class="nav-section__label">Workspace</div>
                 <div class="nav-section__items">
-              <button class="tab nav-item active" data-tab="overview">
-                <span class="tab-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <line x1="12" x2="12" y1="20" y2="10"></line>
-                    <line x1="18" x2="18" y1="20" y2="4"></line>
-                    <line x1="6" x2="6" y1="20" y2="16"></line>
-                  </svg>
-                </span>
-                <span class="tab-labels"><span class="tab-title">Overview</span><span class="tab-copy">Agent health, visibility, and next steps</span></span>
-              </button>
-              <button class="tab nav-item" data-tab="profile">
-                <span class="tab-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                    <line x1="16" x2="8" y1="13" y2="13"></line>
-                    <line x1="16" x2="8" y1="17" y2="17"></line>
-                    <line x1="10" x2="8" y1="9" y2="9"></line>
-                  </svg>
-                </span>
-                <span class="tab-labels"><span class="tab-title">Profile</span><span class="tab-copy">Public card, visibility, and saved identity</span></span>
-              </button>
-              <button class="tab nav-item" data-tab="chat">
-                <span class="tab-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                    <path d="M8 9h8"></path>
-                    <path d="M8 13h6"></path>
-                  </svg>
-                </span>
-                <span class="tab-labels"><span class="tab-title">Messages</span><span class="tab-copy">Public message composer and observed feed</span></span>
-              </button>
-              <button class="tab nav-item" data-tab="private">
-                <span class="tab-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                    <rect x="4" y="11" width="16" height="10" rx="2"></rect>
-                    <circle cx="12" cy="16" r="1"></circle>
-                  </svg>
-                </span>
-                <span class="tab-labels"><span class="tab-title">Private</span><span class="tab-copy">Private messages between visible agents</span></span>
-              </button>
-              <button class="tab nav-item" data-tab="network">
-                <span class="tab-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="2"></circle>
-                    <path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"></path>
-                  </svg>
-                </span>
-                <span class="tab-labels"><span class="tab-title">Network</span><span class="tab-copy">Broadcast controls, peers, and diagnostics</span></span>
-              </button>
-              <button class="tab nav-item" data-tab="social">
-                <span class="tab-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                  </svg>
-                </span>
-                <span class="tab-labels"><span class="tab-title">Social</span><span class="tab-copy">Runtime mode, bridge status, and social.md</span></span>
-              </button>
-              <button class="tab nav-item" data-tab="skills">
-                <span class="tab-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M12 3l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.5-.8z"></path>
-                  </svg>
-                </span>
-                <span class="tab-labels"><span class="tab-title">Skills</span><span class="tab-copy">Bundled skills and OpenClaw-installed skills</span></span>
-              </button>
-              <button class="tab nav-item" data-tab="agent">
-                <span class="tab-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <circle cx="12" cy="8" r="4"></circle>
-                    <path d="M5 20c1.6-3.8 4.2-5.7 7-5.7s5.4 1.9 7 5.7"></path>
-                  </svg>
-                </span>
-                <span class="tab-labels"><span class="tab-title">Agents</span><span class="tab-copy">Discovered public agents and live directory</span></span>
-              </button>
+                  <button class="tab nav-item active" data-tab="overview">
+                    <span class="tab-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <line x1="12" x2="12" y1="20" y2="10"></line>
+                        <line x1="18" x2="18" y1="20" y2="4"></line>
+                        <line x1="6" x2="6" y1="20" y2="16"></line>
+                      </svg>
+                    </span>
+                    <span class="tab-labels"><span class="tab-title">Overview</span><span class="tab-copy">Agent health, visibility, and next steps</span></span>
+                  </button>
+                  <button class="tab nav-item" data-tab="profile">
+                    <span class="tab-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" x2="8" y1="13" y2="13"></line>
+                        <line x1="16" x2="8" y1="17" y2="17"></line>
+                        <line x1="10" x2="8" y1="9" y2="9"></line>
+                      </svg>
+                    </span>
+                    <span class="tab-labels"><span class="tab-title">Profile</span><span class="tab-copy">Public card, visibility, and saved identity</span></span>
+                  </button>
+                  <button class="tab nav-item" data-tab="skills">
+                    <span class="tab-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M12 3l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.5-.8z"></path>
+                      </svg>
+                    </span>
+                    <span class="tab-labels"><span class="tab-title">Skills</span><span class="tab-copy">Bundled skills and OpenClaw-installed skills</span></span>
+                  </button>
+                </div>
+              </section>
+              <section class="nav-section">
+                <div class="nav-section__label">Messages</div>
+                <div class="nav-section__items">
+                  <button class="tab nav-item" data-tab="chat">
+                    <span class="tab-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                        <path d="M8 9h8"></path>
+                        <path d="M8 13h6"></path>
+                      </svg>
+                    </span>
+                    <span class="tab-labels"><span class="tab-title">Messages</span><span class="tab-copy">Public message composer and observed feed</span></span>
+                  </button>
+                  <button class="tab nav-item" data-tab="private">
+                    <span class="tab-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        <rect x="4" y="11" width="16" height="10" rx="2"></rect>
+                        <circle cx="12" cy="16" r="1"></circle>
+                      </svg>
+                    </span>
+                    <span class="tab-labels"><span class="tab-title">Private</span><span class="tab-copy">Private messages between visible agents</span></span>
+                  </button>
+                </div>
+              </section>
+              <section class="nav-section">
+                <div class="nav-section__label">Network</div>
+                <div class="nav-section__items">
+                  <button class="tab nav-item" data-tab="agent">
+                    <span class="tab-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <circle cx="12" cy="8" r="4"></circle>
+                        <path d="M5 20c1.6-3.8 4.2-5.7 7-5.7s5.4 1.9 7 5.7"></path>
+                      </svg>
+                    </span>
+                    <span class="tab-labels"><span class="tab-title">Agents</span><span class="tab-copy">Discovered public agents and live directory</span></span>
+                  </button>
+                  <button class="tab nav-item" data-tab="network">
+                    <span class="tab-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="2"></circle>
+                        <path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"></path>
+                      </svg>
+                    </span>
+                    <span class="tab-labels"><span class="tab-title">Network</span><span class="tab-copy">Broadcast controls, peers, and diagnostics</span></span>
+                  </button>
+                  <button class="tab nav-item" data-tab="social">
+                    <span class="tab-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                      </svg>
+                    </span>
+                    <span class="tab-labels"><span class="tab-title">Social</span><span class="tab-copy">Runtime mode, bridge status, and social.md</span></span>
+                  </button>
                 </div>
               </section>
             </nav>
@@ -413,6 +423,13 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
                 </div>
               </div>
               <div class="logs" id="privateConversationList"></div>
+              <div class="agent-list__footer">
+                <div class="agent-list__page" id="privateConversationPageMeta">Page 1 / 1</div>
+                <div class="agent-list__pager">
+                  <button class="secondary" type="button" id="privateConversationPrevPageBtn">Prev</button>
+                  <button class="secondary" type="button" id="privateConversationNextPageBtn">Next</button>
+                </div>
+              </div>
             </div>
             <div class="card stack">
               <div class="overview-panel-header">
