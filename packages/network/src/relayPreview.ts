@@ -467,6 +467,7 @@ export class RelayPreviewAdapter implements NetworkAdapter {
     if (!this.lastJoinAt || Date.now() - this.lastJoinAt > Math.max(45_000, this.pollIntervalMs * 6)) {
       await this.joinRoom(reason);
     }
+    this.ensurePollingAlive(reason);
   }
 
   private async get(path: string): Promise<any> {
@@ -564,5 +565,21 @@ export class RelayPreviewAdapter implements NetworkAdapter {
     this.poller = setTimeout(() => {
       this.pollOnce().catch(() => {});
     }, Math.max(1000, delayMs + jitterMs));
+  }
+
+  private ensurePollingAlive(reason: string): void {
+    if (!this.started) return;
+    const pollStaleMs = Math.max(45_000, this.pollIntervalMs * 6);
+    const pollMissing = !this.poller;
+    const pollStale = Boolean(this.lastPollAt) && Date.now() - this.lastPollAt > pollStaleMs;
+    if (!pollMissing && !pollStale) {
+      return;
+    }
+    this.recordDiscovery("poll_recover_scheduled", {
+      endpoint: this.activeEndpoint,
+      detail: `${reason}:${pollMissing ? "missing" : "stale"}`,
+    });
+    this.currentPollDelayMs = this.pollIntervalMs;
+    this.scheduleNextPoll(0);
   }
 }
