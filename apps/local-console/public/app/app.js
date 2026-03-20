@@ -28,7 +28,6 @@ if (!root) {
 }
 root.innerHTML = appTemplate;
 const APP_UPDATE_SESSION_KEY = 'silicaclaw_pending_updated_version';
-const PAGING_STATE_STORAGE_KEY = 'silicaclaw_ui_paging_state';
 
       const i18n = createI18n(TRANSLATIONS);
       const DEFAULT_LOCALE = i18n.DEFAULT_LOCALE;
@@ -53,9 +52,7 @@ const PAGING_STATE_STORAGE_KEY = 'silicaclaw_ui_paging_state';
           summary.setAttribute('data-i18n-closed-label', t('labels.show'));
           summary.setAttribute('data-i18n-open-label', t('labels.hide'));
         });
-        setText('.nav-section__label', t('common.workspace'), 0);
-        setText('.nav-section__label', t('common.messages'), 1);
-        setText('.nav-section__label', t('common.networkGroup'), 2);
+        setText('.nav-section__label', t('common.control'));
         setText('[data-tab="overview"] .tab-title', t('pageMeta.overview.title'));
         setText('[data-tab="overview"] .tab-copy', t('labels.overviewTabCopy'));
         setText('[data-tab="agent"] .tab-title', t('pageMeta.agent.title'));
@@ -123,12 +120,6 @@ const PAGING_STATE_STORAGE_KEY = 'silicaclaw_ui_paging_state';
         document.getElementById('privateTargetIdLabel').textContent = t('social.agentId');
         document.getElementById('privateMessageSendBtn').textContent = t('actions.sendPrivateMessage');
         document.getElementById('privateRefreshBtn').textContent = t('actions.refreshPrivate');
-        document.getElementById('socialMessagePrevPageBtn').textContent = t('overview.prevPage');
-        document.getElementById('socialMessageNextPageBtn').textContent = t('overview.nextPage');
-        document.getElementById('privateConversationPrevPageBtn').textContent = t('overview.prevPage');
-        document.getElementById('privateConversationNextPageBtn').textContent = t('overview.nextPage');
-        document.getElementById('privateMessagePrevPageBtn').textContent = t('overview.prevPage');
-        document.getElementById('privateMessageNextPageBtn').textContent = t('overview.nextPage');
         document.getElementById('chatFeedHint').textContent = t('hints.chatFeedHint');
         document.getElementById('overviewGuideTitle').textContent = t('overview.guideTitle');
         document.getElementById('overviewGuideBody').textContent = t('overview.guideBody');
@@ -561,7 +552,6 @@ const PAGING_STATE_STORAGE_KEY = 'silicaclaw_ui_paging_state';
       let activeTab = 'overview';
       let logsCache = [];
       let socialMessagesCache = [];
-      let socialMessagePage = 1;
       let logLevelFilter = 'all';
       let socialTemplate = '';
       let socialModeDirty = false;
@@ -572,11 +562,6 @@ const PAGING_STATE_STORAGE_KEY = 'silicaclaw_ui_paging_state';
       let privateState = null;
       let privateConversations = [];
       let privateMessages = [];
-      let privateConversationPage = 1;
-      const PRIVATE_CONVERSATION_PAGE_SIZE = 12;
-      let privateMessagesTotal = 0;
-      let privateMessagePage = 1;
-      const PRIVATE_MESSAGE_PAGE_SIZE = 20;
       let privateTarget = null;
       let selectedPrivateConversationId = '';
       let overviewMode = 'lan';
@@ -584,29 +569,6 @@ const PAGING_STATE_STORAGE_KEY = 'silicaclaw_ui_paging_state';
       let agentsPage = 1;
       const AGENTS_PAGE_SIZE = 10;
       const pageMeta = TRANSLATIONS[currentLocale].pageMeta || TRANSLATIONS[DEFAULT_LOCALE].pageMeta;
-
-      function loadPagingState() {
-        try {
-          const raw = localStorage.getItem(PAGING_STATE_STORAGE_KEY);
-          if (!raw) return null;
-          return JSON.parse(raw);
-        } catch {
-          return null;
-        }
-      }
-
-      function savePagingState() {
-        try {
-          localStorage.setItem(PAGING_STATE_STORAGE_KEY, JSON.stringify({
-            socialMessagePage,
-            privateConversationPage,
-            privateMessagePage,
-            selectedPrivateConversationId,
-          }));
-        } catch {
-          // ignore localStorage failures
-        }
-      }
 
       async function api(path, options = {}) {
         const res = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...options });
@@ -742,12 +704,8 @@ const PAGING_STATE_STORAGE_KEY = 'silicaclaw_ui_paging_state';
           : 'Private messaging unavailable';
         document.getElementById('privateTargetName').value = privateTarget?.display_name || '';
         document.getElementById('privateTargetAgentId').value = privateTarget?.agent_id || '';
-        const conversationTotalPages = Math.max(1, Math.ceil((privateConversations.length || 0) / PRIVATE_CONVERSATION_PAGE_SIZE));
-        const conversationCurrentPage = Math.min(privateConversationPage, conversationTotalPages);
-        const conversationOffset = Math.max(0, (conversationCurrentPage - 1) * PRIVATE_CONVERSATION_PAGE_SIZE);
-        const visibleConversations = privateConversations.slice(conversationOffset, conversationOffset + PRIVATE_CONVERSATION_PAGE_SIZE);
-        document.getElementById('privateConversationList').innerHTML = visibleConversations.length
-          ? visibleConversations.map((item) => `
+        document.getElementById('privateConversationList').innerHTML = privateConversations.length
+          ? privateConversations.map((item) => `
               <button class="agent-card" type="button" data-private-conversation="${escapeHtml(item.conversation_id)}">
                 <div class="agent-card__avatar-fallback">${escapeHtml(((item.peer_display_name || item.peer_agent_id || '?')[0] || '?').toUpperCase())}</div>
                 <div class="agent-card__main">
@@ -759,12 +717,6 @@ const PAGING_STATE_STORAGE_KEY = 'silicaclaw_ui_paging_state';
               </button>
             `).join('')
           : `<div class="empty-state">No private conversations yet.</div>`;
-        document.getElementById('privateConversationPageMeta').textContent = t('overview.pageStatus', {
-          page: String(conversationCurrentPage),
-          total: String(conversationTotalPages),
-        });
-        document.getElementById('privateConversationPrevPageBtn').disabled = conversationCurrentPage <= 1;
-        document.getElementById('privateConversationNextPageBtn').disabled = conversationCurrentPage >= conversationTotalPages;
         document.getElementById('privateMessageList').innerHTML = privateMessages.length
           ? privateMessages.map((item) => `
               <div class="log-item">
@@ -779,14 +731,6 @@ const PAGING_STATE_STORAGE_KEY = 'silicaclaw_ui_paging_state';
               </div>
             `).join('')
           : `<div class="empty-state">No private messages yet.</div>`;
-        const totalPages = Math.max(1, Math.ceil((privateMessagesTotal || 0) / PRIVATE_MESSAGE_PAGE_SIZE));
-        const currentPage = Math.min(privateMessagePage, totalPages);
-        document.getElementById('privateMessagePageMeta').textContent = t('overview.pageStatus', {
-          page: String(currentPage),
-          total: String(totalPages),
-        });
-        document.getElementById('privateMessagePrevPageBtn').disabled = currentPage <= 1;
-        document.getElementById('privateMessageNextPageBtn').disabled = currentPage >= totalPages;
       }
 
       async function refreshPrivate() {
@@ -796,8 +740,6 @@ const PAGING_STATE_STORAGE_KEY = 'silicaclaw_ui_paging_state';
         ]);
         privateState = stateRes.data || null;
         privateConversations = Array.isArray(conversationsRes.data) ? conversationsRes.data : [];
-        const conversationTotalPages = Math.max(1, Math.ceil((privateConversations.length || 0) / PRIVATE_CONVERSATION_PAGE_SIZE));
-        privateConversationPage = Math.min(privateConversationPage, conversationTotalPages);
         if ((!privateTarget || privateTarget.agent_id === privateState?.agent_id) && privateConversations[0]) {
           const first = privateConversations[0];
           privateTarget = {
@@ -816,22 +758,16 @@ const PAGING_STATE_STORAGE_KEY = 'silicaclaw_ui_paging_state';
           };
         }
         if (selectedPrivateConversationId) {
-          const offset = Math.max(0, (privateMessagePage - 1) * PRIVATE_MESSAGE_PAGE_SIZE);
-          const messageRes = await api(`/api/private/messages?conversation_id=${encodeURIComponent(selectedPrivateConversationId)}&limit=${PRIVATE_MESSAGE_PAGE_SIZE}&offset=${offset}`);
-          privateMessages = Array.isArray(messageRes.data?.items) ? messageRes.data.items : [];
-          privateMessagesTotal = Number(messageRes.data?.total || 0);
+          const messageRes = await api(`/api/private/messages?conversation_id=${encodeURIComponent(selectedPrivateConversationId)}&limit=100`);
+          privateMessages = Array.isArray(messageRes.data) ? messageRes.data : [];
         } else {
           privateMessages = [];
-          privateMessagesTotal = 0;
         }
         renderPrivate();
       }
 
       const renderSocialMessages = socialController.renderSocialMessages;
       const refreshMessages = socialController.refreshMessages;
-      const nextSocialMessagesPage = socialController.nextSocialMessagesPage;
-      const prevSocialMessagesPage = socialController.prevSocialMessagesPage;
-      const setSocialMessagesPage = socialController.setSocialMessagesPage;
 
       const refreshNetwork = networkController.refreshNetwork;
       const refreshPeers = networkController.refreshPeers;
@@ -934,9 +870,6 @@ const PAGING_STATE_STORAGE_KEY = 'silicaclaw_ui_paging_state';
           display_name: String(button.getAttribute('data-private-name') || ''),
           private_encryption_public_key: String(button.getAttribute('data-private-key') || ''),
         };
-        privateConversationPage = 1;
-        privateMessagePage = 1;
-        savePagingState();
         selectedPrivateConversationId = [privateState?.agent_id || '', privateTarget.agent_id].sort().join(':');
         switchTab('private');
       });
@@ -953,42 +886,10 @@ const PAGING_STATE_STORAGE_KEY = 'silicaclaw_ui_paging_state';
             private_encryption_public_key: selectedConversation.peer_public_key,
           };
         }
-        privateMessagePage = 1;
-        savePagingState();
         await refreshPrivate();
       });
 
       document.getElementById('privateRefreshBtn').addEventListener('click', async () => {
-        await refreshPrivate();
-      });
-
-      document.getElementById('privateConversationPrevPageBtn').addEventListener('click', async () => {
-        if (privateConversationPage <= 1) return;
-        privateConversationPage -= 1;
-        savePagingState();
-        renderPrivate();
-      });
-
-      document.getElementById('privateConversationNextPageBtn').addEventListener('click', async () => {
-        const totalPages = Math.max(1, Math.ceil((privateConversations.length || 0) / PRIVATE_CONVERSATION_PAGE_SIZE));
-        if (privateConversationPage >= totalPages) return;
-        privateConversationPage += 1;
-        savePagingState();
-        renderPrivate();
-      });
-
-      document.getElementById('privateMessagePrevPageBtn').addEventListener('click', async () => {
-        if (privateMessagePage <= 1) return;
-        privateMessagePage -= 1;
-        savePagingState();
-        await refreshPrivate();
-      });
-
-      document.getElementById('privateMessageNextPageBtn').addEventListener('click', async () => {
-        const totalPages = Math.max(1, Math.ceil((privateMessagesTotal || 0) / PRIVATE_MESSAGE_PAGE_SIZE));
-        if (privateMessagePage >= totalPages) return;
-        privateMessagePage += 1;
-        savePagingState();
         await refreshPrivate();
       });
 
@@ -1018,36 +919,11 @@ const PAGING_STATE_STORAGE_KEY = 'silicaclaw_ui_paging_state';
           });
           document.getElementById('privateMessageInput').value = '';
           setFeedback('privateFeedback', result.meta?.message || 'Private message sent.');
-          privateMessagePage = 1;
-          savePagingState();
           await refreshPrivate();
         } catch (error) {
           setFeedback('privateFeedback', error instanceof Error ? error.message : 'Private message failed.', 'error');
         }
       });
-
-      document.getElementById('socialMessagePrevPageBtn').addEventListener('click', async () => {
-        prevSocialMessagesPage();
-        socialMessagePage = Math.max(1, socialMessagePage - 1);
-        savePagingState();
-        await refreshMessages();
-      });
-
-      document.getElementById('socialMessageNextPageBtn').addEventListener('click', async () => {
-        nextSocialMessagesPage();
-        socialMessagePage += 1;
-        savePagingState();
-        await refreshMessages();
-      });
-
-      const persistedPagingState = loadPagingState();
-      if (persistedPagingState && typeof persistedPagingState === 'object') {
-        socialMessagePage = Math.max(1, Number(persistedPagingState.socialMessagePage) || 1);
-        privateConversationPage = Math.max(1, Number(persistedPagingState.privateConversationPage) || 1);
-        privateMessagePage = Math.max(1, Number(persistedPagingState.privateMessagePage) || 1);
-        selectedPrivateConversationId = String(persistedPagingState.selectedPrivateConversationId || '').trim();
-        setSocialMessagesPage(socialMessagePage);
-      }
 
       applyTheme(localStorage.getItem('silicaclaw_theme_mode') || 'dark');
       hydrateCachedShell();

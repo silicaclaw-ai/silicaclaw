@@ -55,6 +55,18 @@ export type PrivateMessageDecryptedContent = {
   body: string;
 };
 
+export type PrivateMessagingRuntimeState = {
+  schema_version: number;
+  app_version: string;
+  last_started_at: number;
+  encryption_public_key: string;
+  encryption_public_key_fingerprint: string;
+  message_count: number;
+  self_sent_count: number;
+  cached_plaintext_count: number;
+  warnings: string[];
+};
+
 export class IdentityRepo extends JsonFileRepo<AgentIdentity | null> {
   constructor(rootDir = process.cwd()) {
     super(resolve(rootDir, "data", "identity.json"), () => null);
@@ -132,5 +144,21 @@ export class PrivateMessageReceiptRepo extends JsonFileRepo<PrivateMessageReceip
 export class PrivateEncryptionKeyRepo extends JsonFileRepo<PrivateEncryptionKeyPair | null> {
   constructor(rootDir = process.cwd()) {
     super(resolve(rootDir, "data", "private-encryption-keypair.json"), () => null);
+  }
+}
+
+export class PrivateMessagingRuntimeRepo extends JsonFileRepo<PrivateMessagingRuntimeState> {
+  constructor(rootDir = process.cwd()) {
+    super(resolve(rootDir, ".silicaclaw", "private-messaging.runtime.json"), () => ({
+      schema_version: 1,
+      app_version: "",
+      last_started_at: 0,
+      encryption_public_key: "",
+      encryption_public_key_fingerprint: "",
+      message_count: 0,
+      self_sent_count: 0,
+      cached_plaintext_count: 0,
+      warnings: [],
+    }));
   }
 }

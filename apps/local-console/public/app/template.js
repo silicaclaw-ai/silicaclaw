@@ -387,13 +387,6 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
                 </div>
               </div>
               <div class="logs" id="socialMessageList"></div>
-              <div class="agent-list__footer">
-                <div class="agent-list__page" id="socialMessagePageMeta">Page 1 / 1</div>
-                <div class="agent-list__pager">
-                  <button class="secondary" type="button" id="socialMessagePrevPageBtn">Prev</button>
-                  <button class="secondary" type="button" id="socialMessageNextPageBtn">Next</button>
-                </div>
-              </div>
             </div>
           </div>
           </div>
@@ -423,13 +416,6 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
                 </div>
               </div>
               <div class="logs" id="privateConversationList"></div>
-              <div class="agent-list__footer">
-                <div class="agent-list__page" id="privateConversationPageMeta">Page 1 / 1</div>
-                <div class="agent-list__pager">
-                  <button class="secondary" type="button" id="privateConversationPrevPageBtn">Prev</button>
-                  <button class="secondary" type="button" id="privateConversationNextPageBtn">Next</button>
-                </div>
-              </div>
             </div>
             <div class="card stack">
               <div class="overview-panel-header">
@@ -455,13 +441,6 @@ export const appTemplate = String.raw`<div class="app" id="appShell">
               </div>
               <div id="privateFeedback" class="feedback">Ready.</div>
               <div class="logs" id="privateMessageList"></div>
-              <div class="agent-list__footer">
-                <div class="agent-list__page" id="privateMessagePageMeta">Page 1 / 1</div>
-                <div class="agent-list__pager">
-                  <button class="secondary" type="button" id="privateMessagePrevPageBtn">Prev</button>
-                  <button class="secondary" type="button" id="privateMessageNextPageBtn">Next</button>
-                </div>
-              </div>
             </div>
           </div>
           </div>

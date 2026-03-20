@@ -1071,7 +1071,9 @@ async function restartAll() {
     environment: baseEnv,
   });
   if (!localConsoleService.changed) {
-    restartLaunchAgent(LOCAL_CONSOLE_LABEL, localConsoleService.plistPath);
+    stopLaunchAgent(LOCAL_CONSOLE_LABEL);
+    await drainOwnedListener(LOCAL_CONSOLE_PORT, "local-console", 8000);
+    startLaunchAgent(LOCAL_CONSOLE_LABEL, localConsoleService.plistPath);
   }
 
   if (shouldAutoStartSignaling) {
@@ -1087,7 +1089,9 @@ async function restartAll() {
       },
     });
     if (!signalingService.changed) {
-      restartLaunchAgent(SIGNALING_LABEL, signalingService.plistPath);
+      stopLaunchAgent(SIGNALING_LABEL);
+      await drainOwnedListener(4510, "signaling", 5000);
+      startLaunchAgent(SIGNALING_LABEL, signalingService.plistPath);
     }
   } else {
     uninstallLaunchAgent(SIGNALING_LABEL);

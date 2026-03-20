@@ -26,11 +26,8 @@ export function createSocialController({
 }) {
   const SKILLS_SECTION_LIMIT = 4;
   const SKILLS_DIALOGUE_LIMIT = 1;
-  const SOCIAL_MESSAGE_PAGE_SIZE = 20;
   let lastMessagesRenderKey = "";
   let lastLogsRenderKey = "";
-  let socialMessagesPage = 1;
-  let socialMessagesTotal = 0;
   const sectionRenderCache = new Map();
   let skillsQuery = "";
   let skillsFilter = "all";
@@ -39,6 +36,7 @@ export function createSocialController({
     installed: false,
     dialogue: false,
   };
+  let lastSkillsPayload = null;
 
   function skillModeLabel(mode) {
     if (mode === "workspace") return t("labels.skillsModeWorkspace");
@@ -109,13 +107,13 @@ export function createSocialController({
     `;
   }
 
-  function renderFilteredSkillCards({ skills, section, gridId, footerId, renderer, limit }) {
+  function renderFilteredSkillCards({ skills, section, gridId, footerId, renderer, limit, emptyText }) {
     const filtered = skills.filter((skill) => skillMatchesSearch(skill) && skillMatchesFilter(skill, section));
     const expanded = skillsExpanded[section];
     const visible = expanded ? filtered : filtered.slice(0, limit);
     document.getElementById(gridId).innerHTML = visible.length
       ? visible.map((skill) => renderer(skill)).join("")
-      : `<div class="skills-empty">${t("hints.skillsNoFilterMatch")}</div>`;
+      : `<div class="skills-empty">${filtered.length === 0 && skills.length > 0 ? t("hints.skillsNoFilterMatch") : emptyText}</div>`;
     renderSkillsSectionFooter({
       footerId,
       section,
@@ -136,6 +134,10 @@ export function createSocialController({
     document.querySelectorAll("[data-skills-filter]").forEach((btn) => {
       btn.classList.toggle("active", btn.getAttribute("data-skills-filter") === skillsFilter);
     });
+  }
+
+  function formatSectionCount(visibleCount, totalCount) {
+    return visibleCount === totalCount ? String(totalCount) : `${visibleCount}/${totalCount}`;
   }
 
   function setCachedContent(id, value, mode = "html") {
@@ -168,18 +170,6 @@ export function createSocialController({
           seconds: String(Math.floor((governance.send_limit?.window_ms || 60000) / 1000)),
         })}`
       : t("overview.messageHint");
-    const totalPages = Math.max(1, Math.ceil((socialMessagesTotal || 0) / SOCIAL_MESSAGE_PAGE_SIZE));
-    const currentPage = Math.min(socialMessagesPage, totalPages);
-    const updatePager = () => {
-      const pageMetaEl = document.getElementById("socialMessagePageMeta");
-      const prevBtn = document.getElementById("socialMessagePrevPageBtn");
-      const nextBtn = document.getElementById("socialMessageNextPageBtn");
-      if (pageMetaEl) {
-        pageMetaEl.textContent = t("overview.pageStatus", { page: String(currentPage), total: String(totalPages) });
-      }
-      if (prevBtn) prevBtn.disabled = currentPage <= 1;
-      if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
-    };
     if (!socialMessagesCache.length) {
       const nextMeta = t("overview.noMessagesMeta");
       const nextHtml = `<div class="empty-state">${t("overview.noMessagesEmpty")}</div>`;
@@ -188,7 +178,6 @@ export function createSocialController({
         hintEl.textContent = governanceHint;
         metaEl.textContent = nextMeta;
         listEl.innerHTML = nextHtml;
-        updatePager();
         lastMessagesRenderKey = renderKey;
       }
       return;
@@ -210,6 +199,7 @@ export function createSocialController({
         })}`
       : "";
     const nextMeta = `${baseMeta}${governanceMeta}`;
+
     if (!filteredMessages.length) {
       const nextHtml = `<div class="empty-state">${t("overview.noMessagesEmpty")}</div>`;
       const renderKey = JSON.stringify({ hint: governanceHint, meta: nextMeta, html: nextHtml });
@@ -217,7 +207,6 @@ export function createSocialController({
         hintEl.textContent = governanceHint;
         metaEl.textContent = nextMeta;
         listEl.innerHTML = nextHtml;
-        updatePager();
         lastMessagesRenderKey = renderKey;
       }
       return;
@@ -301,16 +290,13 @@ export function createSocialController({
     hintEl.textContent = governanceHint;
     metaEl.textContent = nextMeta;
     listEl.innerHTML = nextHtml;
-    updatePager();
     lastMessagesRenderKey = renderKey;
   }
 
   async function refreshMessages() {
-    const offset = Math.max(0, (socialMessagesPage - 1) * SOCIAL_MESSAGE_PAGE_SIZE);
-    const result = await api(`/api/messages?limit=${SOCIAL_MESSAGE_PAGE_SIZE}&offset=${offset}`);
+    const result = await api("/api/messages?limit=50");
     setSocialMessagesCache(Array.isArray(result.data?.items) ? result.data.items : []);
     setSocialMessageGovernance(result.data?.governance || null);
-    socialMessagesTotal = Number(result.data?.total || 0);
     renderSocialMessages();
   }
 
@@ -720,8 +706,12 @@ export function createSocialController({
     `;
   }
 
-  async function refreshSkills() {
-    const payload = (await api("/api/skills")).data || {};
+  async function refreshSkills(options = {}) {
+    const useCached = options.useCached === true;
+    const payload = useCached && lastSkillsPayload
+      ? lastSkillsPayload
+      : ((await api("/api/skills")).data || {});
+    lastSkillsPayload = payload;
     const bundled = Array.isArray(payload.bundled_skills) ? payload.bundled_skills : [];
     const installed = Array.isArray(payload.installed_skills) ? payload.installed_skills : [];
     const openclaw = payload.openclaw || {};
@@ -803,13 +793,9 @@ export function createSocialController({
       [t("labels.skillsAutoPush"), ownerPushSkill?.installed_in_openclaw ? t("common.yes") : t("common.no")],
     ].map(([k, v]) => `<div class="skills-summary-card"><div class="label">${k}</div><div class="value">${escapeHtml(v)}</div></div>`).join("");
 
-    document.getElementById("skillsFeaturedCount").textContent = `${featuredSkills.length}`;
-    document.getElementById("skillsBundledCount").textContent = `${bundled.length}`;
-    document.getElementById("skillsInstalledCount").textContent = `${installed.length}`;
-    document.getElementById("skillsDialogueCount").textContent = `${featuredSkills.length}`;
-
-    document.getElementById("skillsFeaturedSpotlights").innerHTML = featuredSkills.length
-      ? featuredSkills.map((skill) => `
+    const filteredFeaturedSkills = featuredSkills.filter((skill) => skillMatchesSearch(skill) && skillMatchesFilter(skill, "bundled"));
+    document.getElementById("skillsFeaturedSpotlights").innerHTML = filteredFeaturedSkills.length
+      ? filteredFeaturedSkills.map((skill) => `
         <div class="skills-spotlight">
           <div class="skill-card__eyebrow">${escapeHtml(skill.name === "silicaclaw-owner-push" ? t("labels.skillsAutoPush") : t("labels.skillsBroadcastLearning"))}</div>
           <div class="skills-spotlight__title">${escapeHtml(skill.display_name || skill.name)}</div>
@@ -820,7 +806,7 @@ export function createSocialController({
           </div>
         </div>
       `).join("")
-      : `<div class="skills-empty">${t("hints.skillsNoBundled")}</div>`;
+      : `<div class="skills-empty">${featuredSkills.length > 0 ? t("hints.skillsNoFilterMatch") : t("hints.skillsNoBundled")}</div>`;
 
     const bundledMatchCount = renderFilteredSkillCards({
       skills: bundledSorted,
@@ -828,6 +814,7 @@ export function createSocialController({
       gridId: "skillsBundledGrid",
       footerId: "skillsBundledFooter",
       limit: SKILLS_SECTION_LIMIT,
+      emptyText: t("hints.skillsNoBundled"),
       renderer: (skill) => renderSkillCard(skill, {
         eyebrow: skill.install_mode === "workspace" || skill.install_mode === "legacy" ? skill.install_mode : "bundled",
         statusText: skill.update_available
@@ -848,6 +835,7 @@ export function createSocialController({
       gridId: "skillsInstalledGrid",
       footerId: "skillsInstalledFooter",
       limit: SKILLS_SECTION_LIMIT,
+      emptyText: t("hints.skillsNoInstalled"),
       renderer: (skill) => renderSkillCard(skill, {
         eyebrow: skill.install_mode || "installed",
         statusText: skill.update_available
@@ -865,8 +853,14 @@ export function createSocialController({
       gridId: "skillsDialogueGrid",
       footerId: "skillsDialogueFooter",
       limit: SKILLS_DIALOGUE_LIMIT,
+      emptyText: t("hints.skillsNoDialogueExamples"),
       renderer: (skill) => renderDialogueCard(skill),
     });
+
+    document.getElementById("skillsFeaturedCount").textContent = formatSectionCount(filteredFeaturedSkills.length, featuredSkills.length);
+    document.getElementById("skillsBundledCount").textContent = formatSectionCount(bundledMatchCount, bundled.length);
+    document.getElementById("skillsInstalledCount").textContent = formatSectionCount(installedMatchCount, installed.length);
+    document.getElementById("skillsDialogueCount").textContent = formatSectionCount(dialogueMatchCount, featuredSkills.length);
 
     renderSkillsFilterMeta({
       bundledCount: bundledMatchCount,
@@ -898,14 +892,7 @@ export function createSocialController({
     refreshSocial,
     renderLogs,
     renderSocialMessages,
-    nextSocialMessagesPage: () => {
-      const totalPages = Math.max(1, Math.ceil((socialMessagesTotal || 0) / SOCIAL_MESSAGE_PAGE_SIZE));
-      socialMessagesPage = Math.min(totalPages, socialMessagesPage + 1);
-    },
-    prevSocialMessagesPage: () => {
-      socialMessagesPage = Math.max(1, socialMessagesPage - 1);
-    },
-    setSocialMessagesPage: (page) => { socialMessagesPage = Math.max(1, Number(page) || 1); },
+    rerenderSkills: () => refreshSkills({ useCached: true }),
     setSkillsFilter,
     setSkillsQuery,
     setLogLevelFilter,

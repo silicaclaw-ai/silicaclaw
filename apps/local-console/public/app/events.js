@@ -321,13 +321,13 @@ export function bindAppEvents({
 
   document.getElementById("skillsSearchInput").addEventListener("input", async (event) => {
     socialController.setSkillsQuery(String(event.target?.value || ""));
-    await refreshSkills();
+    await socialController.rerenderSkills();
   });
 
   document.querySelectorAll("[data-skills-filter]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       socialController.setSkillsFilter(String(btn.getAttribute("data-skills-filter") || "all"));
-      await refreshSkills();
+      await socialController.rerenderSkills();
     });
   });
 
@@ -336,7 +336,7 @@ export function bindAppEvents({
       const btn = event.target instanceof Element ? event.target.closest("[data-skills-toggle]") : null;
       if (!btn) return;
       socialController.toggleSkillsExpanded(String(btn.getAttribute("data-skills-toggle") || ""));
-      await refreshSkills();
+      await socialController.rerenderSkills();
     });
   });
 

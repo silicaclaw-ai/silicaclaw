@@ -72,6 +72,8 @@ import {
   IdentityRepo,
   LogRepo,
   PrivateEncryptionKeyRepo,
+  PrivateMessagingRuntimeRepo,
+  PrivateMessagingRuntimeState,
   PrivateMessageReceiptRepo,
   PrivateMessageRepo,
   ProfileRepo,
@@ -139,6 +141,10 @@ const SOCIAL_MESSAGE_REPLAY_MAX_PER_BROADCAST = Number(process.env.SOCIAL_MESSAG
 const SOCIAL_MESSAGE_REPLAY_REFRESH_INTERVAL_MS = Number(
   process.env.SOCIAL_MESSAGE_REPLAY_REFRESH_INTERVAL_MS || 120_000
 );
+
+type StoredPrivateMessageRecord = PrivateMessageRecord & {
+  local_plaintext?: string;
+};
 const PROFILE_RELAY_REFRESH_INTERVAL_MS = Number(
   process.env.PROFILE_RELAY_REFRESH_INTERVAL_MS || 120_000
 );
@@ -1035,6 +1041,7 @@ export class LocalNodeService {
   private privateMessageRepo: PrivateMessageRepo;
   private privateMessageReceiptRepo: PrivateMessageReceiptRepo;
   private privateEncryptionKeyRepo: PrivateEncryptionKeyRepo;
+  private privateMessagingRuntimeRepo: PrivateMessagingRuntimeRepo;
   private socialRuntimeRepo: SocialRuntimeRepo;
 
   private identity: AgentIdentity | null = null;
@@ -1045,7 +1052,9 @@ export class LocalNodeService {
   private privateMessages: PrivateMessageRecord[] = [];
   private privateMessageReceipts: PrivateMessageReceiptRecord[] = [];
   private privateEncryptionKeyPair: PrivateEncryptionKeyPair | null = null;
+  private privateMessagingRuntime: PrivateMessagingRuntimeState | null = null;
   private privatePeerRoutes: Record<string, string> = {};
+  private privatePeerEncryptionKeys: Record<string, string> = {};
   private privateMessageBodyCache = new Map<string, string>();
   private privateMessageDeliveryStatusCache = new Map<string, PrivateMessageView["delivery_status"]>();
   private messageGovernance: RuntimeMessageGovernance;
@@ -1129,6 +1138,7 @@ export class LocalNodeService {
     this.privateMessageRepo = new PrivateMessageRepo(this.storageRoot);
     this.privateMessageReceiptRepo = new PrivateMessageReceiptRepo(this.storageRoot);
     this.privateEncryptionKeyRepo = new PrivateEncryptionKeyRepo(this.storageRoot);
+    this.privateMessagingRuntimeRepo = new PrivateMessagingRuntimeRepo(this.storageRoot);
     this.socialRuntimeRepo = new SocialRuntimeRepo(this.storageRoot);
     this.messageGovernance = this.defaultMessageGovernance();
 
@@ -1899,7 +1909,7 @@ export class LocalNodeService {
     return this.identity;
   }
 
-  getSocialMessages(limit = 50, options?: { agent_id?: string | null; offset?: number | null }): {
+  getSocialMessages(limit = 50, options?: { agent_id?: string | null }): {
     total: number;
     items: SocialMessageView[];
     governance: {
@@ -1911,7 +1921,6 @@ export class LocalNodeService {
     };
   } {
     const resolvedLimit = Math.max(1, Math.min(200, Number(limit) || 50));
-    const resolvedOffset = Math.max(0, Number(options?.offset) || 0);
     this.ensureLocalDirectoryBaseline();
     this.compactCacheInMemory();
     const agentId = String(options?.agent_id || "").trim();
@@ -1920,7 +1929,7 @@ export class LocalNodeService {
       : this.socialMessages;
     return {
       total: filtered.length,
-      items: filtered.slice(resolvedOffset, resolvedOffset + resolvedLimit).map((message) => {
+      items: filtered.slice(0, resolvedLimit).map((message) => {
         const profile = this.directory.profiles[message.agent_id];
         const lastSeenAt = this.directory.presence[message.agent_id] ?? 0;
         const observations = this.socialMessageObservations.filter((item) => item.message_id === message.message_id);
@@ -1956,6 +1965,7 @@ export class LocalNodeService {
       encryption_public_key: this.privateEncryptionKeyPair?.public_key || "",
       conversation_count: this.getPrivateConversations().length,
       message_count: this.privateMessages.length,
+      runtime: this.privateMessagingRuntime,
     };
   }
 
@@ -1988,12 +1998,13 @@ export class LocalNodeService {
       const peerProfile = this.directory.profiles[peerAgentId];
       const current = conversations.get(message.conversation_id);
       const nextLast = Math.max(current?.last_message_at || 0, message.created_at || 0) || null;
+      const learnedPeerKey = this.privatePeerEncryptionKeys[peerAgentId] || "";
       conversations.set(message.conversation_id, {
         conversation_id: message.conversation_id,
         peer_agent_id: peerAgentId,
         peer_display_name: peerProfile?.display_name || peerAgentId,
         peer_avatar_url: peerProfile?.avatar_url || "",
-        peer_public_key: peerProfile?.private_encryption_public_key || "",
+        peer_public_key: learnedPeerKey || peerProfile?.private_encryption_public_key || "",
         last_message_at: nextLast,
         unread_count: current?.unread_count || 0,
       });
@@ -2001,17 +2012,13 @@ export class LocalNodeService {
     return Array.from(conversations.values()).sort((a, b) => (b.last_message_at || 0) - (a.last_message_at || 0));
   }
 
-  getPrivateMessages(conversationId: string, limit = PRIVATE_MESSAGE_QUERY_LIMIT, offset = 0): {
-    total: number;
-    items: PrivateMessageView[];
-  } {
+  getPrivateMessages(conversationId: string, limit = PRIVATE_MESSAGE_QUERY_LIMIT): PrivateMessageView[] {
     const normalizedConversationId = String(conversationId || "").trim();
     const resolvedLimit = Math.max(1, Math.min(PRIVATE_MESSAGE_QUERY_LIMIT, Number(limit) || PRIVATE_MESSAGE_QUERY_LIMIT));
-    const resolvedOffset = Math.max(0, Number(offset) || 0);
     const receiptsByMessageId = new Map(
       this.privateMessageReceipts.map((receipt) => [receipt.message_id, receipt.status] as const)
     );
-    const filtered = this.privateMessages
+    return this.privateMessages
       .filter((message) => {
         if (message.from_agent_id === message.to_agent_id) {
           return false;
@@ -2022,12 +2029,9 @@ export class LocalNodeService {
         }
         return !normalizedConversationId || message.conversation_id === normalizedConversationId;
       })
-      .sort((a, b) => a.created_at - b.created_at);
-    const total = filtered.length;
-    const paged = filtered.slice(Math.max(0, total - resolvedOffset - resolvedLimit), Math.max(0, total - resolvedOffset));
-    return {
-      total,
-      items: paged.map((message) => ({
+      .sort((a, b) => b.created_at - a.created_at)
+      .slice(0, resolvedLimit)
+      .map((message) => ({
         message_id: message.message_id,
         conversation_id: message.conversation_id,
         from_agent_id: message.from_agent_id,
@@ -2039,8 +2043,7 @@ export class LocalNodeService {
           receiptsByMessageId.get(message.message_id) ||
           this.privateMessageDeliveryStatusCache.get(message.message_id) ||
           (message.from_agent_id === this.identity?.agent_id ? "fallback-sent" : "sent"),
-      })),
-    };
+      }));
   }
 
   async sendPrivateMessage(input: {
@@ -2052,7 +2055,9 @@ export class LocalNodeService {
       return { sent: false, reason: "missing_identity_or_private_key" };
     }
     const toAgentId = String(input.to_agent_id || "").trim();
-    const recipientKey = String(input.recipient_encryption_public_key || "").trim();
+    const learnedRecipientKey = this.privatePeerEncryptionKeys[toAgentId] || "";
+    const profileRecipientKey = this.directory.profiles[toAgentId]?.private_encryption_public_key || "";
+    const recipientKey = String(learnedRecipientKey || input.recipient_encryption_public_key || profileRecipientKey || "").trim();
     const body = String(input.body || "").trim();
     if (toAgentId === this.identity.agent_id) {
       return { sent: false, reason: "self_private_message_not_allowed" };
@@ -2084,6 +2089,7 @@ export class LocalNodeService {
     if (toPeerId && typeof this.network.sendDirect === "function") {
       try {
         await this.network.sendDirect(toPeerId, PRIVATE_MESSAGE_TOPIC, message);
+        await this.publish(PRIVATE_MESSAGE_TOPIC, message);
         reason = "direct-sent";
       } catch {
         await this.publish(PRIVATE_MESSAGE_TOPIC, message);
@@ -2092,7 +2098,7 @@ export class LocalNodeService {
       await this.publish(PRIVATE_MESSAGE_TOPIC, message);
     }
     this.privateMessageDeliveryStatusCache.set(message.message_id, reason as PrivateMessageView["delivery_status"]);
-    const view = this.getPrivateMessages(message.conversation_id, PRIVATE_MESSAGE_QUERY_LIMIT, 0).items.find((item) => item.message_id === message.message_id);
+    const view = this.getPrivateMessages(message.conversation_id).find((item) => item.message_id === message.message_id);
     if (view) {
       view.delivery_status = reason as PrivateMessageView["delivery_status"];
     }
@@ -2772,8 +2778,11 @@ export class LocalNodeService {
     };
     this.socialMessages = this.normalizeSocialMessages(await this.socialMessageRepo.get());
     this.socialMessageObservations = this.normalizeSocialMessageObservations(await this.socialMessageObservationRepo.get());
-    this.privateMessages = this.normalizePrivateMessages(await this.privateMessageRepo.get());
+    const storedPrivateMessages = await this.privateMessageRepo.get();
+    this.hydratePrivateMessageBodyCache(storedPrivateMessages);
+    this.privateMessages = this.normalizePrivateMessages(storedPrivateMessages);
     this.privateMessageReceipts = this.normalizePrivateMessageReceipts(await this.privateMessageReceiptRepo.get());
+    await this.refreshPrivateMessagingRuntime();
     this.directory = ingestProfileRecord(this.directory, { type: "profile", profile: this.profile });
     this.compactCacheInMemory();
     await this.persistCache();
@@ -2879,7 +2888,7 @@ export class LocalNodeService {
           return;
         }
       }
-      if (meta?.peerId && record.profile.agent_id) {
+      if (meta?.peerId && record.profile.agent_id && !this.privatePeerRoutes[record.profile.agent_id]) {
         this.privatePeerRoutes[record.profile.agent_id] = meta.peerId;
       }
 
@@ -2901,7 +2910,7 @@ export class LocalNodeService {
           return;
         }
       }
-      if (meta?.peerId && record.agent_id) {
+      if (meta?.peerId && record.agent_id && !this.privatePeerRoutes[record.agent_id]) {
         this.privatePeerRoutes[record.agent_id] = meta.peerId;
       }
 
@@ -2920,7 +2929,7 @@ export class LocalNodeService {
         await this.log("warn", `Rejected social message with invalid signature (${record.message_id.slice(0, 10)})`);
         return;
       }
-      if (meta?.peerId && record.agent_id) {
+      if (meta?.peerId && record.agent_id && !this.privatePeerRoutes[record.agent_id]) {
         this.privatePeerRoutes[record.agent_id] = meta.peerId;
       }
       if (this.hasSocialMessage(record.message_id)) {
@@ -2971,6 +2980,12 @@ export class LocalNodeService {
       if (!record || !verifyPrivateMessage(record)) {
         return;
       }
+      if (meta?.peerId && record.from_agent_id) {
+        this.privatePeerRoutes[record.from_agent_id] = meta.peerId;
+      }
+      if (record.from_agent_id && record.sender_encryption_public_key) {
+        this.privatePeerEncryptionKeys[record.from_agent_id] = record.sender_encryption_public_key;
+      }
       if (record.to_agent_id !== this.identity?.agent_id || this.hasPrivateMessage(record.message_id)) {
         return;
       }
@@ -2983,6 +2998,9 @@ export class LocalNodeService {
     const receipt = this.normalizeIncomingPrivateMessageReceipt(data);
     if (!receipt || !verifyPrivateMessageReceipt(receipt)) {
       return;
+    }
+    if (meta?.peerId && receipt.from_agent_id) {
+      this.privatePeerRoutes[receipt.from_agent_id] = meta.peerId;
     }
     if (receipt.to_agent_id !== this.identity?.agent_id) {
       return;
@@ -3332,7 +3350,40 @@ export class LocalNodeService {
       return;
     }
     this.privateMessagesPersistDirty = false;
-    await this.privateMessageRepo.set(this.privateMessages);
+    await this.privateMessageRepo.set(this.buildPersistedPrivateMessages() as unknown as PrivateMessageRecord[]);
+  }
+
+  private hydratePrivateMessageBodyCache(items: unknown): void {
+    if (!Array.isArray(items)) {
+      return;
+    }
+    for (const item of items) {
+      if (typeof item !== "object" || item === null) {
+        continue;
+      }
+      const record = item as Partial<StoredPrivateMessageRecord>;
+      const messageId = String(record.message_id || "").trim();
+      const localPlaintext = typeof record.local_plaintext === "string" ? record.local_plaintext : "";
+      if (messageId && localPlaintext) {
+        this.privateMessageBodyCache.set(messageId, localPlaintext);
+      }
+    }
+  }
+
+  private buildPersistedPrivateMessages(): StoredPrivateMessageRecord[] {
+    return this.privateMessages.map((message) => {
+      const localPlaintext =
+        message.from_agent_id === this.identity?.agent_id
+          ? this.privateMessageBodyCache.get(message.message_id) || ""
+          : "";
+      if (!localPlaintext) {
+        return { ...message };
+      }
+      return {
+        ...message,
+        local_plaintext: localPlaintext,
+      };
+    });
   }
 
   private async flushPrivateMessageReceiptsPersist(): Promise<void> {
@@ -3489,6 +3540,47 @@ export class LocalNodeService {
   private fingerprintPublicKey(publicKey: string): string {
     const digest = createHash("sha256").update(publicKey, "utf8").digest("hex");
     return `${digest.slice(0, 12)}:${digest.slice(-8)}`;
+  }
+
+  private buildPrivateMessagingRuntimeState(): PrivateMessagingRuntimeState {
+    const warnings: string[] = [];
+    const keypair = this.privateEncryptionKeyPair;
+    const selfSentMessages = this.privateMessages.filter((message) => message.from_agent_id === this.identity?.agent_id);
+    let cachedPlaintextCount = 0;
+    for (const message of selfSentMessages) {
+      if (this.privateMessageBodyCache.get(message.message_id)) {
+        cachedPlaintextCount += 1;
+      }
+    }
+    if (!keypair?.public_key || !keypair?.private_key) {
+      warnings.push("missing_private_encryption_keypair");
+    }
+    if (selfSentMessages.length > 0 && cachedPlaintextCount === 0) {
+      warnings.push("missing_local_plaintext_cache_for_self_messages");
+    }
+    if (selfSentMessages.length > 0 && cachedPlaintextCount < selfSentMessages.length) {
+      warnings.push("partial_local_plaintext_cache_for_self_messages");
+    }
+    return {
+      schema_version: 1,
+      app_version: this.appVersion,
+      last_started_at: Date.now(),
+      encryption_public_key: keypair?.public_key || "",
+      encryption_public_key_fingerprint: keypair?.public_key ? this.fingerprintPublicKey(keypair.public_key) : "",
+      message_count: this.privateMessages.length,
+      self_sent_count: selfSentMessages.length,
+      cached_plaintext_count: cachedPlaintextCount,
+      warnings,
+    };
+  }
+
+  private async refreshPrivateMessagingRuntime(): Promise<void> {
+    const runtime = this.buildPrivateMessagingRuntimeState();
+    this.privateMessagingRuntime = runtime;
+    await this.privateMessagingRuntimeRepo.set(runtime);
+    for (const warning of runtime.warnings) {
+      await this.log("warn", `Private messaging startup check: ${warning}`);
+    }
   }
 
   private getOnboardingSummary() {
@@ -3832,6 +3924,7 @@ export class LocalNodeService {
     this.ingestPrivateMessageReceipt(receipt);
     try {
       await this.network.sendDirect(replyPeerId, PRIVATE_MESSAGE_RECEIPT_TOPIC, receipt);
+      await this.publish(PRIVATE_MESSAGE_RECEIPT_TOPIC, receipt);
     } catch {
       await this.publish(PRIVATE_MESSAGE_RECEIPT_TOPIC, receipt);
     }
@@ -4457,9 +4550,8 @@ export async function main() {
 
   app.get("/api/messages", (req, res) => {
     const limit = Number(req.query.limit ?? 50);
-    const offset = Number(req.query.offset ?? 0);
     const agentId = String(req.query.agent_id ?? "").trim();
-    sendOk(res, node.getSocialMessages(limit, { agent_id: agentId || null, offset }));
+    sendOk(res, node.getSocialMessages(limit, { agent_id: agentId || null }));
   });
 
   app.get("/api/private/state", (_req, res) => {
@@ -4473,8 +4565,7 @@ export async function main() {
   app.get("/api/private/messages", (req, res) => {
     const conversationId = String(req.query.conversation_id ?? "").trim();
     const limit = Number(req.query.limit ?? PRIVATE_MESSAGE_QUERY_LIMIT);
-    const offset = Number(req.query.offset ?? 0);
-    sendOk(res, node.getPrivateMessages(conversationId, limit, offset));
+    sendOk(res, node.getPrivateMessages(conversationId, limit));
   });
 
   app.post(
@@ -4509,9 +4600,8 @@ export async function main() {
 
   app.get("/api/openclaw/bridge/messages", (req, res) => {
     const limit = Number(req.query.limit ?? 50);
-    const offset = Number(req.query.offset ?? 0);
     const agentId = String(req.query.agent_id ?? "").trim();
-    sendOk(res, node.getSocialMessages(limit, { agent_id: agentId || null, offset }));
+    sendOk(res, node.getSocialMessages(limit, { agent_id: agentId || null }));
   });
 
   app.post(
@@ -4661,17 +4751,10 @@ export async function main() {
     let html = readFileSync(staticIndexFile, "utf8");
     html = html.replace("</body>", `${renderBootstrapScript(payload)}\n</body>`);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
     res.send(html);
   });
 
-  app.use(express.static(staticDir, {
-    etag: false,
-    lastModified: false,
-    setHeaders: (res) => {
-      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
-    },
-  }));
+  app.use(express.static(staticDir));
 
   app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
     const message = error instanceof Error ? error.message : "Unknown error";
